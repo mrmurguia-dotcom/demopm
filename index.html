@@ -37,7 +37,7 @@
         <div class="upload-box">
             <h3>1. Maestro de Artículos</h3>
             <input type="file" id="masterFile" accept=".xlsx, .xls">
-            <span id="masterStatus" class="status-msg">Carga el maestro para conocer Bases y Familias.</span>
+            <span id="masterStatus" class="status-msg">Carga el maestro primero.</span>
         </div>
         <div class="upload-box">
             <h3>2. Surtido (Excel JDE)</h3>
@@ -57,96 +57,88 @@
 <script>
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
-    // CARGA DE MAESTRO
+    // Función para quitar tildes y normalizar texto
+    const normalizar = (texto) => {
+        if (!texto) return "";
+        return texto.toString().trim()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase();
+    };
+
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            try {
-                const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
-                const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                maestro = {};
-                data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
-                localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-                document.getElementById('masterStatus').innerText = `✅ Maestro OK: ${Object.keys(maestro).length} SKUs cargados.`;
-            } catch (err) { alert("Error al leer el Maestro: " + err.message); }
+            const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
+            const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            maestro = {};
+            data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
+            localStorage.setItem('maestroConfig', JSON.stringify(maestro));
+            document.getElementById('masterStatus').innerText = `✅ Maestro OK: ${Object.keys(maestro).length} SKUs.`;
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // PROCESAMIENTO DE SURTIDO
     function procesarExcelSurtido() {
         const file = document.getElementById('surtidoFile').files[0];
         if (!file) return alert("Sube el archivo de surtido.");
         
         const reader = new FileReader();
         reader.onload = (e) => {
-            try {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                // Forzamos que lea todo como texto para evitar errores de tipo
-                const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""}); 
+            const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""}); 
 
-                let headerRowIndex = -1;
-                let nCarga = "S/D", nDeposito = "S/D";
+            let headerRowIndex = -1;
+            let nCarga = "S/D", nDeposito = "S/D";
 
-                // BUSQUEDA SEGURA
-                for(let i=0; i < rawData.length; i++){
-                    const row = rawData[i];
-                    if(!Array.isArray(row)) continue; // Si la fila no es un array, la saltamos
+            for(let i=0; i < rawData.length; i++){
+                const row = rawData[i];
+                if(!Array.isArray(row)) continue;
 
-                    // Buscamos Carga y Depósito fila por fila
-                    row.forEach((cell, cellIdx) => {
-                        const val = cell ? cell.toString().toUpperCase() : "";
-                        if(val.includes("CARGA:")) nCarga = row[cellIdx + 1] || "S/D";
-                        if(val.includes("DEPÓSITO:")) nDeposito = row[cellIdx + 1] || "S/D";
-                        if(val.includes("UBICACIÓN") || val.includes("UBICACION")) headerRowIndex = i;
-                    });
-                }
-
-                if(headerRowIndex === -1) {
-                    alert("No encontré la columna 'Ubicación'. Asegúrate de que el Excel sea el correcto.");
-                    return;
-                }
-
-                // Empezamos 2 filas después del encabezado (saltando la vacía)
-                const dataRows = rawData.slice(headerRowIndex + 2);
-                const itemsProcesados = [];
-
-                dataRows.forEach(row => {
-                    if(!Array.isArray(row) || row.length < 5 || !row[0]) return;
-
-                    let desc = (row[3] || "").toString().toUpperCase();
-                    if(desc.includes("PALLET HOMOGENEO") || desc.includes("PALLET HOMOGÉNEO")) return;
-
-                    // Limpieza de cantidad (solo números)
-                    let cantRaw = row[4] ? row[4].toString().replace(/\D/g, "") : "0";
-                    let cantidad = parseInt(cantRaw) || 0;
-
-                    if(cantidad > 0) {
-                        itemsProcesados.push({
-                            ubicacion: row[0],
-                            linea: row[1],
-                            sku: row[2],
-                            descripcion: row[3],
-                            cantidad: cantidad,
-                            orden: row[7] || "S/D",
-                            carga: nCarga,
-                            dep: nDeposito
-                        });
-                    }
+                // 1. Buscamos Carga y Depósito en cualquier parte de la fila
+                row.forEach((cell, idx) => {
+                    let cellTxt = normalizar(cell);
+                    if(cellTxt.includes("CARGA:")) nCarga = row[idx + 1] || "S/D";
+                    if(cellTxt.includes("DEPOSITO:")) nDeposito = row[idx + 1] || "S/D";
                 });
 
-                if(itemsProcesados.length === 0) {
-                    alert("No encontré artículos para armar Pallets Mixtos.");
-                    return;
+                // 2. Buscamos "UBICACION" específicamente en la COLUMNA A (indice 0)
+                if(normalizar(row[0]) === "UBICACION") {
+                    headerRowIndex = i;
                 }
-
-                armarPallets(itemsProcesados);
-
-            } catch (err) {
-                console.error(err);
-                alert("Error crítico al procesar: " + err.message);
             }
+
+            if(headerRowIndex === -1) {
+                alert("No encontré la palabra 'Ubicación' en la Columna A. Revisa el archivo.");
+                return;
+            }
+
+            // Los datos empiezan 2 filas después del encabezado (saltando la fila en blanco)
+            const dataRows = rawData.slice(headerRowIndex + 2);
+            const itemsProcesados = [];
+
+            dataRows.forEach(row => {
+                // Si la primera celda está vacía, terminó la tabla de datos
+                if(!row[0] || row[0] === "") return;
+
+                let desc = normalizar(row[3]);
+                if(desc.includes("PALLET HOMOGENEO")) return;
+
+                itemsProcesados.push({
+                    ubicacion: row[0],
+                    linea: row[1],
+                    sku: row[2],
+                    descripcion: row[3],
+                    cantidad: parseInt(row[4].toString().replace(/\D/g, "")) || 0,
+                    orden: row[7] || "S/D",
+                    carga: nCarga,
+                    dep: nDeposito
+                });
+            });
+
+            if(itemsProcesados.length === 0) return alert("No hay datos de picking para procesar.");
+            armarPallets(itemsProcesados);
         };
         reader.readAsArrayBuffer(file);
     }
@@ -156,27 +148,23 @@
         let currentPM = null;
 
         items.forEach(item => {
-            const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
+            const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "Gral" };
             const ubic = item.ubicacion.toString().toUpperCase();
-            
-            let depFisico = "Dep. 3";
-            if (ubic.startsWith("P00A")) depFisico = "Dep. 1";
-            else if (ubic.startsWith("P002")) depFisico = "Dep. 2";
+            let depFisico = ubic.startsWith("P00A") ? "Dep. 1" : 
+                             ubic.startsWith("P002") ? "Dep. 2" : "Dep. 3";
 
-            const baseReal = parseInt(info.Base) || 28;
-            const camReal = parseInt(info.Camada) || 5;
-            const capacidadMax = baseReal * camReal;
+            const capMax = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
             
             const necesitaNuevo = !currentPM || 
                                 currentPM.depFisico !== depFisico || 
                                 currentPM.familia !== info.Familia ||
-                                (currentPM.total + item.cantidad) > (capacidadMax + 2);
+                                (currentPM.total + item.cantidad) > (capMax + 2);
 
             if (necesitaNuevo) {
                 if (currentPM) pallets.push(currentPM);
                 currentPM = {
                     id: pallets.length + 1,
-                    depFisico, familia: info.Familia, base: baseReal, cam: camReal,
+                    depFisico, familia: info.Familia, base: info.Base, cam: info.Camada,
                     orden: item.orden, nCarga: `${item.dep}-${item.carga}`,
                     items: [], total: 0
                 };
@@ -211,7 +199,7 @@
                 <div class="pallet-header">
                     <h3>PM #${p.id} | Orden: ${p.orden} | ${p.depFisico}</h3>
                     <p>N° de Carga: <span class="highlight">${p.nCarga}</span></p>
-                    <p><strong>Configuración:</strong> Base ${p.base} | Camadas ${p.cam} (Familia: ${p.familia})</p>
+                    <p><strong>Config:</strong> Base ${p.base} | Camadas ${p.cam} | Familia ${p.familia}</p>
                 </div>
                 <table>
                     <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
