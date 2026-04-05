@@ -7,114 +7,44 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            --primary: #0056b3;
-            --secondary: #e9ecef;
-            --text-dark: #333;
-            --success: #28a745;
-            --warning: #ffc107;
-            --danger: #dc3545;
+            --primary: #0056b3; --secondary: #e9ecef; --text-dark: #333; --success: #28a745; --warning: #ffc107;
         }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
-            color: var(--text-dark);
-        }
-        .container {
-            max-width: 1100px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h1 { color: var(--primary); text-align: center; }
-        .upload-section {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .upload-box {
-            flex: 1;
-            min-width: 300px;
-            border: 2px dashed #ccc;
-            padding: 20px;
-            text-align: center;
-            border-radius: 8px;
-            background-color: var(--secondary);
-        }
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        button:hover { background-color: #004494; }
-        .status-msg { font-size: 0.9em; margin-top: 5px; display: block; }
-        
-        .pm-nav {
-            display: flex;
-            gap: 10px;
-            margin: 20px 0;
-            overflow-x: auto;
-            padding-bottom: 10px;
-        }
-        .pm-tab {
-            background-color: var(--secondary);
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            white-space: nowrap;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: var(--primary); text-align: center; margin-bottom: 30px; }
+        .upload-section { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+        .upload-box { flex: 1; min-width: 300px; border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background-color: var(--secondary); }
+        .status-msg { font-size: 0.85em; display: block; margin-top: 10px; color: #666; }
+        button { background-color: var(--primary); color: white; border: none; padding: 12px 25px; cursor: pointer; border-radius: 5px; font-weight: bold; margin-top: 10px; }
+        .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
+        .pm-tab { background-color: var(--secondary); padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .pm-tab.active { background-color: var(--primary); color: white; }
-
-        .pallet-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-            display: none;
-        }
+        .pallet-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; display: none; }
         .pallet-card.active { display: block; }
-        .pallet-header {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-left: 5px solid var(--primary);
-            margin-bottom: 15px;
-        }
-        .highlight { background-color: var(--warning); padding: 2px 5px; border-radius: 3px; font-weight: bold; }
-        
-        table { width: 100%; border-collapse: collapse; }
+        .pallet-header { background-color: #f8f9fa; padding: 15px; border-left: 5px solid var(--primary); margin-bottom: 15px; }
+        .highlight { background-color: var(--warning); padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9em; }
         th { background-color: var(--primary); color: white; }
-
-        @media print {
-            .upload-section, .pm-nav, .print-btn { display: none; }
-            .pallet-card { display: block !important; page-break-after: always; border: none; }
-        }
+        .print-btn { background-color: var(--success); width: 100%; padding: 15px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; margin-top: 20px; font-weight: bold; }
+        @media print { .upload-section, .pm-nav, .print-btn { display: none; } .pallet-card { display: block !important; page-break-after: always; border: none; margin-bottom: 50px; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Optimizador de Pallets Mixtos</h1>
+    <h1>📦 Asistente de Armado JDE 9.2</h1>
 
     <div class="upload-section">
         <div class="upload-box">
             <h3>1. Maestro de Artículos</h3>
             <input type="file" id="masterFile" accept=".xlsx, .xls">
-            <span id="masterStatus" class="status-msg">Carga el Excel con las reglas de SKU.</span>
+            <span id="masterStatus" class="status-msg">Carga el maestro para conocer Bases y Familias.</span>
         </div>
         <div class="upload-box">
-            <h3>2. Surtido JDE</h3>
+            <h3>2. Surtido (Excel JDE)</h3>
             <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-            <button onclick="procesarArchivos()">Generar Picking</button>
+            <button onclick="procesarExcelSurtido()">Generar Pallets Mixtos</button>
         </div>
     </div>
 
@@ -122,169 +52,146 @@
         <hr>
         <div id="tabsContainer" class="pm-nav"></div>
         <div id="palletsContainer"></div>
-        <button class="print-btn" onclick="window.print()" style="background-color: var(--success); width: 100%; padding: 15px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; margin-top: 20px;">🖨️ Imprimir Todas las Hojas de Ruta</button>
+        <button class="print-btn" onclick="window.print()">🖨️ Imprimir Todas las Hojas de Ruta</button>
     </div>
 </div>
 
 <script>
-    let maestro = JSON.parse(localStorage.getItem('maestroPicking')) || {};
+    let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
-    // Carga del Maestro
+    // 1. CARGA DE MAESTRO
     document.getElementById('masterFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet);
-            
-            // Convertir a objeto para búsqueda rápida por SKU
+        reader.onload = (event) => {
+            const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
+            const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
             maestro = {};
-            json.forEach(item => {
-                maestro[item.SKU || item.item] = item;
-            });
-            localStorage.setItem('maestroPicking', JSON.stringify(maestro));
-            document.getElementById('masterStatus').innerText = "✅ Maestro cargado: " + Object.keys(maestro).length + " SKUs.";
-            document.getElementById('masterStatus').style.color = "green";
+            data.forEach(item => { maestro[item.SKU] = item; });
+            localStorage.setItem('maestroConfig', JSON.stringify(maestro));
+            document.getElementById('masterStatus').innerText = `✅ Maestro OK: ${data.length} SKUs cargados.`;
         };
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    function procesarArchivos() {
-        const fileInput = document.getElementById('surtidoFile');
-        if (!fileInput.files[0]) return alert("Por favor, sube el Excel de surtido.");
-        if (Object.keys(maestro).length === 0) return alert("El maestro está vacío. Cárgalo primero.");
-
+    // 2. PROCESAMIENTO DINÁMICO DEL SURTIDO
+    function procesarExcelSurtido() {
+        const file = document.getElementById('surtidoFile').files[0];
+        if (!file) return alert("Sube el archivo de surtido.");
+        
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
+        reader.onload = (e) => {
+            const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const surtidoRaw = XLSX.utils.sheet_to_json(sheet);
+            const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1}); // Leer como matriz de filas
 
-            // 1. Limpieza: Solo Mixtos y mapeo de datos
-            const itemsMixtos = surtidoRaw.filter(row => {
-                const desc = (row["Descripción"] || row["Descripcion"] || "").toUpperCase();
-                return !desc.includes("PALLET HOMOGENEO") && !desc.includes("PALLET HOMOGÉNEO");
+            let headerRowIndex = -1;
+            let nCarga = "S/D", nDeposito = "S/D";
+
+            // Escanear el Excel para encontrar Carga, Depósito y la Tabla
+            for(let i=0; i < rawData.length; i++){
+                let rowStr = rawData[i].join("|").toUpperCase();
+                if(rowStr.includes("CARGA:")) nCarga = rawData[i][rawData[i].indexOf("CARGA:") + 1] || rawData[i][6];
+                if(rowStr.includes("DEPÓSITO:")) nDeposito = rawData[i][rawData[i].indexOf("DEPÓSITO:") + 1] || rawData[i][6];
+                if(rawData[i].includes("Ubicación") || rawData[i].includes("Ubicacion")) {
+                    headerRowIndex = i;
+                }
+            }
+
+            if(headerRowIndex === -1) return alert("No se encontró la columna 'Ubicación'. Revisa el Excel.");
+
+            // Los datos empiezan 2 filas después del encabezado (saltando la fila en blanco)
+            const dataRows = rawData.slice(headerRowIndex + 2);
+            const itemsProcesados = [];
+
+            dataRows.forEach(row => {
+                if(!row[0]) return; // Fila vacía al final
+                let desc = (row[3] || "").toUpperCase();
+                if(desc.includes("PALLET HOMOGENEO") || desc.includes("PALLET HOMOGÉNEO")) return;
+
+                itemsProcesados.push({
+                    ubicacion: row[0],
+                    linea: row[1],
+                    sku: row[2],
+                    descripcion: row[3],
+                    cantidad: parseInt(row[4]) || 0,
+                    orden: row[7],
+                    carga: nCarga,
+                    dep: nDeposito
+                });
             });
 
-            if (itemsMixtos.length === 0) return alert("No se encontraron ítems de Pallet Mixto.");
-
-            generarLogicaPallets(itemsMixtos);
+            armarPallets(itemsProcesados);
         };
-        reader.readAsArrayBuffer(fileInput.files[0]);
+        reader.readAsArrayBuffer(file);
     }
 
-    function generarLogicaPallets(items) {
+    function armarPallets(items) {
         const pallets = [];
         let currentPM = null;
 
         items.forEach(item => {
-            const skuData = maestro[item.SKU || item.item] || { "Base": 28, "Camada": 5, "Familia": 1 };
-            const ubic = (item["Ubicación"] || "").toString();
-            
-            // Determinar depósito
-            let deposito = "Desconocido";
-            if (ubic.startsWith("P00A")) deposito = "Depósito 1";
-            if (ubic.startsWith("P002")) deposito = "Depósito 2";
-            if (ubic.startsWith("P014")) deposito = "Depósito 3";
+            const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
+            const depFisico = item.ubicacion.startsWith("P00A") ? "Dep. 1" : 
+                             item.ubicacion.startsWith("P002") ? "Dep. 2" : "Dep. 3";
 
-            const cant = parseInt(item["Cantidad"] || 0);
-            const maxCapacidad = skuData.Base * skuData.Camada;
-            const familia = skuData.Familia;
-
-            // Lógica de CORTE: ¿Necesitamos un nuevo pallet?
+            // Lógica de corte: Cambia de Depósito, cambia de Familia o se llena la capacidad
+            const capacidadMax = info.Base * info.Camada;
             const necesitaNuevo = !currentPM || 
-                                currentPM.deposito !== deposito || 
-                                currentPM.familia !== familia ||
-                                (currentPM.total + cant) > (maxCapacidad + 2); // +2 de margen
+                                currentPM.depFisico !== depFisico || 
+                                currentPM.familia !== info.Familia ||
+                                (currentPM.total + item.cantidad) > (capacidadMax + 2);
 
             if (necesitaNuevo) {
                 if (currentPM) pallets.push(currentPM);
                 currentPM = {
                     id: pallets.length + 1,
-                    deposito: deposito,
-                    familia: familia,
-                    base: skuData.Base,
-                    maxAlt: skuData.Camada,
-                    carga: item["Carga"] || "S/D",
-                    orden: item["Nº de la orden"] || item["Orden"] || "S/D",
-                    items: [],
-                    total: 0
+                    depFisico, familia: info.Familia, base: info.Base, cam: info.Camada,
+                    orden: item.orden, nCarga: `${item.dep}-${item.carga}`,
+                    items: [], total: 0
                 };
             }
-
             currentPM.items.push(item);
-            currentPM.total += cant;
+            currentPM.total += item.cantidad;
         });
         if (currentPM) pallets.push(currentPM);
-
-        renderizarPallets(pallets);
+        render(pallets);
     }
 
-    function renderizarPallets(pallets) {
-        const tabsCont = document.getElementById('tabsContainer');
-        const cardsCont = document.getElementById('palletsContainer');
-        tabsCont.innerHTML = "";
-        cardsCont.innerHTML = "";
+    function render(pallets) {
+        const tCon = document.getElementById('tabsContainer');
+        const pCon = document.getElementById('palletsContainer');
+        tCon.innerHTML = ""; pCon.innerHTML = "";
 
-        pallets.forEach((p, index) => {
-            // Crear Tab
+        pallets.forEach((p, idx) => {
             const tab = document.createElement('div');
-            tab.className = `pm-tab ${index === 0 ? 'active' : ''}`;
-            tab.innerText = `PM ${p.id} (${p.deposito.split(' ')[1]})`;
+            tab.className = `pm-tab ${idx===0?'active':''}`;
+            tab.innerText = `PM ${p.id} (${p.depFisico})`;
             tab.onclick = () => {
-                document.querySelectorAll('.pm-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.pallet-card').forEach(c => c.classList.remove('active'));
+                document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 tab.classList.add('active');
-                document.getElementById(`card-${p.id}`).classList.add('active');
+                document.getElementById(`p-${p.id}`).classList.add('active');
             };
-            tabsCont.appendChild(tab);
+            tCon.appendChild(tab);
 
-            // Crear Card
             const card = document.createElement('div');
-            card.id = `card-${p.id}`;
-            card.className = `pallet-card ${index === 0 ? 'active' : ''}`;
-            
-            const nCarga = `${p.deposito.split(' ')[1]}-${p.carga}`;
-
+            card.id = `p-${p.id}`;
+            card.className = `pallet-card ${idx===0?'active':''}`;
             card.innerHTML = `
                 <div class="pallet-header">
-                    <h3>PM #${p.id} | Orden: ${p.orden} | ${p.deposito}</h3>
-                    <p>N° de Carga: <span class="highlight">${nCarga}</span></p>
-                    <p><strong>Regla:</strong> Familia ${p.familia} | Base: ${p.base} | Altura: ${p.maxAlt} camadas</p>
+                    <h3>PM #${p.id} | Orden: ${p.orden} | ${p.depFisico}</h3>
+                    <p>N° de Carga: <span class="highlight">${p.nCarga}</span></p>
+                    <p><strong>Base:</strong> ${p.base} CA | <strong>Altura Sugerida:</strong> ${p.cam} camadas (Familia ${p.familia})</p>
                 </div>
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Línea</th>
-                            <th>Ubicación</th>
-                            <th>SKU</th>
-                            <th>Descripción</th>
-                            <th>Cantidad</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${p.items.map(i => `
-                            <tr>
-                                <td>${i["Nº línea"] || i["Linea"] || ""}</td>
-                                <td>${i["Ubicación"] || ""}</td>
-                                <td>${i["SKU"] || i["item"] || ""}</td>
-                                <td>${i["Descripción"] || i["Descripcion"] || ""}</td>
-                                <td>${i["Cantidad"]}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
+                    <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
+                    <tbody>${p.items.map(i => `<tr><td>${i.linea}</td><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
                 </table>
-                <p style="text-align:right"><strong>Total Pallet: ${p.total} unidades</strong></p>
+                <p style="text-align:right"><strong>Total Pallet: ${p.total} CA</strong></p>
             `;
-            cardsCont.appendChild(card);
+            pCon.appendChild(card);
         });
-
         document.getElementById('resultadosArea').style.display = 'block';
     }
 </script>
-
 </body>
 </html>
