@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Optimizador de Picking - JDE BIP</title>
+<title>Optimizador de Picking - JDE</title>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
@@ -11,7 +11,6 @@
 :root{
 --primary:#0056b3;
 --secondary:#e9ecef;
---success:#28a745;
 }
 
 body{
@@ -94,7 +93,6 @@ margin-top:10px;
 th,td{
 border:1px solid #ddd;
 padding:8px;
-text-align:left;
 font-size:0.85em;
 }
 
@@ -110,7 +108,7 @@ color:white;
 
 <div class="container">
 
-<h1>📦 Picking JDE (BI Publisher)</h1>
+<h1>📦 Picking JDE (BIP)</h1>
 
 <div class="upload-section">
 
@@ -139,6 +137,8 @@ color:white;
 
 let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
+/* CARGAR MAESTRO */
+
 document.getElementById('masterFile').addEventListener('change', function(e){
 
 const reader = new FileReader();
@@ -146,17 +146,14 @@ const reader = new FileReader();
 reader.onload = ev => {
 
 const wb = XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
-
 const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
 
-maestro={};
+maestro = {};
 
 data.forEach(item=>{
-
 if(item.SKU){
 maestro[item.SKU.toString().trim()] = item;
 }
-
 });
 
 localStorage.setItem('maestroConfig',JSON.stringify(maestro));
@@ -169,10 +166,12 @@ reader.readAsArrayBuffer(e.target.files[0]);
 
 });
 
+
+/* PROCESAR REPORTE BIP */
+
 function procesarBIP(){
 
 const file=document.getElementById('surtidoFile').files[0];
-
 if(!file) return;
 
 const reader=new FileReader();
@@ -183,94 +182,113 @@ const data=new Uint8Array(e.target.result);
 
 const workbook=XLSX.read(data,{
 type:'array',
-raw:false,
-dense:true,
-cellText:true
+dense:true
 });
 
 const sheet=workbook.Sheets[workbook.SheetNames[0]];
 
 const rows=XLSX.utils.sheet_to_json(sheet,{
 header:1,
-blankrows:false,
-defval:""
+defval:"",
+blankrows:true
 });
 
-let headerIndex=-1;
+let items=[];
+let nCarga="S/D";
+let deposito="S/D";
+
+let leyendoMixto=false;
+let headerRow=-1;
 
 rows.forEach((row,i)=>{
 
 const txt=row.join(" ").toUpperCase();
 
+if(txt.includes("CARGA")){
+nCarga=row[row.length-1] || nCarga;
+}
+
+if(txt.includes("DEPOSITO")){
+deposito=row[row.length-1] || deposito;
+}
+
+if(txt.includes("PALLET HOMOGENEO")){
+leyendoMixto=false;
+}
+
+if(txt.includes("PALLET MIXTO")){
+leyendoMixto=true;
+}
+
 if(
-txt.includes("SKU") ||
-txt.includes("ARTIC") ||
-txt.includes("ITEM")
+leyendoMixto &&
+(txt.includes("UBICACIÓN") || txt.includes("UBICACION"))
 ){
-headerIndex=i;
+headerRow=i;
 }
 
 });
 
-if(headerIndex==-1){
-alert("No se pudo detectar encabezado.");
+/* leer datos */
+
+if(headerRow==-1){
+alert("No se encontró el bloque de pallet mixto.");
 return;
 }
 
-const headers=rows[headerIndex].map(h=>h.toString().toUpperCase());
+for(let i=headerRow+2;i<rows.length;i++){
 
-const col={
+let row=rows[i];
 
-ubic: headers.findIndex(h=>h.includes("UBIC")),
-sku: headers.findIndex(h=>h.includes("SKU") || h.includes("ART")),
-desc: headers.findIndex(h=>h.includes("DESC")),
-cant: headers.findIndex(h=>h.includes("CANT")),
-orden: headers.findIndex(h=>h.includes("ORD"))
-
-};
-
-let items=[];
-let nCarga="S/D";
-
-rows.forEach(r=>{
-
-const line=r.join(" ").toUpperCase();
-
-if(line.includes("CARGA")){
-nCarga=r[r.length-1] || nCarga;
-}
-
-});
-
-rows.slice(headerIndex+1).forEach(row=>{
-
-let sku=(row[col.sku] || "").toString().trim();
-let ubic=(row[col.ubic] || "").toString().trim();
-let desc=(row[col.desc] || "").toString().trim();
-
-let cant=row[col.cant];
+let ubic=(row[0]||"").toString().trim();
+let sku=(row[1]||"").toString().trim();
+let lote=(row[2]||"").toString().trim();
+let desc=(row[4]||"").toString().trim();
+let cliente=(row[5]||"").toString().trim();
+let orden=(row[6]||"").toString().trim();
+let linea=(row[7]||"").toString().trim();
+let cant=row[8];
 
 if(typeof cant==="string"){
 cant=cant.replace(",",".");
 }
 
-cant=parseFloat(cant) || 0;
+cant=parseFloat(cant)||0;
 
-if(!sku || cant<=0) return;
+/* cortar cuando empieza otro bloque */
+
+let txt=row.join(" ").toUpperCase();
+
+if(txt.includes("PALLET HOMOGENEO")){
+break;
+}
+
+if(
+ubic &&
+ubic.startsWith("P") &&
+sku &&
+cant>0
+){
 
 items.push({
 ubicacion:ubic,
 sku:sku,
+lote:lote,
 descripcion:desc,
+cliente:cliente,
+orden:orden,
+linea:linea,
 cantidad:cant,
-orden:row[col.orden] || "S/D",
-nCarga:nCarga
+nCarga:nCarga,
+deposito:deposito
 });
 
-});
+}
+
+}
 
 if(items.length===0){
-alert("No se encontraron líneas válidas.");
+alert("No se detectaron líneas de pallet mixto.");
 return;
 }
 
@@ -282,6 +300,9 @@ reader.readAsArrayBuffer(file);
 
 }
 
+
+/* ARMAR PALLETS */
+
 function armarPallets(items){
 
 const pallets=[];
@@ -291,27 +312,14 @@ items.forEach(item=>{
 
 const info=maestro[item.sku] || {Base:28,Camada:5,Familia:"General"};
 
-const ubi=item.ubicacion.toUpperCase();
-
-let dep="Dep.3";
-
-if(ubi.startsWith("P00A")) dep="Dep.1";
-else if(ubi.startsWith("P002")) dep="Dep.2";
-
 const cap=(parseInt(info.Base)||28)*(parseInt(info.Camada)||5);
 
-if(
-!current ||
-current.dep!==dep ||
-current.familia!==info.Familia ||
-(current.total+item.cantidad)>(cap+2)
-){
+if(!current || (current.total+item.cantidad)>(cap+2)){
 
 if(current) pallets.push(current);
 
 current={
 id:pallets.length+1,
-dep:dep,
 familia:info.Familia,
 base:info.Base,
 cam:info.Camada,
@@ -323,7 +331,6 @@ total:0
 }
 
 current.items.push(item);
-
 current.total+=item.cantidad;
 
 });
@@ -333,6 +340,9 @@ if(current) pallets.push(current);
 render(pallets);
 
 }
+
+
+/* RENDER */
 
 function render(pallets){
 
@@ -347,31 +357,26 @@ pCon.innerHTML="";
 pallets.forEach((p,idx)=>{
 
 const tab=document.createElement('div');
-
 tab.className=`pm-tab ${idx===0?'active':''}`;
 tab.innerText=`PM ${p.id}`;
 
 tab.onclick=()=>{
-
 document.querySelectorAll('.pm-tab,.pallet-card')
 .forEach(e=>e.classList.remove('active'));
 
 tab.classList.add('active');
-
 document.getElementById(`p-${p.id}`).classList.add('active');
-
 };
 
 tCon.appendChild(tab);
 
 const card=document.createElement('div');
-
 card.id=`p-${p.id}`;
 card.className=`pallet-card ${idx===0?'active':''}`;
 
 card.innerHTML=`
 
-<h3>Pallet #${p.id} - ${p.dep}</h3>
+<h3>Pallet #${p.id}</h3>
 
 <p>Carga: ${p.nCarga} | Familia: ${p.familia}</p>
 
