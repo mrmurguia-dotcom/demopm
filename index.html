@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Optimizador de Picking - BIP JDE Edition</title>
+    <title>Optimizador de Picking - JDE</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #0056b3; --secondary: #e9ecef; --success: #28a745; --warning: #ffc107; }
+        :root { --primary: #0056b3; --secondary: #e9ecef; --success: #28a745; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; }
         .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); text-align: center; }
@@ -17,22 +17,21 @@
         .pm-tab.active { background-color: var(--primary); color: white; }
         .pallet-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; display: none; }
         .pallet-card.active { display: block; }
-        .pallet-header { background-color: #f8f9fa; padding: 15px; border-left: 5px solid var(--primary); margin-bottom: 15px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.85em; }
         th { background-color: var(--primary); color: white; }
-        .print-btn { background-color: var(--success); width: 100%; padding: 15px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; margin-top: 20px; font-weight: bold; }
-        @media print { .upload-section, .pm-nav, .print-btn { display: none; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
+        .total-row { text-align: right; font-weight: bold; margin-top: 10px; color: var(--primary); }
+        @media print { .upload-section, .pm-nav { display: none; } .pallet-card { display: block !important; page-break-after: always; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Picking JDE (BI Publisher) v6.0</h1>
+    <h1>📦 Optimizador JDE - BIP Edition</h1>
     
     <div class="upload-section">
         <div class="upload-box">
-            <h3>1. Maestro</h3>
+            <h3>1. Maestro de Artículos</h3>
             <input type="file" id="masterFile">
         </div>
         <div class="upload-box">
@@ -45,86 +44,94 @@
     <div id="resultadosArea" style="display: none;">
         <div id="tabsContainer" class="pm-nav"></div>
         <div id="palletsContainer"></div>
-        <button class="print-btn" onclick="window.print()">🖨️ Imprimir Todo</button>
     </div>
 </div>
 
 <script>
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
-    let tablaAuxiliarPicking = []; // Nuestra "Cámara de Limpieza"
+    let tablaAuxiliarPicking = [];
 
-    // Guardar Maestro
+    // Carga del Maestro
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
             const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
             const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
             maestro = {};
-            data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
+            data.forEach(item => { 
+                let key = item.SKU || item.Artículo || item.Articulo;
+                if(key) maestro[key.toString().trim()] = item; 
+            });
             localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            alert("✅ Maestro cargado correctamente.");
+            alert("Maestro cargado: " + Object.keys(maestro).length + " artículos.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
     function procesarBIP() {
         const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("Por favor, selecciona el archivo de surtido.");
+        if (!file) return alert("Selecciona el archivo de surtido.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
-            
-            // Leemos forzando UTF-8 para evitar errores con tildes del BIP
-            const workbook = XLSX.read(data, { type: 'array', codepage: 65001 });
+            const workbook = XLSX.read(data, { type: 'array' });
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const rawRows = XLSX.utils.sheet_to_json(firstSheet, {header: 1, defval: ""});
 
-            // PASO 1: Limpiar los datos del BIP y pasarlos a la tabla auxiliar
             sanitizarDatos(rawRows);
 
-            // PASO 2: Si hay datos, armar los pallets
             if (tablaAuxiliarPicking.length > 0) {
-                armarPalletsDesdeAuxiliar();
+                armarPallets();
             } else {
-                alert("❌ No se detectaron líneas de picking válidas. Verifica el archivo.");
+                alert("No se detectaron líneas válidas. Revisá que la columna se llame 'Artículo'.");
             }
         };
         reader.readAsArrayBuffer(file);
     }
 
-    function sanitizarDatos(filasSucias) {
+    function sanitizarDatos(filas) {
         tablaAuxiliarPicking = [];
-        let nCarga = "S/D";
-        let nDep = "S/D";
+        let cargaActual = "S/D";
+        let depActual = "S/D";
 
-        filasSucias.forEach((row) => {
-            // Buscamos Nro de Carga o Depósito en cualquier celda de la fila
-            row.forEach((cell, idx) => {
-                let txt = cell.toString().toUpperCase();
-                if(txt.includes("CARGA:")) nCarga = row[idx + 1] || nCarga;
-                if(txt.includes("DEPOSITO:")) nDep = row[idx + 1] || nDep;
-            });
+        filas.forEach((row) => {
+            let rowStr = row.join("|").toUpperCase();
+            
+            // Extraer Carga y Depósito del encabezado del BIP
+            if(rowStr.includes("CARGA:")) {
+                let idx = row.findIndex(c => c.toString().toUpperCase().includes("CARGA:"));
+                cargaActual = row[idx + 1] || cargaActual;
+            }
+            if(rowStr.includes("DEPOSITO:")) {
+                let idx = row.findIndex(c => c.toString().toUpperCase().includes("DEPOSITO:"));
+                depActual = row[idx + 1] || depActual;
+            }
 
-            // Criterio de validación: Debe tener SKU (Col 2) y Cantidad > 0 (Col 4)
-            let sku = row[2] ? row[2].toString().trim() : "";
-            let cant = row[4] ? parseInt(row[4].toString().replace(/\D/g, "")) : 0;
+            // Detectar filas de productos
+            // Según tu imagen: Col 0: Ubicación, Col 1: Artículo (SKU), Col 4: Descripción, Col 9: Cantidad
             let ubic = row[0] ? row[0].toString().trim() : "";
+            let sku  = row[1] ? row[1].toString().trim() : "";
+            let desc = row[4] ? row[4].toString().trim() : "";
+            let cantRaw = row[9] ? row[9].toString() : "0";
+            let cant = parseInt(cantRaw.replace(/[^\d]/g, "")); // Limpia el "CA" y deja solo el número
 
-            if (sku !== "" && sku.toUpperCase() !== "SKU" && cant > 0) {
+            // FILTRO: Si tiene SKU numérico y cantidad > 0, es una línea de picking
+            if (sku !== "" && !isNaN(sku) && sku.toUpperCase() !== "ARTÍCULO" && cant > 0) {
                 tablaAuxiliarPicking.push({
                     ubicacion: ubic,
                     sku: sku,
-                    descripcion: row[3] || "Sin descripción",
+                    descripcion: desc,
                     cantidad: cant,
-                    orden: row[7] || "S/D",
-                    nCarga: `${nDep}-${nCarga}`
+                    nCarga: cargaActual,
+                    deposito: depActual,
+                    orden: row[7] || "S/D"
                 });
             }
         });
     }
 
-    function armarPalletsDesdeAuxiliar() {
+    function armarPallets() {
         const pallets = [];
         let current = null;
 
@@ -132,22 +139,25 @@
             const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
             const ubi = item.ubicacion.toUpperCase();
             
-            // Lógica de separación por Depósito
-            let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P002") ? "Dep. 2" : "Dep. 3";
-            const cap = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
+            // Lógica de Depósito basada en prefijo de ubicación
+            let depLabel = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P014") ? "Dep. 3" : "Otros";
+            const capacidad = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
 
-            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (cap + 2)) {
+            if (!current || current.dep !== depLabel || current.familia !== info.Familia || (current.total + item.cantidad) > (capacidad + 5)) {
                 if (current) pallets.push(current);
                 current = { 
-                    id: pallets.length + 1, dep, familia: info.Familia, 
-                    base: info.Base, cam: info.Camada, 
-                    nCarga: item.nCarga, items: [], total: 0 
+                    id: pallets.length + 1, 
+                    dep: depLabel, 
+                    familia: info.Familia, 
+                    nCarga: item.nCarga,
+                    orden: item.orden,
+                    items: [], 
+                    total: 0 
                 };
             }
             current.items.push(item);
             current.total += item.cantidad;
         });
-        
         if (current) pallets.push(current);
         render(pallets);
     }
@@ -160,7 +170,7 @@
         pallets.forEach((p, idx) => {
             const tab = document.createElement('div');
             tab.className = `pm-tab ${idx===0?'active':''}`;
-            tab.innerText = `PM ${p.id}`;
+            tab.innerText = `PM ${p.id} (${p.dep})`;
             tab.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(e => e.classList.remove('active'));
                 tab.classList.add('active');
@@ -172,16 +182,15 @@
             card.id = `p-${p.id}`;
             card.className = `pallet-card ${idx===0?'active':''}`;
             card.innerHTML = `
-                <div class="pallet-header">
-                    <h3>Pallet Mixto #${p.id} - ${p.dep}</h3>
-                    <p>Carga: <b>${p.nCarga}</b> | Familia: <b>${p.familia}</b></p>
-                    <p>Configuración sugerida: Base ${p.base} x ${p.cam} camadas</p>
+                <div style="border-bottom: 2px solid var(--primary); margin-bottom:10px;">
+                    <h2 style="margin:0">Pallet Mixto #${p.id} - ${p.dep}</h2>
+                    <p><b>Carga:</b> ${p.nCarga} | <b>Orden:</b> ${p.orden} | <b>Familia:</b> ${p.familia}</p>
                 </div>
                 <table>
-                    <thead><tr><th>Ubic</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
-                    <tbody>${p.items.map(i => `<tr><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
+                    <thead><tr><th>Ubicación</th><th>Artículo</th><th>Descripción</th><th>Cant</th></tr></thead>
+                    <tbody>${p.items.map(i => `<tr><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad} CA</td></tr>`).join('')}</tbody>
                 </table>
-                <h4 style="text-align:right">Total bultos: ${p.total}</h4>
+                <div class="total-row">TOTAL BULTOS: ${p.total}</div>
             `;
             pCon.appendChild(card);
         });
