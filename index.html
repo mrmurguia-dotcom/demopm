@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizador de Picking - Pallets Mixtos</title>
+    <style>
+        :root {
+            --primary: #0056b3;
+            --secondary: #e9ecef;
+            --text-dark: #333;
+            --success: #28a745;
+            --warning: #ffc107;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-dark);
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: var(--primary);
+        }
+        /* Secciones de carga */
+        .upload-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .upload-box {
+            flex: 1;
+            min-width: 300px;
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            background-color: var(--secondary);
+        }
+        .upload-box input {
+            display: block;
+            margin: 10px auto;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #004494;
+        }
+        /* Navegación de Pallets */
+        .pm-nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        .pm-tab {
+            background-color: var(--secondary);
+            color: var(--text-dark);
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .pm-tab.active {
+            background-color: var(--primary);
+            color: white;
+        }
+        /* Tarjeta del Pallet */
+        .pallet-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none; /* Oculto por defecto, se muestra con JS */
+        }
+        .pallet-card.active {
+            display: block;
+        }
+        .pallet-header {
+            background-color: var(--secondary);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .highlight {
+            background-color: var(--warning);
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        /* Tabla de items */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--primary);
+            color: white;
+        }
+        .print-btn {
+            background-color: var(--success);
+            margin-top: 20px;
+            width: 100%;
+            font-size: 18px;
+            padding: 15px;
+        }
+        .print-btn:hover {
+            background-color: #218838;
+        }
+        
+        /* Ocultar elementos en impresión */
+        @media print {
+            .upload-section, .pm-nav, .print-btn {
+                display: none;
+            }
+            .pallet-card {
+                display: block;
+                border: none;
+                page-break-after: always;
+            }
+            body {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Bodega - Optimizador de Armado (PM)</h1>
+
+    <div class="upload-section">
+        <div class="upload-box">
+            <h3>1. Maestro de Artículos (Única vez)</h3>
+            <p>Cargar Excel con SKU, Base, Camadas y Familia.</p>
+            <input type="file" id="masterData" accept=".xlsx, .xls, .csv">
+            <button onclick="alert('Maestro cargado en memoria (Simulación)')">Guardar Maestro</button>
+        </div>
+        <div class="upload-box">
+            <h3>2. Surtido Diario (PDF/Excel)</h3>
+            <p>Se omitirán los "Pallets Homogéneos".</p>
+            <input type="file" id="surtidoData" accept=".pdf, .xlsx, .xls">
+            <button onclick="procesarSurtido()">Procesar Surtido</button>
+        </div>
+    </div>
+
+    <div id="resultados" style="display: none;">
+        <hr>
+        <h2>Resultados del Armado</h2>
+        
+        <div class="pm-nav">
+            <div class="pm-tab active" onclick="mostrarPM('pm1')">PM 1 (Dep. 1)</div>
+            <div class="pm-tab" onclick="mostrarPM('pm2')">PM 2 (Dep. 3 - Latas)</div>
+        </div>
+
+        <div id="pm1" class="pallet-card active">
+            <div class="pallet-header">
+                <h3>PM #1 | Orden: 3056725 | Depósito 1 (Pasillo P00A)</h3>
+                <p><span class="highlight">N° de Carga: 503-13511</span></p>
+                <p><strong>Restricción:</strong> Familia 1 (Caja Alta) - Base: 32 | Máx: 3 Camadas</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Línea JDE</th>
+                        <th>Ubicación</th>
+                        <th>SKU</th>
+                        <th>Descripción</th>
+                        <th>Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1.007</td>
+                        <td>P00A.008.0</td>
+                        <td>74210</td>
+                        <td>ALMA MORA MALBEC 6X750</td>
+                        <td>32 CA</td>
+                    </tr>
+                    <tr>
+                        <td>1.008</td>
+                        <td>P00A.008.0</td>
+                        <td>74210</td>
+                        <td>ALMA MORA MALBEC 6X750</td>
+                        <td>60 CA</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="text-align: right; margin-top: 10px;"><strong>Total: 92 CA (Cerrado por optimización)</strong></p>
+        </div>
+
+        <div id="pm2" class="pallet-card">
+            <div class="pallet-header">
+                <h3>PM #2 | Orden: 3056725 | Depósito 3 (Pasillo P014)</h3>
+                <p><span class="highlight">N° de Carga: 503-13511</span></p>
+                <p><strong>Restricción:</strong> Familia 9 (Latas) - No mezclar con cartón</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Línea JDE</th>
+                        <th>Ubicación</th>
+                        <th>SKU</th>
+                        <th>Descripción</th>
+                        <th>Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>18.000</td>
+                        <td>P014.044.0</td>
+                        <td>60002</td>
+                        <td>ANTARES SCOTCH LATA 6X473</td>
+                        <td>50 CA</td>
+                    </tr>
+                    <tr>
+                        <td>17.000</td>
+                        <td>P014.046.0</td>
+                        <td>60015</td>
+                        <td>ANTARES PLAYA GRANDE LATA</td>
+                        <td>40 CA</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="text-align: right; margin-top: 10px;"><strong>Total: 90 CA (Pallet Exclusivo Latas)</strong></p>
+        </div>
+
+        <button class="print-btn" onclick="window.print()">🖨️ Imprimir Todos los Pallets (Hojas de Ruta)</button>
+    </div>
+</div>
+
+<script>
+    // Simula el procesamiento del archivo y muestra la sección de resultados
+    function procesarSurtido() {
+        // Aquí en el futuro irá la lógica para leer el Excel/PDF real,
+        // filtrar "Pallet Homogeneo" y crear los arrays de "Pallet Mixto".
+        document.getElementById('resultados').style.display = 'block';
+    }
+
+    // Lógica para navegar entre las pestañas de los pallets
+    function mostrarPM(id) {
+        // Ocultar todas las tarjetas
+        let cards = document.getElementsByClassName('pallet-card');
+        for (let i = 0; i < cards.length; i++) {
+            cards[i].classList.remove('active');
+        }
+        
+        // Quitar la clase active de todas las pestañas
+        let tabs = document.getElementsByClassName('pm-tab');
+        for (let i = 0; i < tabs.length; i++) {
+            tabs[i].classList.remove('active');
+        }
+
+        // Mostrar la tarjeta seleccionada
+        document.getElementById(id).classList.add('active');
+        
+        // Resaltar la pestaña seleccionada (busca el elemento clickeado por su onclick)
+        event.target.classList.add('active');
+    }
+</script>
+
+</body>
+</html>
