@@ -1,422 +1,192 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Optimizador de Picking - JDE</title>
-
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-
-<style>
-
-:root{
---primary:#0056b3;
---secondary:#e9ecef;
-}
-
-body{
-font-family:'Segoe UI',sans-serif;
-background:#f4f7f6;
-padding:20px;
-}
-
-.container{
-max-width:1100px;
-margin:auto;
-background:white;
-padding:20px;
-border-radius:8px;
-box-shadow:0 4px 6px rgba(0,0,0,0.1);
-}
-
-.upload-section{
-display:flex;
-gap:20px;
-margin-bottom:20px;
-}
-
-.upload-box{
-flex:1;
-border:2px dashed #ccc;
-padding:20px;
-text-align:center;
-border-radius:8px;
-background:var(--secondary);
-}
-
-button{
-background:var(--primary);
-color:white;
-border:none;
-padding:12px 25px;
-cursor:pointer;
-border-radius:5px;
-font-weight:bold;
-}
-
-.pm-nav{
-display:flex;
-gap:10px;
-margin:20px 0;
-overflow-x:auto;
-}
-
-.pm-tab{
-background:var(--secondary);
-padding:10px 18px;
-border-radius:5px;
-cursor:pointer;
-font-weight:bold;
-}
-
-.pm-tab.active{
-background:var(--primary);
-color:white;
-}
-
-.pallet-card{
-border:1px solid #ddd;
-border-radius:8px;
-padding:20px;
-display:none;
-}
-
-.pallet-card.active{
-display:block;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-margin-top:10px;
-}
-
-th,td{
-border:1px solid #ddd;
-padding:8px;
-font-size:0.85em;
-}
-
-th{
-background:var(--primary);
-color:white;
-}
-
-</style>
+    <meta charset="UTF-8">
+    <title>Optimizador de Picking - BIP JDE Edition</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #0056b3; --secondary: #e9ecef; --success: #28a745; --warning: #ffc107; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: var(--primary); text-align: center; }
+        .upload-section { display: flex; gap: 20px; margin-bottom: 20px; }
+        .upload-box { flex: 1; border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background-color: var(--secondary); }
+        button { background-color: var(--primary); color: white; border: none; padding: 12px 25px; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
+        .pm-tab { background-color: var(--secondary); padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+        .pm-tab.active { background-color: var(--primary); color: white; }
+        .pallet-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; display: none; }
+        .pallet-card.active { display: block; }
+        .pallet-header { background-color: #f8f9fa; padding: 15px; border-left: 5px solid var(--primary); margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.85em; }
+        th { background-color: var(--primary); color: white; }
+        .print-btn { background-color: var(--success); width: 100%; padding: 15px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; margin-top: 20px; font-weight: bold; }
+        @media print { .upload-section, .pm-nav, .print-btn { display: none; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
+    </style>
 </head>
-
 <body>
 
 <div class="container">
+    <h1>📦 Picking JDE (BI Publisher) v6.0</h1>
+    
+    <div class="upload-section">
+        <div class="upload-box">
+            <h3>1. Maestro</h3>
+            <input type="file" id="masterFile">
+        </div>
+        <div class="upload-box">
+            <h3>2. Surtido BIP (.xls)</h3>
+            <input type="file" id="surtidoFile">
+            <button onclick="procesarBIP()">Generar Pallets</button>
+        </div>
+    </div>
 
-<h1>📦 Picking JDE (BIP)</h1>
-
-<div class="upload-section">
-
-<div class="upload-box">
-<h3>Maestro</h3>
-<input type="file" id="masterFile">
-</div>
-
-<div class="upload-box">
-<h3>Surtido BIP</h3>
-<input type="file" id="surtidoFile">
-<br><br>
-<button onclick="procesarBIP()">Procesar archivo</button>
-</div>
-
-</div>
-
-<div id="resultadosArea" style="display:none;">
-<div id="tabsContainer" class="pm-nav"></div>
-<div id="palletsContainer"></div>
-</div>
-
+    <div id="resultadosArea" style="display: none;">
+        <div id="tabsContainer" class="pm-nav"></div>
+        <div id="palletsContainer"></div>
+        <button class="print-btn" onclick="window.print()">🖨️ Imprimir Todo</button>
+    </div>
 </div>
 
 <script>
-
-let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
-
-/* CARGAR MAESTRO */
-
-document.getElementById('masterFile').addEventListener('change', function(e){
-
-const reader = new FileReader();
-
-reader.onload = ev => {
-
-const wb = XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
-const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-
-maestro = {};
-
-data.forEach(item=>{
-if(item.SKU){
-maestro[item.SKU.toString().trim()] = item;
-}
-});
-
-localStorage.setItem('maestroConfig',JSON.stringify(maestro));
-
-alert("Maestro cargado");
-
-};
-
-reader.readAsArrayBuffer(e.target.files[0]);
-
-});
-
-
-/* PROCESAR REPORTE BIP */
-
-function procesarBIP(){
-
-const file=document.getElementById('surtidoFile').files[0];
-if(!file) return;
-
-const reader=new FileReader();
-
-reader.onload=function(e){
-
-const data=new Uint8Array(e.target.result);
-
-const workbook=XLSX.read(data,{
-type:'array',
-dense:true
-});
-
-const sheet=workbook.Sheets[workbook.SheetNames[0]];
-
-const rows=XLSX.utils.sheet_to_json(sheet,{
-header:1,
-defval:"",
-blankrows:true
-});
-
-let items=[];
-let nCarga="S/D";
-let deposito="S/D";
-
-let leyendoMixto=false;
-let headerRow=-1;
-
-rows.forEach((row,i)=>{
-
-const txt=row.join(" ").toUpperCase();
-
-if(txt.includes("CARGA")){
-nCarga=row[row.length-1] || nCarga;
-}
-
-if(txt.includes("DEPOSITO")){
-deposito=row[row.length-1] || deposito;
-}
-
-if(txt.includes("PALLET HOMOGENEO")){
-leyendoMixto=false;
-}
-
-if(txt.includes("PALLET MIXTO")){
-leyendoMixto=true;
-}
-
-if(
-leyendoMixto &&
-(txt.includes("UBICACIÓN") || txt.includes("UBICACION"))
-){
-headerRow=i;
-}
-
-});
-
-/* leer datos */
-
-if(headerRow==-1){
-alert("No se encontró el bloque de pallet mixto.");
-return;
-}
-
-for(let i=headerRow+2;i<rows.length;i++){
-
-let row=rows[i];
-
-let ubic=(row[0]||"").toString().trim();
-let sku=(row[1]||"").toString().trim();
-let lote=(row[2]||"").toString().trim();
-let desc=(row[4]||"").toString().trim();
-let cliente=(row[5]||"").toString().trim();
-let orden=(row[6]||"").toString().trim();
-let linea=(row[7]||"").toString().trim();
-let cant=row[8];
-
-if(typeof cant==="string"){
-cant=cant.replace(",",".");
-}
-
-cant=parseFloat(cant)||0;
-
-/* cortar cuando empieza otro bloque */
-
-let txt=row.join(" ").toUpperCase();
-
-if(txt.includes("PALLET HOMOGENEO")){
-break;
-}
-
-if(
-ubic &&
-ubic.startsWith("P") &&
-sku &&
-cant>0
-){
-
-items.push({
-ubicacion:ubic,
-sku:sku,
-lote:lote,
-descripcion:desc,
-cliente:cliente,
-orden:orden,
-linea:linea,
-cantidad:cant,
-nCarga:nCarga,
-deposito:deposito
-});
-
-}
-
-}
-
-if(items.length===0){
-alert("No se detectaron líneas de pallet mixto.");
-return;
-}
-
-armarPallets(items);
-
-};
-
-reader.readAsArrayBuffer(file);
-
-}
-
-
-/* ARMAR PALLETS */
-
-function armarPallets(items){
-
-const pallets=[];
-let current=null;
-
-items.forEach(item=>{
-
-const info=maestro[item.sku] || {Base:28,Camada:5,Familia:"General"};
-
-const cap=(parseInt(info.Base)||28)*(parseInt(info.Camada)||5);
-
-if(!current || (current.total+item.cantidad)>(cap+2)){
-
-if(current) pallets.push(current);
-
-current={
-id:pallets.length+1,
-familia:info.Familia,
-base:info.Base,
-cam:info.Camada,
-nCarga:item.nCarga,
-items:[],
-total:0
-};
-
-}
-
-current.items.push(item);
-current.total+=item.cantidad;
-
-});
-
-if(current) pallets.push(current);
-
-render(pallets);
-
-}
-
-
-/* RENDER */
-
-function render(pallets){
-
-document.getElementById('resultadosArea').style.display='block';
-
-const tCon=document.getElementById('tabsContainer');
-const pCon=document.getElementById('palletsContainer');
-
-tCon.innerHTML="";
-pCon.innerHTML="";
-
-pallets.forEach((p,idx)=>{
-
-const tab=document.createElement('div');
-tab.className=`pm-tab ${idx===0?'active':''}`;
-tab.innerText=`PM ${p.id}`;
-
-tab.onclick=()=>{
-document.querySelectorAll('.pm-tab,.pallet-card')
-.forEach(e=>e.classList.remove('active'));
-
-tab.classList.add('active');
-document.getElementById(`p-${p.id}`).classList.add('active');
-};
-
-tCon.appendChild(tab);
-
-const card=document.createElement('div');
-card.id=`p-${p.id}`;
-card.className=`pallet-card ${idx===0?'active':''}`;
-
-card.innerHTML=`
-
-<h3>Pallet #${p.id}</h3>
-
-<p>Carga: ${p.nCarga} | Familia: ${p.familia}</p>
-
-<table>
-
-<thead>
-<tr>
-<th>Ubicación</th>
-<th>SKU</th>
-<th>Descripción</th>
-<th>Cantidad</th>
-</tr>
-</thead>
-
-<tbody>
-
-${p.items.map(i=>`
-<tr>
-<td>${i.ubicacion}</td>
-<td>${i.sku}</td>
-<td>${i.descripcion}</td>
-<td>${i.cantidad}</td>
-</tr>
-`).join('')}
-
-</tbody>
-
-</table>
-
-<h4 style="text-align:right">Total: ${p.total}</h4>
-
-`;
-
-pCon.appendChild(card);
-
-});
-
-}
-
+    let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
+    let tablaAuxiliarPicking = []; // Nuestra "Cámara de Limpieza"
+
+    // Guardar Maestro
+    document.getElementById('masterFile').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            maestro = {};
+            data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
+            localStorage.setItem('maestroConfig', JSON.stringify(maestro));
+            alert("✅ Maestro cargado correctamente.");
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function procesarBIP() {
+        const file = document.getElementById('surtidoFile').files[0];
+        if (!file) return alert("Por favor, selecciona el archivo de surtido.");
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            
+            // Leemos forzando UTF-8 para evitar errores con tildes del BIP
+            const workbook = XLSX.read(data, { type: 'array', codepage: 65001 });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rawRows = XLSX.utils.sheet_to_json(firstSheet, {header: 1, defval: ""});
+
+            // PASO 1: Limpiar los datos del BIP y pasarlos a la tabla auxiliar
+            sanitizarDatos(rawRows);
+
+            // PASO 2: Si hay datos, armar los pallets
+            if (tablaAuxiliarPicking.length > 0) {
+                armarPalletsDesdeAuxiliar();
+            } else {
+                alert("❌ No se detectaron líneas de picking válidas. Verifica el archivo.");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function sanitizarDatos(filasSucias) {
+        tablaAuxiliarPicking = [];
+        let nCarga = "S/D";
+        let nDep = "S/D";
+
+        filasSucias.forEach((row) => {
+            // Buscamos Nro de Carga o Depósito en cualquier celda de la fila
+            row.forEach((cell, idx) => {
+                let txt = cell.toString().toUpperCase();
+                if(txt.includes("CARGA:")) nCarga = row[idx + 1] || nCarga;
+                if(txt.includes("DEPOSITO:")) nDep = row[idx + 1] || nDep;
+            });
+
+            // Criterio de validación: Debe tener SKU (Col 2) y Cantidad > 0 (Col 4)
+            let sku = row[2] ? row[2].toString().trim() : "";
+            let cant = row[4] ? parseInt(row[4].toString().replace(/\D/g, "")) : 0;
+            let ubic = row[0] ? row[0].toString().trim() : "";
+
+            if (sku !== "" && sku.toUpperCase() !== "SKU" && cant > 0) {
+                tablaAuxiliarPicking.push({
+                    ubicacion: ubic,
+                    sku: sku,
+                    descripcion: row[3] || "Sin descripción",
+                    cantidad: cant,
+                    orden: row[7] || "S/D",
+                    nCarga: `${nDep}-${nCarga}`
+                });
+            }
+        });
+    }
+
+    function armarPalletsDesdeAuxiliar() {
+        const pallets = [];
+        let current = null;
+
+        tablaAuxiliarPicking.forEach(item => {
+            const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
+            const ubi = item.ubicacion.toUpperCase();
+            
+            // Lógica de separación por Depósito
+            let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P002") ? "Dep. 2" : "Dep. 3";
+            const cap = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
+
+            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (cap + 2)) {
+                if (current) pallets.push(current);
+                current = { 
+                    id: pallets.length + 1, dep, familia: info.Familia, 
+                    base: info.Base, cam: info.Camada, 
+                    nCarga: item.nCarga, items: [], total: 0 
+                };
+            }
+            current.items.push(item);
+            current.total += item.cantidad;
+        });
+        
+        if (current) pallets.push(current);
+        render(pallets);
+    }
+
+    function render(pallets) {
+        const tCon = document.getElementById('tabsContainer');
+        const pCon = document.getElementById('palletsContainer');
+        tCon.innerHTML = ""; pCon.innerHTML = "";
+        
+        pallets.forEach((p, idx) => {
+            const tab = document.createElement('div');
+            tab.className = `pm-tab ${idx===0?'active':''}`;
+            tab.innerText = `PM ${p.id}`;
+            tab.onclick = () => {
+                document.querySelectorAll('.pm-tab, .pallet-card').forEach(e => e.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`p-${p.id}`).classList.add('active');
+            };
+            tCon.appendChild(tab);
+
+            const card = document.createElement('div');
+            card.id = `p-${p.id}`;
+            card.className = `pallet-card ${idx===0?'active':''}`;
+            card.innerHTML = `
+                <div class="pallet-header">
+                    <h3>Pallet Mixto #${p.id} - ${p.dep}</h3>
+                    <p>Carga: <b>${p.nCarga}</b> | Familia: <b>${p.familia}</b></p>
+                    <p>Configuración sugerida: Base ${p.base} x ${p.cam} camadas</p>
+                </div>
+                <table>
+                    <thead><tr><th>Ubic</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
+                    <tbody>${p.items.map(i => `<tr><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
+                </table>
+                <h4 style="text-align:right">Total bultos: ${p.total}</h4>
+            `;
+            pCon.appendChild(card);
+        });
+        document.getElementById('resultadosArea').style.display = 'block';
+    }
 </script>
-
 </body>
 </html>
