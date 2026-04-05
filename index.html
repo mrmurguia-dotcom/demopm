@@ -15,7 +15,7 @@
         .status-msg { font-size: 0.85em; display: block; margin-top: 10px; color: #666; }
         button { background-color: var(--primary); color: white; border: none; padding: 12px 25px; cursor: pointer; border-radius: 5px; font-weight: bold; margin-top: 10px; }
         .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
-        .pm-tab { background-color: var(--secondary); padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; white-space: nowrap; transition: 0.3s; }
+        .pm-tab { background-color: var(--secondary); padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; white-space: nowrap; }
         .pm-tab.active { background-color: var(--primary); color: white; }
         .pallet-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; display: none; }
         .pallet-card.active { display: block; }
@@ -57,79 +57,96 @@
 <script>
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
+    // CARGA DE MAESTRO
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
-            const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            maestro = {};
-            data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
-            localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            document.getElementById('masterStatus').innerText = `✅ Maestro OK: ${Object.keys(maestro).length} SKUs cargados.`;
+            try {
+                const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
+                const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                maestro = {};
+                data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
+                localStorage.setItem('maestroConfig', JSON.stringify(maestro));
+                document.getElementById('masterStatus').innerText = `✅ Maestro OK: ${Object.keys(maestro).length} SKUs cargados.`;
+            } catch (err) { alert("Error al leer el Maestro: " + err.message); }
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
+    // PROCESAMIENTO DE SURTIDO
     function procesarExcelSurtido() {
         const file = document.getElementById('surtidoFile').files[0];
         if (!file) return alert("Sube el archivo de surtido.");
         
         const reader = new FileReader();
         reader.onload = (e) => {
-            const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""}); 
+            try {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                // Forzamos que lea todo como texto para evitar errores de tipo
+                const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""}); 
 
-            let headerRowIndex = -1;
-            let nCarga = "S/D", nDeposito = "S/D";
+                let headerRowIndex = -1;
+                let nCarga = "S/D", nDeposito = "S/D";
 
-            for(let i=0; i < rawData.length; i++){
-                const row = rawData[i];
-                if(!Array.isArray(row)) continue; // SALTO DE SEGURIDAD
+                // BUSQUEDA SEGURA
+                for(let i=0; i < rawData.length; i++){
+                    const row = rawData[i];
+                    if(!Array.isArray(row)) continue; // Si la fila no es un array, la saltamos
 
-                let rowStr = row.join("|").toUpperCase();
-                
-                // Buscar Carga y Depósito
-                if(rowStr.includes("CARGA:")){
-                    let idx = row.findIndex(c => c.toString().toUpperCase().includes("CARGA:"));
-                    nCarga = row[idx + 1] || "S/D";
+                    // Buscamos Carga y Depósito fila por fila
+                    row.forEach((cell, cellIdx) => {
+                        const val = cell ? cell.toString().toUpperCase() : "";
+                        if(val.includes("CARGA:")) nCarga = row[cellIdx + 1] || "S/D";
+                        if(val.includes("DEPÓSITO:")) nDeposito = row[cellIdx + 1] || "S/D";
+                        if(val.includes("UBICACIÓN") || val.includes("UBICACION")) headerRowIndex = i;
+                    });
                 }
-                if(rowStr.includes("DEPÓSITO:")){
-                    let idx = row.findIndex(c => c.toString().toUpperCase().includes("DEPÓSITO:"));
-                    nDeposito = row[idx + 1] || "S/D";
+
+                if(headerRowIndex === -1) {
+                    alert("No encontré la columna 'Ubicación'. Asegúrate de que el Excel sea el correcto.");
+                    return;
                 }
-                
-                // Buscar el inicio de la tabla
-                if(row.some(cell => cell.toString().toLowerCase().includes("ubicación") || cell.toString().toLowerCase().includes("ubicacion"))) {
-                    headerRowIndex = i;
-                }
-            }
 
-            if(headerRowIndex === -1) return alert("No se encontró la columna 'Ubicación'. Verifica el formato.");
+                // Empezamos 2 filas después del encabezado (saltando la vacía)
+                const dataRows = rawData.slice(headerRowIndex + 2);
+                const itemsProcesados = [];
 
-            // Saltar fila de encabezado + fila en blanco
-            const dataRows = rawData.slice(headerRowIndex + 2);
-            const itemsProcesados = [];
+                dataRows.forEach(row => {
+                    if(!Array.isArray(row) || row.length < 5 || !row[0]) return;
 
-            dataRows.forEach(row => {
-                if(!row[0] || row[0] === "") return; 
-                let desc = (row[3] || "").toString().toUpperCase();
-                if(desc.includes("PALLET HOMOGENEO") || desc.includes("PALLET HOMOGÉNEO")) return;
+                    let desc = (row[3] || "").toString().toUpperCase();
+                    if(desc.includes("PALLET HOMOGENEO") || desc.includes("PALLET HOMOGÉNEO")) return;
 
-                itemsProcesados.push({
-                    ubicacion: row[0],
-                    linea: row[1],
-                    sku: row[2],
-                    descripcion: row[3],
-                    cantidad: parseInt(row[4].toString().replace(/\D/g, "")) || 0, // Limpia "60 CA" a 60
-                    orden: row[7] || "S/D",
-                    carga: nCarga,
-                    dep: nDeposito
+                    // Limpieza de cantidad (solo números)
+                    let cantRaw = row[4] ? row[4].toString().replace(/\D/g, "") : "0";
+                    let cantidad = parseInt(cantRaw) || 0;
+
+                    if(cantidad > 0) {
+                        itemsProcesados.push({
+                            ubicacion: row[0],
+                            linea: row[1],
+                            sku: row[2],
+                            descripcion: row[3],
+                            cantidad: cantidad,
+                            orden: row[7] || "S/D",
+                            carga: nCarga,
+                            dep: nDeposito
+                        });
+                    }
                 });
-            });
 
-            if(itemsProcesados.length === 0) return alert("No hay ítems para Pallet Mixto.");
-            armarPallets(itemsProcesados);
+                if(itemsProcesados.length === 0) {
+                    alert("No encontré artículos para armar Pallets Mixtos.");
+                    return;
+                }
+
+                armarPallets(itemsProcesados);
+
+            } catch (err) {
+                console.error(err);
+                alert("Error crítico al procesar: " + err.message);
+            }
         };
         reader.readAsArrayBuffer(file);
     }
@@ -141,11 +158,14 @@
         items.forEach(item => {
             const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
             const ubic = item.ubicacion.toString().toUpperCase();
+            
             let depFisico = "Dep. 3";
             if (ubic.startsWith("P00A")) depFisico = "Dep. 1";
             else if (ubic.startsWith("P002")) depFisico = "Dep. 2";
 
-            const capacidadMax = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
+            const baseReal = parseInt(info.Base) || 28;
+            const camReal = parseInt(info.Camada) || 5;
+            const capacidadMax = baseReal * camReal;
             
             const necesitaNuevo = !currentPM || 
                                 currentPM.depFisico !== depFisico || 
@@ -156,7 +176,7 @@
                 if (currentPM) pallets.push(currentPM);
                 currentPM = {
                     id: pallets.length + 1,
-                    depFisico, familia: info.Familia, base: info.Base, cam: info.Camada,
+                    depFisico, familia: info.Familia, base: baseReal, cam: camReal,
                     orden: item.orden, nCarga: `${item.dep}-${item.carga}`,
                     items: [], total: 0
                 };
@@ -191,13 +211,13 @@
                 <div class="pallet-header">
                     <h3>PM #${p.id} | Orden: ${p.orden} | ${p.depFisico}</h3>
                     <p>N° de Carga: <span class="highlight">${p.nCarga}</span></p>
-                    <p><strong>Base:</strong> ${p.base} CA | <strong>Altura Sugerida:</strong> ${p.cam} camadas (Familia ${p.familia})</p>
+                    <p><strong>Configuración:</strong> Base ${p.base} | Camadas ${p.cam} (Familia: ${p.familia})</p>
                 </div>
                 <table>
                     <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
                     <tbody>${p.items.map(i => `<tr><td>${i.linea}</td><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
                 </table>
-                <p style="text-align:right"><strong>Total Pallet: ${p.total} CA</strong></p>
+                <p style="text-align:right"><strong>Total Pallet: ${p.total} bultos</strong></p>
             `;
             pCon.appendChild(card);
         });
