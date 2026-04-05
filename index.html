@@ -9,60 +9,50 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #e9ecef; padding: 20px; }
         .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); text-align: center; margin-bottom: 30px; }
-        
-        .step-container { display: flex; flex-direction: column; gap: 20px; }
-        .step-box { border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; background: var(--secondary); }
-        .step-title { font-weight: bold; color: var(--primary); margin-bottom: 10px; display: block; }
-        
-        .buttons-group { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+        .step-box { border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; background: var(--secondary); margin-bottom: 20px; }
+        .step-title { font-weight: bold; color: var(--primary); margin-bottom: 10px; display: block; font-size: 1.1em; }
+        .buttons-group { display: flex; gap: 10px; align-items: center; margin-top: 15px; }
         button { border: none; padding: 12px 20px; cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.3s; }
-        
         .btn-convert { background-color: var(--accent); color: white; }
-        .btn-convert:hover { background-color: #003d80; }
         .btn-generate { background-color: var(--success); color: white; }
-        .btn-generate:hover { background-color: #1e7e34; }
-        
         .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
         .pm-tab { background-color: #ddd; padding: 10px 15px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
         .pm-tab.active { background-color: var(--primary); color: white; }
-        .pallet-card { display: none; border: 2px solid #ddd; padding: 20px; border-radius: 8px; }
+        .pallet-card { display: none; border: 2px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; }
         .pallet-card.active { display: block; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ccc; padding: 10px; text-align: left; font-size: 0.9em; }
         th { background: #f2f2f2; }
-
-        @media print { .step-container, .pm-nav, h1 { display: none; } .pallet-card { display: block !important; page-break-after: always; } }
+        .badge { background: #ffc107; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; font-weight: bold; }
+        @media print { .step-box, .pm-nav, h1, .buttons-group { display: none; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Asistente de Armado v7.0</h1>
+    <h1>📦 Asistente de Armado v8.0</h1>
 
-    <div class="step-container">
-        <div class="step-box">
-            <span class="step-title">Configuración Inicial:</span>
-            <input type="file" id="masterFile" accept=".xlsx, .xls">
-            <p style="font-size: 0.8em; margin: 5px 0;">Sube el Maestro de Artículos (Base/Camada) primero.</p>
-        </div>
+    <div class="step-box">
+        <span class="step-title">⚙️ 0. Cargar Maestro:</span>
+        <input type="file" id="masterFile" accept=".xlsx, .xls">
+    </div>
 
-        <div class="step-box">
-            <span class="step-title">Proceso de Surtido:</span>
-            <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-            
-            <div class="buttons-group">
-                <button class="btn-convert" onclick="convertirArchivo()">1- GUARDAR ARCHIVO</button>
-                <button class="btn-generate" onclick="generarPallets()">2- GENERAR PALLETS</button>
-            </div>
+    <div class="step-box">
+        <span class="step-title">🚚 1 y 2. Procesar Surtido:</span>
+        <p style="font-size: 0.9em; color: #666;">Selecciona el archivo de JDE:</p>
+        <input type="file" id="surtidoFile" accept=".xlsx, .xls">
+        
+        <div class="buttons-group">
+            <button class="btn-convert" onclick="convertirArchivo()">1- GUARDAR ARCHIVO LIMPIO</button>
+            <button class="btn-generate" onclick="generarPallets()">2- GENERAR PALLETS</button>
         </div>
     </div>
 
-    <div id="resultadosArea" style="display: none; margin-top: 30px;">
+    <div id="resultadosArea" style="display: none;">
         <hr>
         <div id="tabsContainer" class="pm-nav"></div>
         <div id="palletsContainer"></div>
-        <button onclick="window.print()" style="width:100%; margin-top:20px; background:#6c757d; color:white; padding:15px;">🖨️ IMPRIMIR HOJAS DE RUTA</button>
+        <button onclick="window.print()" style="width:100%; margin-top:20px; background:#444; color:white; padding:15px; border-radius: 8px; font-weight: bold; cursor: pointer;">🖨️ IMPRIMIR TODOS LOS PALLETS</button>
     </div>
 </div>
 
@@ -81,36 +71,32 @@
                 if(sku) maestro[sku.toString().trim()] = item;
             });
             localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            alert("Maestro cargado correctamente.");
+            alert("Maestro sincronizado.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // PASO 1: Convertir BIP sucio a Excel Limpio
+    // PASO 1: Descargar archivo con el nombre original + _LIMPIO
     function convertirArchivo() {
-        const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("Primero selecciona el archivo que bajaste de JDE.");
+        const fileInput = document.getElementById('surtidoFile');
+        if (!fileInput.files[0]) return alert("Selecciona el archivo de JDE primero.");
 
         const reader = new FileReader();
+        const originalName = fileInput.files[0].name.split('.')[0];
+
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
-            
-            // Creamos un nuevo nombre
-            const nuevoNombre = "SURTIDO_PARA_PALLETS.xlsx";
-            
-            // Forzamos la descarga en formato XLSX real
-            XLSX.writeFile(workbook, nuevoNombre);
-            
-            alert("✅ ARCHIVO PROCESADO.\n\nIMPORTANTE:\n1. Busca el archivo '" + nuevoNombre + "' en tu carpeta de Descargas.\n2. Selecciónalo arriba en el paso 2.\n3. Da click en GENERAR PALLETS.");
+            XLSX.writeFile(workbook, `${originalName}_LIMPIO.xlsx`);
+            alert(`✅ Archivo guardado como: ${originalName}_LIMPIO.xlsx\n\nAhora selecciónalo y dale a GENERAR PALLETS.`);
         };
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(fileInput.files[0]);
     }
 
-    // PASO 2: Generar Pallets con el archivo limpio
+    // PASO 2: Generar Pallets (Escaneo dinámico de columnas)
     function generarPallets() {
         const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("Selecciona el archivo nuevo.");
+        if (!file) return alert("Selecciona el archivo nuevo (_LIMPIO).");
 
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -119,40 +105,47 @@
             const ws = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(ws, {header: 1});
 
-            let itemsLimpio = [];
-            let nCarga = "S/D";
+            let itemsFinal = [];
+            let colIdx = { ubi: -1, art: -1, desc: -1, cant: -1 };
+
+            // BUSCADOR DINÁMICO DE COLUMNAS
+            for(let i=0; i<rows.length; i++){
+                let row = rows[i].map(c => c.toString().toUpperCase());
+                if(row.includes("UBICACIÓN") || row.includes("ARTÍCULO")){
+                    colIdx.ubi = row.indexOf("UBICACIÓN");
+                    colIdx.art = row.findIndex(c => c.includes("ARTÍCULO") || c === "ARTICULO");
+                    colIdx.desc = row.indexOf("DESCRIPCIÓN") !== -1 ? row.indexOf("DESCRIPCIÓN") : row.indexOf("DESCRIPCION");
+                    colIdx.cant = row.indexOf("CANTIDAD");
+                    break; 
+                }
+            }
+
+            // Si no encontró por nombre, usamos las fijas por defecto del reporte JDE
+            if(colIdx.art === -1) { colIdx = { ubi: 0, art: 1, desc: 4, cant: 9 }; }
 
             rows.forEach(row => {
-                // Buscar Nro Carga
-                let rowStr = row.join("|").toUpperCase();
-                if(rowStr.includes("CARGA:")) {
-                    let idx = row.findIndex(c => c.toString().toUpperCase().includes("CARGA:"));
-                    nCarga = row[idx+1] || nCarga;
-                }
-
-                // Extraer datos (Ajustado a las columnas del reporte estandarizado)
-                let ubic = row[0] ? row[0].toString().trim() : "";
-                let sku  = row[1] ? row[1].toString().trim() : "";
-                let desc = row[4] ? row[4].toString().trim() : "";
-                let cantRaw = row[9] ? row[9].toString() : "0";
+                let sku = row[colIdx.art] ? row[colIdx.art].toString().trim() : "";
+                let cantRaw = row[colIdx.cant] ? row[colIdx.cant].toString() : "0";
                 let cant = parseInt(cantRaw.replace(/[^\d]/g, ""));
 
-                if(sku && !isNaN(sku) && cant > 0) {
-                    itemsLimpio.push({
-                        ubicacion: ubic, sku: sku, descripcion: desc, 
-                        cantidad: cant, nCarga: nCarga
+                if(sku && !isNaN(sku) && sku.length > 2 && cant > 0) {
+                    itemsFinal.push({
+                        ubicacion: row[colIdx.ubi] || "S/D",
+                        sku: sku,
+                        descripcion: row[colIdx.desc] || "Sin Desc.",
+                        cantidad: cant
                     });
                 }
             });
 
-            if(itemsLimpio.length === 0) return alert("No se encontraron datos. ¿Estás usando el archivo convertido?");
+            if(itemsFinal.length === 0) return alert("Error: No se pudieron leer datos. Asegúrate de estar usando el archivo LIMPIO.");
             
-            procesarLogicaPallets(itemsLimpio);
+            armarPallets(itemsFinal);
         };
         reader.readAsArrayBuffer(file);
     }
 
-    function procesarLogicaPallets(items) {
+    function armarPallets(items) {
         const pallets = [];
         let current = null;
 
@@ -160,14 +153,11 @@
             const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
             const ubi = item.ubicacion.toUpperCase();
             let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P014") ? "Dep. 3" : "Dep. 2";
-            const cap = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
+            const capacidad = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
 
-            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (cap + 5)) {
+            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (capacidad + 5)) {
                 if (current) pallets.push(current);
-                current = { 
-                    id: pallets.length + 1, dep, familia: info.Familia, 
-                    nCarga: item.nCarga, items: [], total: 0 
-                };
+                current = { id: pallets.length + 1, dep, familia: info.Familia, items: [], total: 0 };
             }
             current.items.push(item);
             current.total += item.cantidad;
@@ -197,15 +187,12 @@
             card.id = `p-${p.id}`;
             card.className = `pallet-card ${idx===0?'active':''}`;
             card.innerHTML = `
-                <div style="background:#f0f0f0; padding:10px; border-bottom:2px solid var(--primary);">
-                    <h2 style="margin:0">Pallet Mixto #${p.id} - ${p.dep}</h2>
-                    <p style="margin:5px 0;">Carga: <b>${p.nCarga}</b> | Familia: <b>${p.familia}</b></p>
-                </div>
+                <h2 style="margin-bottom:5px;">Pallet #${p.id} - ${p.dep}</h2>
+                <p><b>Familia:</b> ${p.familia} | <span class="badge">Total: ${p.total} Bultos</span></p>
                 <table>
                     <thead><tr><th>Ubicación</th><th>Art.</th><th>Descripción</th><th>Cant</th></tr></thead>
                     <tbody>${p.items.map(i => `<tr><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
                 </table>
-                <h3 style="text-align:right">Total: ${p.total} Bultos</h3>
             `;
             pCon.appendChild(card);
         });
