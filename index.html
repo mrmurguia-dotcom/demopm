@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Optimizador de Picking - Método Seguro</title>
+    <title>Optimizador de Picking - Limpieza Automática</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #0056b3; --secondary: #f8f9fa; --success: #28a745; --accent: #007bff; }
@@ -13,24 +13,24 @@
         .step-title { font-weight: bold; color: var(--primary); margin-bottom: 10px; display: block; font-size: 1.1em; }
         .buttons-group { display: flex; gap: 10px; align-items: center; margin-top: 15px; }
         button { border: none; padding: 12px 20px; cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.3s; }
-        .btn-convert { background-color: var(--accent); color: white; }
-        .btn-generate { background-color: var(--success); color: white; }
+        .btn-convert { background-color: #6c757d; color: white; }
+        .btn-generate { background-color: var(--success); color: white; flex-grow: 1; font-size: 1.1em; }
         .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
         .pm-tab { background-color: #ddd; padding: 10px 15px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
         .pm-tab.active { background-color: var(--primary); color: white; }
-        .pallet-card { display: none; border: 2px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; }
+        .pallet-card { display: none; border: 2px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; background: white; }
         .pallet-card.active { display: block; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ccc; padding: 10px; text-align: left; font-size: 0.9em; }
         th { background: #f2f2f2; }
-        .badge { background: #ffc107; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; font-weight: bold; }
+        .badge { background: #ffc107; padding: 20px 8px; border-radius: 10px; font-size: 0.8em; font-weight: bold; }
         @media print { .step-box, .pm-nav, h1, .buttons-group { display: none; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Asistente de Armado v8.0</h1>
+    <h1>📦 Asistente de Armado v8.5 (Auto-Clean)</h1>
 
     <div class="step-box">
         <span class="step-title">⚙️ 0. Cargar Maestro:</span>
@@ -38,13 +38,12 @@
     </div>
 
     <div class="step-box">
-        <span class="step-title">🚚 1 y 2. Procesar Surtido:</span>
-        <p style="font-size: 0.9em; color: #666;">Selecciona el archivo de JDE:</p>
+        <span class="step-title">🚚 1. Procesar Reporte JDE:</span>
+        <p style="font-size: 0.9em; color: #666;">Cargá el archivo tal cual sale del sistema (no hace falta "Guardar como"):</p>
         <input type="file" id="surtidoFile" accept=".xlsx, .xls">
         
         <div class="buttons-group">
-            <button class="btn-convert" onclick="convertirArchivo()">1- GUARDAR ARCHIVO LIMPIO</button>
-            <button class="btn-generate" onclick="generarPallets()">2- GENERAR PALLETS</button>
+            <button class="btn-generate" onclick="generarPallets()">🚀 GENERAR PALLETS (CON LIMPIEZA)</button>
         </div>
     </div>
 
@@ -71,74 +70,74 @@
                 if(sku) maestro[sku.toString().trim()] = item;
             });
             localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            alert("Maestro sincronizado.");
+            alert("Maestro sincronizado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // PASO 1: Descargar archivo con el nombre original + _LIMPIO
-    function convertirArchivo() {
-        const fileInput = document.getElementById('surtidoFile');
-        if (!fileInput.files[0]) return alert("Selecciona el archivo de JDE primero.");
-
-        const reader = new FileReader();
-        const originalName = fileInput.files[0].name.split('.')[0];
-
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            XLSX.writeFile(workbook, `${originalName}_LIMPIO.xlsx`);
-            alert(`✅ Archivo guardado como: ${originalName}_LIMPIO.xlsx\n\nAhora selecciónalo y dale a GENERAR PALLETS.`);
-        };
-        reader.readAsArrayBuffer(fileInput.files[0]);
+    // FUNCIÓN DE LIMPIEZA PROFUNDA
+    function limpiarValor(val) {
+        if (val === null || val === undefined) return "";
+        // Elimina espacios extras, caracteres raros y saltos de línea de JDE
+        return val.toString().trim().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
     }
 
-    // PASO 2: Generar Pallets (Escaneo dinámico de columnas)
     function generarPallets() {
         const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("Selecciona el archivo nuevo (_LIMPIO).");
+        if (!file) return alert("Selecciona el archivo del sistema.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
-            const wb = XLSX.read(data, {type: 'array'});
+            // {cellNF: false} ayuda a que no traiga formatos de moneda raros
+            const wb = XLSX.read(data, {type: 'array', cellNF: false, cellText: false});
             const ws = wb.Sheets[wb.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(ws, {header: 1});
+            // Leemos todo como texto crudo primero para limpiar nosotros
+            const rows = XLSX.utils.sheet_to_json(ws, {header: 1, raw: false, defval: ""});
 
             let itemsFinal = [];
             let colIdx = { ubi: -1, art: -1, desc: -1, cant: -1 };
 
-            // BUSCADOR DINÁMICO DE COLUMNAS
-            for(let i=0; i<rows.length; i++){
-                let row = rows[i].map(c => c.toString().toUpperCase());
-                if(row.includes("UBICACIÓN") || row.includes("ARTÍCULO")){
+            // BUSCADOR DINÁMICO MEJORADO
+            for(let i=0; i < Math.min(rows.length, 20); i++){
+                let row = rows[i].map(c => limpiarValor(c).toUpperCase());
+                if(row.includes("UBICACIÓN") || row.includes("ARTÍCULO") || row.includes("ARTICULO")){
                     colIdx.ubi = row.indexOf("UBICACIÓN");
                     colIdx.art = row.findIndex(c => c.includes("ARTÍCULO") || c === "ARTICULO");
-                    colIdx.desc = row.indexOf("DESCRIPCIÓN") !== -1 ? row.indexOf("DESCRIPCIÓN") : row.indexOf("DESCRIPCION");
+                    colIdx.desc = row.findIndex(c => c.includes("DESCRIPCIÓN") || c === "DESCRIPCION");
                     colIdx.cant = row.indexOf("CANTIDAD");
                     break; 
                 }
             }
 
-            // Si no encontró por nombre, usamos las fijas por defecto del reporte JDE
-            if(colIdx.art === -1) { colIdx = { ubi: 0, art: 1, desc: 4, cant: 9 }; }
+            // Si falla la detección, usamos el estándar de JDE por posición
+            if(colIdx.art === -1) { 
+                console.warn("No se detectaron cabeceras, usando mapeo por defecto.");
+                colIdx = { ubi: 0, art: 1, desc: 4, cant: 9 }; 
+            }
 
             rows.forEach(row => {
-                let sku = row[colIdx.art] ? row[colIdx.art].toString().trim() : "";
-                let cantRaw = row[colIdx.cant] ? row[colIdx.cant].toString() : "0";
+                // Limpiamos cada celda antes de procesarla
+                let sku = limpiarValor(row[colIdx.art]);
+                let cantRaw = limpiarValor(row[colIdx.cant]);
+                
+                // Convertir cantidad a número puro (quitando puntos de miles o basura)
                 let cant = parseInt(cantRaw.replace(/[^\d]/g, ""));
 
-                if(sku && !isNaN(sku) && sku.length > 2 && cant > 0) {
+                // FILTRO ANTIBASURA: 
+                // Solo procesamos si el SKU es numérico, tiene largo suficiente 
+                // y no es parte de un encabezado de reporte (ej: "Página")
+                if(sku && !isNaN(sku) && sku.length >= 3 && !isNaN(cant) && cant > 0) {
                     itemsFinal.push({
-                        ubicacion: row[colIdx.ubi] || "S/D",
+                        ubicacion: limpiarValor(row[colIdx.ubi]) || "S/D",
                         sku: sku,
-                        descripcion: row[colIdx.desc] || "Sin Desc.",
+                        descripcion: limpiarValor(row[colIdx.desc]) || "Sin Desc.",
                         cantidad: cant
                     });
                 }
             });
 
-            if(itemsFinal.length === 0) return alert("Error: No se pudieron leer datos. Asegúrate de estar usando el archivo LIMPIO.");
+            if(itemsFinal.length === 0) return alert("No se encontraron artículos válidos. Verificá que el archivo tenga datos de surtido.");
             
             armarPallets(itemsFinal);
         };
@@ -149,13 +148,23 @@
         const pallets = [];
         let current = null;
 
+        // Ordenar por ubicación para optimizar recorrido de picking
+        items.sort((a, b) => a.ubicacion.localeCompare(b.ubicacion));
+
         items.forEach(item => {
             const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
             const ubi = item.ubicacion.toUpperCase();
+            
+            // Lógica de depósito según ubicación
             let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P014") ? "Dep. 3" : "Dep. 2";
-            const capacidad = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
+            
+            // Calculamos capacidad según maestro (Base * Camada)
+            const base = parseInt(info.Base) || 28;
+            const camada = parseInt(info.Camada) || 5;
+            const capacidadMax = base * camada;
 
-            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (capacidad + 5)) {
+            // Lógica de corte de pallet: si cambia depósito, familia o supera capacidad
+            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (capacidadMax + 5)) {
                 if (current) pallets.push(current);
                 current = { id: pallets.length + 1, dep, familia: info.Familia, items: [], total: 0 };
             }
@@ -187,11 +196,14 @@
             card.id = `p-${p.id}`;
             card.className = `pallet-card ${idx===0?'active':''}`;
             card.innerHTML = `
-                <h2 style="margin-bottom:5px;">Pallet #${p.id} - ${p.dep}</h2>
-                <p><b>Familia:</b> ${p.familia} | <span class="badge">Total: ${p.total} Bultos</span></p>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 style="margin:0;">Pallet #${p.id} - ${p.dep}</h2>
+                    <span class="badge" style="background:#eee; border:1px solid #ccc;">${p.familia}</span>
+                </div>
+                <p style="margin:10px 0;"><b>Resumen:</b> <span style="font-size:1.2em; color:var(--primary);">${p.total} Bultos</span></p>
                 <table>
                     <thead><tr><th>Ubicación</th><th>Art.</th><th>Descripción</th><th>Cant</th></tr></thead>
-                    <tbody>${p.items.map(i => `<tr><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
+                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubicacion}</b></td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
                 </table>
             `;
             pCon.appendChild(card);
