@@ -30,95 +30,122 @@
 <body>
 
 <div class="container">
-    <h1>📦 Asistente de Armado v5.0</h1>
+    <h1>📦 Asistente de Armado v5.1</h1>
 
     <div class="upload-section">
         <div class="upload-box">
-            <h3>1. Maestro</h3>
+            <h3>1. Maestro de Artículos</h3>
             <input type="file" id="masterFile" accept=".xlsx, .xls">
         </div>
         <div class="upload-box">
-            <h3>2. Surtido</h3>
+            <h3>2. Surtido (Excel JDE)</h3>
             <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-            <button onclick="procesarExcelSurtido()">Generar Pallets</button>
+            <button onclick="procesarExcelSurtido()">Generar Pallets Mixtos</button>
         </div>
     </div>
 
     <div id="resultadosArea" style="display: none;">
+        <hr>
         <div id="tabsContainer" class="pm-nav"></div>
         <div id="palletsContainer"></div>
-        <button class="print-btn" onclick="window.print()">🖨️ Imprimir Todo</button>
+        <button class="print-btn" onclick="window.print()">🖨️ Imprimir Todas las Hojas de Ruta</button>
     </div>
 </div>
 
 <script>
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
-    // Normalizador de texto para ignorar tildes y mayúsculas
-    const limpiarTexto = (t) => t ? t.toString().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() : "";
+    // Normalizador de texto: quita tildes, espacios y convierte a mayúsculas
+    const limpiarTexto = (t) => {
+        if (t === null || t === undefined) return "";
+        return t.toString()
+            .trim()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase();
+    };
 
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            maestro = {};
-            data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
-            localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            alert("Maestro cargado correctamente.");
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                maestro = {};
+                data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
+                localStorage.setItem('maestroConfig', JSON.stringify(maestro));
+                alert("✅ Maestro cargado correctamente.");
+            } catch (err) { alert("Error al cargar maestro: " + err.message); }
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
     function procesarExcelSurtido() {
         const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("Sube el archivo.");
+        if (!file) return alert("Por favor, sube el archivo de surtido.");
         
         const reader = new FileReader();
         reader.onload = (e) => {
-            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            const raw = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ""}); 
+            try {
+                const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const raw = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ""}); 
 
-            let headerRow = -1;
-            let nCarga = "S/D", nDep = "S/D";
+                let headerRow = -1;
+                let nCarga = "S/D", nDep = "S/D";
 
-            // ESCANEO TOTAL
-            for(let i=0; i < raw.length; i++) {
-                const fila = raw[i];
-                for(let j=0; j < fila.length; j++) {
-                    let txt = limpiarTexto(fila[j]);
-                    if(txt.includes("CARGA:")) nCarga = fila[j+1] || nCarga;
-                    if(txt.includes("DEPOSITO:")) nDep = fila[j+1] || nDep;
-                    // Buscamos "UBICACION" en cualquier columna, por si no está en la A
-                    if(txt === "UBICACION" && headerRow === -1) headerRow = i;
+                // Escaneo para encontrar Carga, Depósito y la tabla de datos
+                for(let i=0; i < raw.length; i++) {
+                    const fila = raw[i];
+                    if (!fila || !Array.isArray(fila)) continue;
+
+                    for(let j=0; j < fila.length; j++) {
+                        let txt = limpiarTexto(fila[j]);
+                        
+                        if(txt.includes("CARGA")) nCarga = fila[j+1] || nCarga;
+                        if(txt.includes("DEPOSI")) nDep = fila[j+1] || nDep;
+
+                        // Buscamos "UBIC" en cualquier columna (evita problemas de celdas combinadas)
+                        if(txt.includes("UBIC") && headerRow === -1) {
+                            headerRow = i;
+                        }
+                    }
                 }
-            }
 
-            if(headerRow === -1) return alert("No se encontró el encabezado 'Ubicación'.");
+                if(headerRow === -1) {
+                    alert("❌ No se encontró la columna 'Ubicación'. Verifica que el Excel sea el correcto.");
+                    return;
+                }
 
-            // Leemos los datos: saltamos la fila del nombre y la fila en blanco
-            const dataRows = raw.slice(headerRow + 2);
-            const items = [];
+                // Salto de 2: Fila de títulos + Fila en blanco
+                const dataRows = raw.slice(headerRow + 2);
+                const items = [];
 
-            dataRows.forEach(row => {
-                if(!row[0] || row[0] === "") return; // Si la primera celda está vacía, terminó la tabla
-                
-                let desc = limpiarTexto(row[3]);
-                if(desc.includes("PALLET HOMOGENEO")) return;
+                dataRows.forEach(row => {
+                    // Validamos que la fila tenga contenido (SKU o Ubicación)
+                    if(!row[0] || row[0].toString().trim() === "") return;
+                    
+                    let desc = limpiarTexto(row[3]);
+                    if(desc.includes("HOMOGENEO")) return;
 
-                items.push({
-                    ubicacion: row[0],
-                    sku: row[2],
-                    descripcion: row[3],
-                    cantidad: parseInt(row[4].toString().replace(/\D/g, "")) || 0,
-                    orden: row[7] || "S/D",
-                    nCarga: `${nDep}-${nCarga}`
+                    items.push({
+                        ubicacion: row[0].toString().trim(),
+                        linea: row[1] || "",
+                        sku: row[2].toString().trim(),
+                        descripcion: row[3] || "",
+                        cantidad: parseInt(row[4].toString().replace(/\D/g, "")) || 0,
+                        orden: row[7] || "S/D",
+                        nCarga: `${nDep}-${nCarga}`
+                    });
                 });
-            });
 
-            if(items.length === 0) return alert("No hay datos para procesar.");
-            armarPallets(items);
+                if(items.length === 0) {
+                    alert("⚠️ No se encontraron artículos para procesar debajo de los encabezados.");
+                    return;
+                }
+
+                armarPallets(items);
+            } catch (err) { alert("Error crítico: " + err.message); }
         };
         reader.readAsArrayBuffer(file);
     }
@@ -129,15 +156,23 @@
 
         items.forEach(item => {
             const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
-            const ubi = item.ubicacion.toString().toUpperCase();
+            const ubi = item.ubicacion.toUpperCase();
+            
+            // Lógica de separación por depósito físico
             let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P002") ? "Dep. 2" : "Dep. 3";
 
             const cap = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
             
-            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (cap + 2)) {
+            const necesitaNuevo = !current || 
+                                current.dep !== dep || 
+                                current.familia !== info.Familia || 
+                                (current.total + item.cantidad) > (cap + 2);
+
+            if (necesitaNuevo) {
                 if (current) pallets.push(current);
                 current = { 
-                    id: pallets.length + 1, dep, familia: info.Familia, base: info.Base, cam: info.Camada,
+                    id: pallets.length + 1, dep, familia: info.Familia, 
+                    base: info.Base, cam: info.Camada,
                     orden: item.orden, nCarga: item.nCarga, items: [], total: 0 
                 };
             }
@@ -152,10 +187,11 @@
         const tCon = document.getElementById('tabsContainer');
         const pCon = document.getElementById('palletsContainer');
         tCon.innerHTML = ""; pCon.innerHTML = "";
+        
         pallets.forEach((p, idx) => {
             const tab = document.createElement('div');
             tab.className = `pm-tab ${idx===0?'active':''}`;
-            tab.innerText = `PM ${p.id}`;
+            tab.innerText = `PM ${p.id} (${p.dep})`;
             tab.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(e => e.classList.remove('active'));
                 tab.classList.add('active');
@@ -169,14 +205,14 @@
             card.innerHTML = `
                 <div class="pallet-header">
                     <h3>Pallet Mixto #${p.id} - ${p.dep}</h3>
-                    <p>Carga: <b>${p.nCarga}</b> | Orden: <b>${p.orden}</b></p>
-                    <p>Familia: ${p.familia} | Sugerido: ${p.cam} camadas</p>
+                    <p>Carga: <span class="highlight">${p.nCarga}</span> | Orden: <b>${p.orden}</b></p>
+                    <p><b>Configuración:</b> Base ${p.base} | Camadas ${p.cam} | Familia: ${p.familia}</p>
                 </div>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
                     <tbody>${p.items.map(i => `<tr><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
                 </table>
-                <h4 style="text-align:right">Total: ${p.total} bultos</h4>
+                <h4 style="text-align:right; margin-top:15px;">Total Pallet: ${p.total} bultos</h4>
             `;
             pCon.appendChild(card);
         });
