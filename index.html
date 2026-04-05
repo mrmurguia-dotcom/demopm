@@ -6,9 +6,7 @@
     <title>Optimizador de Picking - Pallets Mixtos</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root {
-            --primary: #0056b3; --secondary: #e9ecef; --text-dark: #333; --success: #28a745; --warning: #ffc107;
-        }
+        :root { --primary: #0056b3; --secondary: #e9ecef; --text-dark: #333; --success: #28a745; --warning: #ffc107; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); text-align: center; margin-bottom: 30px; }
@@ -59,21 +57,19 @@
 <script>
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
-    // 1. CARGA DE MAESTRO
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (event) => {
             const workbook = XLSX.read(new Uint8Array(event.target.result), {type: 'array'});
             const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
             maestro = {};
-            data.forEach(item => { maestro[item.SKU] = item; });
+            data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
             localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            document.getElementById('masterStatus').innerText = `✅ Maestro OK: ${data.length} SKUs cargados.`;
+            document.getElementById('masterStatus').innerText = `✅ Maestro OK: ${Object.keys(maestro).length} SKUs cargados.`;
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // 2. PROCESAMIENTO DINÁMICO DEL SURTIDO
     function procesarExcelSurtido() {
         const file = document.getElementById('surtidoFile').files[0];
         if (!file) return alert("Sube el archivo de surtido.");
@@ -82,30 +78,42 @@
         reader.onload = (e) => {
             const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1}); // Leer como matriz de filas
+            const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""}); 
 
             let headerRowIndex = -1;
             let nCarga = "S/D", nDeposito = "S/D";
 
-            // Escanear el Excel para encontrar Carga, Depósito y la Tabla
             for(let i=0; i < rawData.length; i++){
-                let rowStr = rawData[i].join("|").toUpperCase();
-                if(rowStr.includes("CARGA:")) nCarga = rawData[i][rawData[i].indexOf("CARGA:") + 1] || rawData[i][6];
-                if(rowStr.includes("DEPÓSITO:")) nDeposito = rawData[i][rawData[i].indexOf("DEPÓSITO:") + 1] || rawData[i][6];
-                if(rawData[i].includes("Ubicación") || rawData[i].includes("Ubicacion")) {
+                const row = rawData[i];
+                if(!Array.isArray(row)) continue; // SALTO DE SEGURIDAD
+
+                let rowStr = row.join("|").toUpperCase();
+                
+                // Buscar Carga y Depósito
+                if(rowStr.includes("CARGA:")){
+                    let idx = row.findIndex(c => c.toString().toUpperCase().includes("CARGA:"));
+                    nCarga = row[idx + 1] || "S/D";
+                }
+                if(rowStr.includes("DEPÓSITO:")){
+                    let idx = row.findIndex(c => c.toString().toUpperCase().includes("DEPÓSITO:"));
+                    nDeposito = row[idx + 1] || "S/D";
+                }
+                
+                // Buscar el inicio de la tabla
+                if(row.some(cell => cell.toString().toLowerCase().includes("ubicación") || cell.toString().toLowerCase().includes("ubicacion"))) {
                     headerRowIndex = i;
                 }
             }
 
-            if(headerRowIndex === -1) return alert("No se encontró la columna 'Ubicación'. Revisa el Excel.");
+            if(headerRowIndex === -1) return alert("No se encontró la columna 'Ubicación'. Verifica el formato.");
 
-            // Los datos empiezan 2 filas después del encabezado (saltando la fila en blanco)
+            // Saltar fila de encabezado + fila en blanco
             const dataRows = rawData.slice(headerRowIndex + 2);
             const itemsProcesados = [];
 
             dataRows.forEach(row => {
-                if(!row[0]) return; // Fila vacía al final
-                let desc = (row[3] || "").toUpperCase();
+                if(!row[0] || row[0] === "") return; 
+                let desc = (row[3] || "").toString().toUpperCase();
                 if(desc.includes("PALLET HOMOGENEO") || desc.includes("PALLET HOMOGÉNEO")) return;
 
                 itemsProcesados.push({
@@ -113,13 +121,14 @@
                     linea: row[1],
                     sku: row[2],
                     descripcion: row[3],
-                    cantidad: parseInt(row[4]) || 0,
-                    orden: row[7],
+                    cantidad: parseInt(row[4].toString().replace(/\D/g, "")) || 0, // Limpia "60 CA" a 60
+                    orden: row[7] || "S/D",
                     carga: nCarga,
                     dep: nDeposito
                 });
             });
 
+            if(itemsProcesados.length === 0) return alert("No hay ítems para Pallet Mixto.");
             armarPallets(itemsProcesados);
         };
         reader.readAsArrayBuffer(file);
@@ -131,11 +140,13 @@
 
         items.forEach(item => {
             const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
-            const depFisico = item.ubicacion.startsWith("P00A") ? "Dep. 1" : 
-                             item.ubicacion.startsWith("P002") ? "Dep. 2" : "Dep. 3";
+            const ubic = item.ubicacion.toString().toUpperCase();
+            let depFisico = "Dep. 3";
+            if (ubic.startsWith("P00A")) depFisico = "Dep. 1";
+            else if (ubic.startsWith("P002")) depFisico = "Dep. 2";
 
-            // Lógica de corte: Cambia de Depósito, cambia de Familia o se llena la capacidad
-            const capacidadMax = info.Base * info.Camada;
+            const capacidadMax = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
+            
             const necesitaNuevo = !currentPM || 
                                 currentPM.depFisico !== depFisico || 
                                 currentPM.familia !== info.Familia ||
