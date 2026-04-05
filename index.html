@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimizador de Picking - Pallets Mixtos</title>
+    <title>Optimizador de Picking - Edición BI Publisher</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #0056b3; --secondary: #e9ecef; --success: #28a745; --warning: #ffc107; }
@@ -13,168 +13,144 @@
         .upload-section { display: flex; gap: 20px; margin-bottom: 20px; }
         .upload-box { flex: 1; border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background-color: var(--secondary); }
         button { background-color: var(--primary); color: white; border: none; padding: 12px 25px; cursor: pointer; border-radius: 5px; font-weight: bold; margin-top: 10px; }
+        .status-info { background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9em; border: 1px solid #ffeeba; }
         .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
         .pm-tab { background-color: var(--secondary); padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; white-space: nowrap; }
         .pm-tab.active { background-color: var(--primary); color: white; }
         .pallet-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; display: none; }
         .pallet-card.active { display: block; }
         .pallet-header { background-color: #f8f9fa; padding: 15px; border-left: 5px solid var(--primary); margin-bottom: 15px; }
-        .highlight { background-color: var(--warning); padding: 2px 6px; border-radius: 3px; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9em; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.85em; }
         th { background-color: var(--primary); color: white; }
-        .print-btn { background-color: var(--success); width: 100%; padding: 15px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; margin-top: 20px; font-weight: bold; }
-        @media print { .upload-section, .pm-nav, .print-btn { display: none; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
+        @media print { .upload-section, .pm-nav, button { display: none; } .pallet-card { display: block !important; page-break-after: always; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Asistente de Armado v5.1</h1>
+    <h1>📦 Asistente de Armado (BIP Compatible)</h1>
+    <div class="status-info">
+        💡 <b>Tip JDE:</b> Si el error persiste, probá guardando el Excel como "Libro de Excel (.xlsx)" antes de subirlo.
+    </div>
 
     <div class="upload-section">
         <div class="upload-box">
-            <h3>1. Maestro de Artículos</h3>
+            <h3>1. Maestro</h3>
             <input type="file" id="masterFile" accept=".xlsx, .xls">
         </div>
         <div class="upload-box">
-            <h3>2. Surtido (Excel JDE)</h3>
+            <h3>2. Surtido (BIP)</h3>
             <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-            <button onclick="procesarExcelSurtido()">Generar Pallets Mixtos</button>
+            <button onclick="procesarExcelSurtido()">Generar Pallets</button>
         </div>
     </div>
 
     <div id="resultadosArea" style="display: none;">
-        <hr>
         <div id="tabsContainer" class="pm-nav"></div>
         <div id="palletsContainer"></div>
-        <button class="print-btn" onclick="window.print()">🖨️ Imprimir Todas las Hojas de Ruta</button>
+        <button style="background: var(--success); width: 100%" onclick="window.print()">🖨️ Imprimir Todo</button>
     </div>
 </div>
 
 <script>
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
-    // Normalizador de texto: quita tildes, espacios y convierte a mayúsculas
-    const limpiarTexto = (t) => {
-        if (t === null || t === undefined) return "";
-        return t.toString()
-            .trim()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toUpperCase();
-    };
+    const limpiar = (t) => t ? t.toString().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() : "";
 
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
-            try {
-                const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                maestro = {};
-                data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
-                localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-                alert("✅ Maestro cargado correctamente.");
-            } catch (err) { alert("Error al cargar maestro: " + err.message); }
+            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            maestro = {};
+            data.forEach(item => { if(item.SKU) maestro[item.SKU] = item; });
+            localStorage.setItem('maestroConfig', JSON.stringify(maestro));
+            alert("Maestro cargado.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
     function procesarExcelSurtido() {
         const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("Por favor, sube el archivo de surtido.");
+        if (!file) return alert("Subí el surtido.");
         
         const reader = new FileReader();
         reader.onload = (e) => {
-            try {
-                const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const raw = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ""}); 
+            // Leemos con 'cellText:false' para obtener los datos crudos del BI Publisher
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array', cellNF: true, cellText: false});
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const raw = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ""}); 
 
-                let headerRow = -1;
-                let nCarga = "S/D", nDep = "S/D";
+            let headerRow = -1;
+            let nCarga = "S/D", nDep = "S/D";
 
-                // Escaneo para encontrar Carga, Depósito y la tabla de datos
-                for(let i=0; i < raw.length; i++) {
-                    const fila = raw[i];
-                    if (!fila || !Array.isArray(fila)) continue;
-
-                    for(let j=0; j < fila.length; j++) {
-                        let txt = limpiarTexto(fila[j]);
-                        
-                        if(txt.includes("CARGA")) nCarga = fila[j+1] || nCarga;
-                        if(txt.includes("DEPOSI")) nDep = fila[j+1] || nDep;
-
-                        // Buscamos "UBIC" en cualquier columna (evita problemas de celdas combinadas)
-                        if(txt.includes("UBIC") && headerRow === -1) {
-                            headerRow = i;
-                        }
+            // ESCANEO TOTAL POR CONTENIDO (No por posición exacta)
+            for(let i=0; i < raw.length; i++) {
+                const fila = raw[i];
+                for(let j=0; j < fila.length; j++) {
+                    let txt = limpiar(fila[j]);
+                    
+                    if(txt.includes("CARGA")) nCarga = fila[j+1] || nCarga;
+                    if(txt.includes("DEPOSI")) nDep = fila[j+1] || nDep;
+                    
+                    // Si encontramos la cabecera, marcamos la fila
+                    if(txt.includes("UBIC") && txt.includes("ACION") && headerRow === -1) {
+                        headerRow = i;
                     }
                 }
+            }
 
-                if(headerRow === -1) {
-                    alert("❌ No se encontró la columna 'Ubicación'. Verifica que el Excel sea el correcto.");
-                    return;
-                }
+            if(headerRow === -1) {
+                // Si falla el escaneo de celdas, intentamos buscar por "fuerza bruta" en la fila 10 a 15
+                headerRow = raw.findIndex(r => r.some(c => limpiar(c).includes("UBIC")));
+            }
 
-                // Salto de 2: Fila de títulos + Fila en blanco
-                const dataRows = raw.slice(headerRow + 2);
-                const items = [];
+            if(headerRow === -1) return alert("BI Publisher generó un formato no legible. Probá 'Guardar como' .xlsx en Excel y reintentá.");
 
-                dataRows.forEach(row => {
-                    // Validamos que la fila tenga contenido (SKU o Ubicación)
-                    if(!row[0] || row[0].toString().trim() === "") return;
-                    
-                    let desc = limpiarTexto(row[3]);
-                    if(desc.includes("HOMOGENEO")) return;
+            // Los datos de BIP suelen tener una fila de nombres y una vacía o con estilos
+            const dataRows = raw.slice(headerRow + 1); 
+            const items = [];
 
-                    items.push({
-                        ubicacion: row[0].toString().trim(),
-                        linea: row[1] || "",
-                        sku: row[2].toString().trim(),
-                        descripcion: row[3] || "",
-                        cantidad: parseInt(row[4].toString().replace(/\D/g, "")) || 0,
-                        orden: row[7] || "S/D",
-                        nCarga: `${nDep}-${nCarga}`
-                    });
+            dataRows.forEach(row => {
+                // Buscamos el SKU en la columna 2 o 3 (BIP a veces desplaza celdas)
+                let skuVal = row[2] ? row[2].toString().trim() : "";
+                let ubicVal = row[0] ? row[0].toString().trim() : "";
+
+                // Si no hay ubicación ni SKU, o es la fila de encabezado repetida, saltamos
+                if(skuVal === "" || skuVal === "SKU" || ubicVal === "Ubicación") return;
+
+                let desc = row[3] ? row[3].toString().toUpperCase() : "";
+                if(desc.includes("HOMOGENEO")) return;
+
+                items.push({
+                    ubicacion: ubicVal,
+                    sku: skuVal,
+                    descripcion: row[3],
+                    cantidad: parseInt(row[4].toString().replace(/\D/g, "")) || 0,
+                    orden: row[7] || "S/D",
+                    nCarga: `${nDep}-${nCarga}`
                 });
+            });
 
-                if(items.length === 0) {
-                    alert("⚠️ No se encontraron artículos para procesar debajo de los encabezados.");
-                    return;
-                }
-
-                armarPallets(items);
-            } catch (err) { alert("Error crítico: " + err.message); }
+            if(items.length === 0) return alert("Se detectó el archivo pero no se pudieron extraer las líneas de picking.");
+            armarPallets(items);
         };
         reader.readAsArrayBuffer(file);
     }
 
+    // ... (Mismas funciones armarPallets y render de antes) ...
     function armarPallets(items) {
         const pallets = [];
         let current = null;
-
         items.forEach(item => {
             const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
             const ubi = item.ubicacion.toUpperCase();
-            
-            // Lógica de separación por depósito físico
             let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P002") ? "Dep. 2" : "Dep. 3";
-
             const cap = (parseInt(info.Base) || 28) * (parseInt(info.Camada) || 5);
-            
-            const necesitaNuevo = !current || 
-                                current.dep !== dep || 
-                                current.familia !== info.Familia || 
-                                (current.total + item.cantidad) > (cap + 2);
-
-            if (necesitaNuevo) {
+            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (cap + 2)) {
                 if (current) pallets.push(current);
-                current = { 
-                    id: pallets.length + 1, dep, familia: info.Familia, 
-                    base: info.Base, cam: info.Camada,
-                    orden: item.orden, nCarga: item.nCarga, items: [], total: 0 
-                };
+                current = { id: pallets.length + 1, dep, familia: info.Familia, base: info.Base, cam: info.Camada, orden: item.orden, nCarga: item.nCarga, items: [], total: 0 };
             }
             current.items.push(item);
             current.total += item.cantidad;
@@ -187,33 +163,29 @@
         const tCon = document.getElementById('tabsContainer');
         const pCon = document.getElementById('palletsContainer');
         tCon.innerHTML = ""; pCon.innerHTML = "";
-        
         pallets.forEach((p, idx) => {
             const tab = document.createElement('div');
             tab.className = `pm-tab ${idx===0?'active':''}`;
-            tab.innerText = `PM ${p.id} (${p.dep})`;
+            tab.innerText = `PM ${p.id}`;
             tab.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(e => e.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById(`p-${p.id}`).classList.add('active');
             };
             tCon.appendChild(tab);
-
             const card = document.createElement('div');
             card.id = `p-${p.id}`;
             card.className = `pallet-card ${idx===0?'active':''}`;
             card.innerHTML = `
                 <div class="pallet-header">
-                    <h3>Pallet Mixto #${p.id} - ${p.dep}</h3>
-                    <p>Carga: <span class="highlight">${p.nCarga}</span> | Orden: <b>${p.orden}</b></p>
-                    <p><b>Configuración:</b> Base ${p.base} | Camadas ${p.cam} | Familia: ${p.familia}</p>
+                    <h3>PM #${p.id} - ${p.dep}</h3>
+                    <p>Carga: <b>${p.nCarga}</b> | Orden: <b>${p.orden}</b></p>
                 </div>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
                     <tbody>${p.items.map(i => `<tr><td>${i.ubicacion}</td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
                 </table>
-                <h4 style="text-align:right; margin-top:15px;">Total Pallet: ${p.total} bultos</h4>
-            `;
+                <h4 style="text-align:right">Total: ${p.total} bultos</h4>`;
             pCon.appendChild(card);
         });
         document.getElementById('resultadosArea').style.display = 'block';
