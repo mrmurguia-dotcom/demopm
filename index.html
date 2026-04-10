@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v18.0 - DOM Parser</title>
+    <title>Picking JDE v19.0 - Smart Packing</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #6f42c1; --success: #20c997; --bg: #f8f9fa; }
@@ -13,23 +13,31 @@
         .btn-gen { background: var(--success); color: white; border: none; padding: 18px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.2s; }
         .btn-gen:hover { background: #1aa179; transform: translateY(-2px); }
         .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding-bottom: 5px; }
-        .pm-tab { background: #e9ecef; padding: 10px 18px; border-radius: 20px; cursor: pointer; font-size: 0.9em; font-weight: 600; color: #495057; }
+        .pm-tab { background: #e9ecef; padding: 10px 18px; border-radius: 20px; cursor: pointer; font-size: 0.9em; font-weight: 600; color: #495057; white-space: nowrap; }
         .pm-tab.active { background: var(--primary); color: white; }
-        .pallet-card { display: none; border: 1px solid #dee2e6; padding: 25px; border-radius: 10px; background: white; }
+        .pallet-card { display: none; border: 1px solid #dee2e6; padding: 25px; border-radius: 10px; background: white; margin-bottom: 20px; }
         .pallet-card.active { display: block; animation: fadeIn 0.4s; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; }
         th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; color: #495057; }
         td { padding: 12px; border-bottom: 1px solid #eee; }
         .badge { background: #e0cffc; color: #5227a1; padding: 5px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
+        .badge-fam { background: #e9ecef; color: #495057; font-size: 0.8em; padding: 3px 8px; border-radius: 8px; margin-right: 5px; }
+        .pdf-btn { width: 100%; padding: 18px; margin-top: 20px; cursor: pointer; background: #dc3545; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1em; transition: 0.2s; }
+        .pdf-btn:hover { background: #c82333; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @media print { .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
+        /* Estilos para que el PDF salga perfecto */
+        @media print { 
+            body { background: white; padding: 0; }
+            .no-print { display: none !important; } 
+            .pallet-card { display: block !important; page-break-inside: avoid; page-break-after: always; border: none; padding: 0; margin-bottom: 50px; } 
+        }
     </style>
 </head>
 <body>
 
 <div class="container no-print">
-    <h1 style="text-align:center; margin-bottom:10px;">📦 Picking JDE v18.0</h1>
-    <p style="text-align:center; color:#6c757d; margin-bottom:30px;">Motor de Extracción DOM Native (Oracle BI)</p>
+    <h1 style="text-align:center; margin-bottom:10px;">📦 Picking JDE v19.0</h1>
+    <p style="text-align:center; color:#6c757d; margin-bottom:30px;">Extracción DOM Nativa + Smart Packing (Llenado Optimizado)</p>
 
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br><br>
@@ -44,16 +52,17 @@
     </div>
 </div>
 
-<div id="resArea" class="container" style="display:none; margin-top:20px;">
+<div id="resArea" class="container" style="display:none; margin-top:20px; max-width: 1000px;">
     <div id="tabs" class="pm-nav no-print"></div>
     <div id="pallets"></div>
-    <button class="no-print" onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer; background:#343a40; color:white; border:none; border-radius:8px; font-weight:bold; font-size: 1.1em;">🖨️ IMPRIMIR PALLETS MIXTOS</button>
+    <button class="pdf-btn no-print" onclick="exportarPDF()">📄 EXPORTAR A PDF</button>
+    <p class="no-print" style="text-align: center; color: #6c757d; font-size: 0.9em; margin-top: 10px;">💡 Tip: En la ventana que se abre, elegí "Guardar como PDF" como impresora.</p>
 </div>
 
 <script>
     let maestroData = JSON.parse(localStorage.getItem('m_v18')) || {};
 
-    // Carga de Maestro
+    // 1. CARGA DEL MAESTRO
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -75,6 +84,7 @@
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
+    // 2. EXTRACCIÓN DE DATOS JDE
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
         if(!file) return alert("Por favor, subí el archivo de surtido de JDE.");
@@ -82,89 +92,96 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             const content = e.target.result;
-            
-            // EL MOTOR NATIVO: Dejamos que el navegador parsee el HTML
             const parser = new DOMParser();
             const doc = parser.parseFromString(content, "text/html");
-            
-            let items = [];
+            let itemsRaw = [];
 
-            // ESTRATEGIA 1: Leer fila por fila (<tr>)
+            // Estrategia DOM Parser (La que funcionó)
             const rows = doc.querySelectorAll('tr');
             rows.forEach(tr => {
-                // extraemos el texto de cada celda y borramos los saltos de línea internos
                 const cells = Array.from(tr.querySelectorAll('td, th')).map(c => c.textContent.replace(/\s+/g, ' ').trim());
-                
-                // Si la fila tiene suficientes columnas (al menos hasta cantidad que es la 9na)
                 if(cells.length >= 9) {
                     let ubi = cells[0];
                     let sku = cells[1];
                     let desc = cells[4];
                     let cantRaw = cells[8];
                     
-                    // Validamos que parezca una ubicación (ej: P0.14.001.0) y un SKU válido
                     if(ubi.includes(".") && ubi.length > 5 && !isNaN(parseInt(sku))) {
                         let cant = parseInt(cantRaw.replace(/[^\d]/g, "")) || 0;
-                        if(cant > 0) {
-                            items.push({ ubi, sku, desc, cant });
-                        }
+                        if(cant > 0) itemsRaw.push({ ubi, sku, desc, cant });
                     }
                 }
             });
 
-            // ESTRATEGIA 2: Si el HTML de Oracle anida las tablas mal, leemos todas las celdas sueltas
-            if(items.length === 0) {
-                const allCells = Array.from(doc.querySelectorAll('td')).map(c => c.textContent.replace(/\s+/g, ' ').trim());
-                for(let i = 0; i < allCells.length; i++) {
-                    let ubi = allCells[i];
-                    if(ubi.includes('.') && ubi.length > 5 && (ubi.startsWith('P0.') || ubi.startsWith('14.'))) {
-                        let sku = allCells[i+1] || "";
-                        if(!isNaN(parseInt(sku)) && sku.length > 3) {
-                            let desc = allCells[i+4] || "";
-                            let cantRaw = allCells[i+8] || "0";
-                            let cant = parseInt(cantRaw.replace(/[^\d]/g, "")) || 0;
-                            
-                            if(cant > 0) {
-                                items.push({ ubi, sku, desc, cant });
-                                i += 8; // Saltamos a la siguiente fila lógica
-                            }
-                        }
-                    }
-                }
-            }
-
-            if(items.length === 0) return alert("❌ No se detectaron productos. El archivo está muy vacío o el formato cambió drásticamente.");
+            if(itemsRaw.length === 0) return alert("❌ No se detectaron productos.");
             
-            // Ordenar por ubicación
-            items.sort((a, b) => a.ubi.localeCompare(b.ubi));
-            logicaPallets(items);
+            enriquecerYEmpacar(itemsRaw);
         };
-        // Leemos como ISO-8859-1 para que los acentos y ñ de JDE salgan bien
         reader.readAsText(file, "ISO-8859-1"); 
     }
 
-    function logicaPallets(items) {
+    // 3. LOGICA DE EMPAQUETADO INTELIGENTE (SMART PACKING)
+    function enriquecerYEmpacar(itemsRaw) {
+        // Enriquecemos con variables del maestro
+        let items = itemsRaw.map(it => {
+            let m = maestroData[it.sku] || { cap: 120, fam: "9" };
+            let fam = it.desc.toUpperCase().includes("ANTARES") ? "ANT" : m.fam;
+            let cap = fam === "ANT" ? 350 : m.cap;
+            let dep = (it.ubi.startsWith("14.") || it.ubi.includes("P0.14")) ? "Dep. 2" : "Dep. 1";
+            return { ...it, fam, cap, dep };
+        });
+
+        // ORDENAMIENTO PRIORITARIO: 1° Depósito, 2° Familia, 3° Ubicación
+        items.sort((a, b) => {
+            if (a.dep !== b.dep) return a.dep.localeCompare(b.dep);
+            if (a.fam !== b.fam) return a.fam.localeCompare(b.fam);
+            return a.ubi.localeCompare(b.ubi);
+        });
+
         const pallets = [];
         let current = null;
 
+        // LLENADO DE PALLETS
         items.forEach(it => {
-            let m = maestroData[it.sku] || { cap: 120, fam: "9" };
-            let familia = it.desc.toUpperCase().includes("ANTARES") ? "ANT" : m.fam;
-            let capacidad = familia === "ANT" ? 350 : m.cap;
-            let dep = (it.ubi.startsWith("14.") || it.ubi.includes("P0.14")) ? "Dep. 2" : "Dep. 1";
-
-            if(!current || current.dep !== dep || current.fam !== familia || (current.total + it.cant) > capacidad) {
-                if(current) pallets.push(current);
-                current = { id: pallets.length + 1, dep, fam: familia, cap: capacidad, total: 0, items: [] };
+            let cantRestante = it.cant;
+            
+            while(cantRestante > 0) {
+                // Si no hay pallet actual, cambiamos de depósito, o el pallet actual está LLENO -> Creamos uno nuevo
+                if (!current || current.dep !== it.dep || current.total >= current.cap) {
+                    current = { 
+                        id: pallets.length + 1, 
+                        dep: it.dep, 
+                        cap: it.cap, // La capacidad base la da el primer producto que entra
+                        total: 0, 
+                        fams: new Set(),
+                        items: [] 
+                    };
+                    pallets.push(current);
+                }
+                
+                // Calculamos cuánto espacio le queda a este pallet
+                let espacioLibre = current.cap - current.total;
+                // Metemos lo que alcance (ya sea toda la cantRestante, o solo lo que entra para llenarlo)
+                let aInsertar = Math.min(cantRestante, espacioLibre);
+                
+                current.items.push({
+                    ubi: it.ubi,
+                    sku: it.sku,
+                    desc: it.desc,
+                    cant: aInsertar,
+                    fam: it.fam
+                });
+                
+                current.total += aInsertar;
+                current.fams.add(it.fam);
+                cantRestante -= aInsertar; // Descontamos lo que ya metimos
             }
-            current.items.push(it);
-            current.total += it.cant;
         });
 
-        if(current) pallets.push(current);
         render(pallets);
     }
 
+    // 4. RENDERIZADO VISUAL
     function render(pallets) {
         document.getElementById('resArea').style.display = "block";
         const tabs = document.getElementById('tabs');
@@ -172,9 +189,10 @@
         tabs.innerHTML = ""; cont.innerHTML = "";
 
         pallets.forEach((p, idx) => {
+            // Pestañas (Navegación)
             const btn = document.createElement('div');
             btn.className = `pm-tab ${idx === 0 ? 'active' : ''}`;
-            btn.innerText = `Pallet #${p.id} (${p.fam})`;
+            btn.innerText = `Pallet #${p.id} (${p.total}/${p.cap})`;
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
@@ -182,22 +200,44 @@
             };
             tabs.appendChild(btn);
 
+            // Etiquetas de familias incluidas en este pallet
+            const famBadges = Array.from(p.fams).map(f => `<span class="badge-fam">Fam: ${f}</span>`).join('');
+
+            // Tarjetas PDF
             const card = document.createElement('div');
             card.id = 'p-' + p.id;
             card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h2 style="margin:0;">Hoja de Ruta - Pallet Mixto #${p.id}</h2>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h2 style="margin:0;">Hoja de Ruta - Pallet #${p.id}</h2>
                     <span class="badge">${p.dep}</span>
                 </div>
-                <p><strong>Familia:</strong> ${p.fam} | <strong>Ocupación:</strong> ${p.total} / ${p.cap} Cajas</p>
+                <div style="margin-bottom: 15px;">
+                    <strong>Ocupación:</strong> ${p.total} / ${p.cap} Cajas <br>
+                    <div style="margin-top: 8px;">${famBadges}</div>
+                </div>
                 <table>
-                    <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
-                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubi}</b></td><td>${i.sku}</td><td>${i.desc}</td><td>${i.cant}</td></tr>`).join('')}</tbody>
+                    <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th style="text-align:right;">Cant</th></tr></thead>
+                    <tbody>
+                        ${p.items.map(i => `
+                            <tr>
+                                <td><b>${i.ubi}</b></td>
+                                <td>${i.sku}</td>
+                                <td>${i.desc}</td>
+                                <td style="text-align:right; font-weight:bold; font-size: 1.1em;">${i.cant}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
                 </table>
             `;
             cont.appendChild(card);
         });
+    }
+
+    function exportarPDF() {
+        // El navegador abre la vista de impresión nativa. 
+        // El CSS @media print se encarga de mostrar todos los pallets, quitar los botones e insertar saltos de página.
+        window.print();
     }
 </script>
 </body>
