@@ -2,199 +2,160 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Optimizador de Picking v10.1 - PRO</title>
+    <title>Asistente de Picking v11.0 - Estable</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #0056b3; --success: #28a745; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 20px; color: #333; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h1 { text-align: center; color: var(--primary); margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .config-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-        .card-input { background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 10px; }
-        label { font-weight: bold; display: block; margin-bottom: 10px; color: #555; }
-        .btn-main { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.3s; margin-top: 15px; }
-        .btn-main:hover { background: #218838; transform: translateY(-2px); }
-        .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .pm-tab { background: #e0e0e0; padding: 10px 20px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: 0.2s; font-weight: 500; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .box { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
+        .pm-tab { background: #e0e0e0; padding: 10px 15px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
         .pm-tab.active { background: var(--primary); color: white; }
-        .pallet-card { display: none; background: white; border: 2px solid #e0e6ed; border-radius: 12px; padding: 25px; margin-top: 20px; }
+        .pallet-card { display: none; border: 2px solid #eee; padding: 20px; border-radius: 10px; }
         .pallet-card.active { display: block; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #f8f9fa; color: #666; text-transform: uppercase; font-size: 0.85em; padding: 12px; border-bottom: 2px solid #dee2e6; text-align: left; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.95em; }
-        .badge-fam { background: #ffc107; padding: 4px 12px; border-radius: 15px; font-weight: bold; font-size: 0.8em; }
-        .badge-dep { background: #17a2b8; color: white; padding: 4px 12px; border-radius: 15px; font-weight: bold; font-size: 0.8em; }
-        .total-box { font-size: 1.3em; font-weight: bold; color: var(--primary); margin: 15px 0; }
-        @media print { .config-section, .pm-nav, h1, .btn-main, button { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: 1px solid #000; margin-bottom: 20px; } }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #eee; padding: 10px; text-align: left; }
+        th { background: #f8f9fa; }
+        .badge { background: #ffc107; padding: 4px 10px; border-radius: 10px; font-size: 0.8em; font-weight: bold; }
+        @media print { .config-grid, .pm-nav, button { display: none !important; } .pallet-card { display: block !important; page-break-after: always; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Picking Inteligente - Multi-Familia</h1>
+    <h1 style="text-align:center; color:var(--primary);">📦 Optimizador de Picking</h1>
 
-    <div class="config-section">
-        <div class="card-input">
-            <label>📂 1. Maestro de Capacidades:</label>
+    <div class="config-grid">
+        <div class="box">
+            <strong>1. Maestro de Capacidades:</strong><br><br>
             <input type="file" id="masterFile" accept=".xlsx, .xls">
-            <p style="font-size: 0.75em; color: #888; margin-top: 8px;">SKU (B), Base (F), Camada (G), Familia (I).</p>
         </div>
-        <div class="card-input">
-            <label>🚚 2. Reporte de Surtido:</label>
+        <div class="box">
+            <strong>2. Reporte de Surtido JDE:</strong><br><br>
             <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-            <button class="btn-main" onclick="procesarSurtido()">🚀 GENERAR PALLETS</button>
+            <button class="btn-gen" onclick="ejecutar()">🚀 GENERAR PALLETS</button>
         </div>
     </div>
 
-    <div id="resultArea" style="display:none;">
+    <div id="resArea" style="display:none;">
         <div id="tabs" class="pm-nav"></div>
         <div id="pallets"></div>
-        <button onclick="window.print()" style="background:#343a40; color:white; width:100%; padding:15px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:20px;">🖨️ IMPRIMIR HOJAS DE RUTA</button>
+        <button onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer;">🖨️ IMPRIMIR TODO</button>
     </div>
 </div>
 
 <script>
-    // Variables globales
-    let dbMaestro = JSON.parse(localStorage.getItem('maestro_v10')) || {};
+    let maestroData = JSON.parse(localStorage.getItem('m_v11')) || {};
 
-    // Cargar Maestro
+    // --- CARGA DE MAESTRO (BASADO EN TU EXCEL DE COLUMNAS B, F, G, I) ---
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
-            try {
-                const data = new Uint8Array(ev.target.result);
-                const wb = XLSX.read(data, {type: 'array'});
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
-                
-                dbMaestro = {};
-                rows.forEach((row, idx) => {
-                    if(idx === 0) return; // Cabecera
-                    let sku = (row[1] || "").toString().trim(); // Col B
-                    if(sku) {
-                        dbMaestro[sku] = {
-                            base: parseFloat(row[5]) || 1,    // Col F
-                            camada: parseFloat(row[6]) || 1,  // Col G
-                            familia: (row[8] || "9").toString().trim() // Col I
-                        };
-                    }
-                });
-                localStorage.setItem('maestro_v10', JSON.stringify(dbMaestro));
-                alert("✅ Maestro cargado con éxito.");
-            } catch (err) {
-                alert("Error al leer el maestro: " + err.message);
-            }
+            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+            maestroData = {};
+            rows.forEach((row, i) => {
+                if(i === 0) return;
+                let sku = (row[1] || "").toString().trim(); // Col B
+                if(sku) {
+                    maestroData[sku] = {
+                        base: parseFloat(row[5]) || 1,    // Col F
+                        camada: parseFloat(row[6]) || 1,  // Col G
+                        familia: (row[8] || "9").toString().trim() // Col I
+                    };
+                }
+            });
+            localStorage.setItem('m_v11', JSON.stringify(maestroData));
+            alert("Maestro cargado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // Función Principal
-    function procesarSurtido() {
-        console.log("Iniciando procesamiento...");
-        const fileInput = document.getElementById('surtidoFile');
-        if(!fileInput.files.length) return alert("Por favor, seleccioná el archivo de Surtido.");
+    function ejecutar() {
+        const file = document.getElementById('surtidoFile').files[0];
+        if(!file) return alert("Seleccioná el archivo de surtido.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const wb = XLSX.read(data, {type: 'array'});
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: ""});
 
-                console.log("Filas leídas:", rows.length);
-
-                // 1. Encontrar la sección de Pallet Mixto
-                let startIdx = -1;
-                for(let i=0; i < rows.length; i++) {
-                    let filaTexto = rows[i].join(" ").toUpperCase();
-                    if(filaTexto.includes("PALLET MIXTO") || filaTexto.includes("SURTIDO PM")) {
-                        startIdx = i;
-                        break;
-                    }
+            // --- LÓGICA DE LECTURA QUE FUNCIONA ---
+            let startIndex = -1;
+            for(let i=0; i < rows.length; i++) {
+                let txt = rows[i].join(" ").toUpperCase();
+                if(txt.includes("PALLET MIXTO") || txt.includes("SURTIDO PM")) { //
+                    startIndex = i;
+                    break;
                 }
-
-                if(startIdx === -1) {
-                    return alert("No se encontró la frase 'Pallet Mixto' en el Excel. Verificá el formato.");
-                }
-
-                console.log("Sección mixtos empieza en fila:", startIdx);
-
-                // 2. Extraer ítems
-                let itemsRaw = [];
-                for(let j = startIdx; j < rows.length; j++) {
-                    let row = rows[j];
-                    let sku = (row[1] || "").toString().trim();
-                    let cantStr = (row[9] || "").toString().replace(/[^\d]/g, "");
-                    let cant = parseInt(cantStr);
-
-                    // Validamos que sea un SKU numérico y tenga cantidad
-                    if(sku && !isNaN(sku) && sku.length > 2 && !isNaN(cant) && cant > 0) {
-                        itemsRaw.push({
-                            ubi: (row[0] || "S/D").trim(),
-                            sku: sku,
-                            desc: (row[4] || "Sin descripción").trim(),
-                            cant: cant
-                        });
-                    }
-                }
-
-                if(itemsRaw.length === 0) return alert("No se encontraron productos válidos después de 'Pallet Mixto'.");
-
-                console.log("Items encontrados:", itemsRaw.length);
-                generarAgrupacion(itemsRaw);
-
-            } catch (err) {
-                console.error(err);
-                alert("Error crítico: " + err.message);
             }
+
+            if(startIndex === -1) return alert("No se encontró la sección de Pallets Mixtos.");
+
+            let items = [];
+            for(let j = startIndex; j < rows.length; j++) {
+                let r = rows[j];
+                let sku = (r[1] || "").toString().trim(); // Col B
+                let cant = parseInt((r[9] || "").toString().replace(/[^\d]/g, "")); // Col J
+                
+                if(sku && !isNaN(sku) && sku.length > 2 && cant > 0) {
+                    items.push({
+                        ubi: (r[0] || "").toString().trim(), // Col A
+                        sku: sku,
+                        desc: (r[4] || "").toString().trim(), // Col E
+                        cant: cant
+                    });
+                }
+            }
+
+            if(items.length === 0) return alert("No se encontraron productos válidos.");
+            procesarAgrupado(items);
         };
-        reader.readAsArrayBuffer(fileInput.files[0]);
+        reader.readAsArrayBuffer(file);
     }
 
-    function generarAgrupacion(items) {
-        // Ordenar por Ubicación
+    function procesarAgrupado(items) {
         items.sort((a, b) => a.ubi.localeCompare(b.ubi));
 
         const pallets = [];
         let current = null;
 
-        items.forEach(item => {
-            let m = dbMaestro[item.sku];
+        items.forEach(it => {
+            let m = maestroData[it.sku];
             let fam = m ? m.familia : "9";
-            let cap = m ? Math.floor(m.base * m.camada) : 140;
+            let cap = m ? (m.base * m.camada) : 140; // Base * Camada corregido
 
-            // Regla Antares
-            if(item.desc.toUpperCase().includes("ANTARES")) {
+            // Override Antares
+            if(it.desc.toUpperCase().includes("ANTARES")) {
                 fam = "ANTARES";
                 cap = 450;
             }
 
-            // Depósito
-            let dep = item.ubi.startsWith("P0.14") || item.ubi.startsWith("P014") ? "Dep. 2" : "Dep. 1";
+            let dep = it.ubi.includes("P0.14") || it.ubi.includes("P014") ? "Dep. 2" : "Dep. 1";
 
-            // Lógica de corte
-            if(!current || current.dep !== dep || current.familia !== fam || (current.total + item.cant) > current.cap) {
+            if(!current || current.dep !== dep || current.fam !== fam || (current.total + it.cant) > current.cap) {
                 if(current) pallets.push(current);
-                current = { id: pallets.length + 1, dep, familia: fam, cap, total: 0, items: [] };
+                current = { id: pallets.length + 1, dep, fam, cap, total: 0, items: [] };
             }
-
-            current.items.push(item);
-            current.total += item.cant;
+            current.items.push(it);
+            current.total += it.cant;
         });
 
         if(current) pallets.push(current);
-        dibujarUI(pallets);
+        render(pallets);
     }
 
-    function dibujarUI(pallets) {
+    function render(pallets) {
+        document.getElementById('resArea').style.display = "block";
         const tabs = document.getElementById('tabs');
         const cont = document.getElementById('pallets');
         tabs.innerHTML = ""; cont.innerHTML = "";
-        document.getElementById('resultArea').style.display = "block";
 
         pallets.forEach((p, idx) => {
-            // Botón Tab
             const btn = document.createElement('div');
             btn.className = `pm-tab ${idx === 0 ? 'active' : ''}`;
             btn.innerText = `PM ${p.id}`;
@@ -205,23 +166,18 @@
             };
             tabs.appendChild(btn);
 
-            // Contenedor Pallet
             const card = document.createElement('div');
             card.id = 'p-' + p.id;
             card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
-            let ocup = Math.round((p.total / p.cap) * 100);
-
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h2 style="margin:0;">Pallet Mixto #${p.id} <span class="badge-dep">${p.dep}</span></h2>
-                    <span class="badge-fam">FAMILIA: ${p.familia}</span>
+                    <h2>Pallet #${p.id} <span style="font-size:0.6em; color:#666;">(${p.dep})</span></h2>
+                    <span class="badge">FAMILIA: ${p.fam}</span>
                 </div>
-                <div class="total-box">Total: ${p.total} CA <small style="font-size:0.6em; color:#999;">(Capacidad: ${p.cap} | ${ocup}%)</small></div>
+                <p><strong>Total: ${p.total} CA</strong> (Capacidad: ${p.cap})</p>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
-                    <tbody>
-                        ${p.items.map(it => `<tr><td><b>${it.ubi}</b></td><td>${it.sku}</td><td>${it.desc}</td><td>${it.cant} CA</td></tr>`).join('')}
-                    </tbody>
+                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubi}</b></td><td>${i.sku}</td><td>${i.desc}</td><td>${i.cant}</td></tr>`).join('')}</tbody>
                 </table>
             `;
             cont.appendChild(card);
