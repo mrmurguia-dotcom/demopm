@@ -2,79 +2,64 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Optimizador de Picking - Asistente de Armado</title>
+    <title>Optimizador de Picking v9.5 - Multi-Familia</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #0056b3; --secondary: #f8f9fa; --success: #28a745; --accent: #007bff; }
+        :root { --primary: #0056b3; --secondary: #f8f9fa; --success: #28a745; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #e9ecef; padding: 20px; }
         .container { max-width: 950px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        h1 { color: var(--primary); text-align: center; margin-bottom: 30px; }
+        h1 { color: var(--primary); text-align: center; }
         .step-box { border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; background: var(--secondary); margin-bottom: 20px; }
-        .step-title { font-weight: bold; color: var(--primary); margin-bottom: 10px; display: block; font-size: 1.1em; }
-        .buttons-group { display: flex; gap: 10px; align-items: center; margin-top: 15px; }
-        button { border: none; padding: 15px 20px; cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.3s; font-size: 1.05em; }
-        .btn-generate { background-color: var(--success); color: white; width: 100%; box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2); }
-        .btn-generate:hover { background-color: #218838; }
+        .btn-generate { background-color: var(--success); color: white; width: 100%; border: none; padding: 15px; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 1.1em; }
         .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
-        .pm-tab { background-color: #e2e6ea; padding: 10px 15px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 500; transition: 0.2s; }
-        .pm-tab:hover { background-color: #d3d9df; }
+        .pm-tab { background-color: #e2e6ea; padding: 10px 15px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
         .pm-tab.active { background-color: var(--primary); color: white; }
         .pallet-card { display: none; border: 2px solid #e9ecef; padding: 25px; border-radius: 8px; margin-top: 20px; background: white; }
-        .pallet-card.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        .pallet-card.active { display: block; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; font-size: 0.95em; }
-        th { background: #f4f6f9; color: #495057; }
-        tr:nth-child(even) { background-color: #f8f9fa; }
-        .badge { background: #ffc107; padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; color: #333; }
-        .badge-dep { background: #17a2b8; color: white; }
-        .summary-text { font-size: 1.2em; color: var(--primary); font-weight: bold; margin-top: 10px; }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Estilos para impresión */
-        @media print { 
-            body { background: white; padding: 0; }
-            .container { box-shadow: none; max-width: 100%; padding: 0; }
-            .step-box, .pm-nav, h1, .buttons-group, hr, button { display: none !important; } 
-            .pallet-card { display: block !important; page-break-after: always; border: 1px solid #000; padding: 20px; margin: 0 0 20px 0; } 
-            table th { background-color: #e9ecef !important; -webkit-print-color-adjust: exact; }
-        }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: left; }
+        th { background: #f4f6f9; }
+        .badge { background: #ffc107; padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; }
+        @media print { .step-box, .pm-nav, h1, hr, .btn-generate { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: 1px solid #000; margin-bottom: 20px; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Asistente de Armado v9.0 (Auto-Clean & Routing)</h1>
+    <h1>📦 Optimizador de Picking Multi-Familia</h1>
 
     <div class="step-box">
-        <span class="step-title">⚙️ 0. Cargar Maestro de Artículos (Opcional):</span>
+        <strong>⚙️ 1. Configuración de Capacidades (Maestro):</strong><br><br>
         <input type="file" id="masterFile" accept=".xlsx, .xls">
-        <p style="font-size: 0.85em; color: #666; margin-top: 5px;">Define capacidades Base x Camada. (Por defecto: Antares=450, General=140)</p>
+        <p style="font-size: 0.8em; color: #666;">Sube un Excel con columnas: SKU, Familia, Base, Camada.</p>
     </div>
 
     <div class="step-box">
-        <span class="step-title">🚚 1. Procesar Reporte JDE:</span>
-        <p style="font-size: 0.9em; color: #555;">Seleccioná el archivo crudo del sistema. El script ignorará los Pallets Homogéneos y agrupará los Mixtos.</p>
+        <strong>🚚 2. Reporte de Surtido JDE:</strong><br><br>
         <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-        
-        <div class="buttons-group">
-            <button class="btn-generate" onclick="generarPallets()">🚀 GENERAR PALLETS DE PICKING</button>
-        </div>
+        <button class="btn-generate" style="margin-top:15px;" onclick="generarPallets()">🚀 GENERAR PALLETS OPTIMIZADOS</button>
     </div>
 
     <div id="resultadosArea" style="display: none;">
-        <hr style="border-color: #dee2e6; margin: 30px 0;">
         <div id="tabsContainer" class="pm-nav"></div>
         <div id="palletsContainer"></div>
-        <button onclick="window.print()" style="width:100%; margin-top:25px; background:#343a40; color:white; padding:15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.3s;">🖨️ IMPRIMIR HOJAS DE PICKING</button>
+        <button onclick="window.print()" style="width:100%; margin-top:25px; background:#343a40; color:white; padding:15px; border-radius: 8px; cursor: pointer;">🖨️ IMPRIMIR HOJAS DE PICKING</button>
     </div>
 </div>
 
 <script>
-    // Recuperar Maestro guardado si existe
+    // --- REGLAS HARDCODEADAS POR SI NO HAY MAESTRO ---
+    // Aquí puedes agregar más palabras clave y sus capacidades (Base * Camada)
+    const REGLAS_POR_DEFECTO = [
+        { key: "ANTARES", familia: "ANTARES", capacidad: 450 },
+        { key: "ALMA MORA", familia: "ALMA MORA", capacidad: 140 },
+        { key: "DADA", familia: "DADA", capacidad: 140 },
+        { key: "LAS MORAS", familia: "FINCA LAS MORAS", capacidad: 160 },
+        { key: "WHITE HORSE", familia: "WHISKY", capacidad: 60 }
+    ];
+
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
-    // Cargar nuevo Maestro
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -82,146 +67,123 @@
             const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
             maestro = {};
             data.forEach(item => {
-                let sku = item.SKU || item.Artículo || item.Articulo;
-                if(sku) maestro[sku.toString().trim()] = item;
+                let sku = (item.SKU || item.Artículo || item.Articulo || "").toString().trim();
+                if(sku) maestro[sku] = item;
             });
             localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            alert("✅ Maestro sincronizado correctamente.");
+            alert("Maestro cargado con éxito.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // Función auxiliar para limpiar basura de celdas JDE
     function limpiarValor(val) {
-        if (val === null || val === undefined) return "";
-        return val.toString().trim().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        return val ? val.toString().trim() : "";
     }
 
-    // PASO PRINCIPAL: Lectura y Filtrado del Archivo
     function generarPallets() {
         const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("⚠️ Selecciona el archivo del sistema primero.");
+        if (!file) return alert("Selecciona el archivo de surtido.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
-            const wb = XLSX.read(data, {type: 'array', cellNF: false, cellText: false});
+            const wb = XLSX.read(data, {type: 'array'});
             const ws = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(ws, {header: 1, raw: false, defval: ""});
 
-            let startIndex = -1;
-            let colIdx = { ubi: -1, art: -1, desc: -1, cant: -1 };
+            // Localizar sección Mixtos
+            let startIndex = rows.findIndex(r => r.join(" ").toUpperCase().includes("PM PALLET MIXTO"));
+            if(startIndex === -1) return alert("No se encontró sección 'PM Pallet Mixto'");
 
-            // 1. Encontrar dónde empieza la sección de Pallet Mixto (Ignorar Homogéneos)
-            for(let i=0; i<rows.length; i++){
-                let rowStr = rows[i].map(c => limpiarValor(c).toUpperCase()).join(" ");
-                if(rowStr.includes("PM PALLET MIXTO") || rowStr.includes("PALLET MIXTO")){
-                    startIndex = i;
+            let pmRows = rows.slice(startIndex);
+            let col = { ubi: 0, art: 1, desc: 4, cant: 9 }; // Fallback
+
+            // Detección dinámica de columnas
+            for(let i=0; i<20; i++){
+                let r = pmRows[i].map(c => c.toString().toUpperCase());
+                if(r.includes("UBICACIÓN") || r.includes("ARTÍCULO")){
+                    col.ubi = r.indexOf("UBICACIÓN");
+                    col.art = r.findIndex(c => c.includes("ARTÍCULO") || c === "ARTICULO");
+                    col.desc = r.findIndex(c => c.includes("DESCRIPCIÓN") || c === "DESCRIPCION");
+                    col.cant = r.findIndex(c => c.includes("CANTIDA") || c === "CANT");
                     break;
                 }
             }
 
-            if (startIndex === -1) {
-                console.warn("No se encontró el título 'Pallet Mixto'. Procesando desde el inicio.");
-                startIndex = 0;
-            }
-
-            let pmRows = rows.slice(startIndex);
-
-            // 2. Buscar Cabeceras dinámicamente dentro de la sección permitida
-            for(let i=0; i < Math.min(pmRows.length, 20); i++){
-                let row = pmRows[i].map(c => limpiarValor(c).toUpperCase());
-                if(row.includes("UBICACIÓN") || row.includes("ARTÍCULO") || row.includes("ARTICULO")){
-                    colIdx.ubi = row.indexOf("UBICACIÓN");
-                    colIdx.art = row.findIndex(c => c.includes("ARTÍCULO") || c === "ARTICULO");
-                    colIdx.desc = row.findIndex(c => c.includes("DESCRIPCIÓN") || c === "DESCRIPCION");
-                    // Puede llamarse "CANTIDAD", "CANT", "CANTIDA"
-                    colIdx.cant = row.findIndex(c => c.includes("CANTIDA") || c === "CANT"); 
-                    break; 
-                }
-            }
-
-            // Fallback por defecto si las columnas están muy rotas
-            if(colIdx.art === -1) colIdx = { ubi: 0, art: 1, desc: 4, cant: 9 }; 
-
             let itemsFinal = [];
-
-            // 3. Extraer y limpiar datos
             pmRows.forEach(row => {
-                let sku = limpiarValor(row[colIdx.art]);
-                let cantRaw = limpiarValor(row[colIdx.cant]);
-                let cant = parseInt(cantRaw.replace(/[^\d]/g, ""));
-
-                // Filtro: Solo SKUs válidos numéricos y con cantidad
-                if(sku && !isNaN(sku) && sku.length >= 3 && !isNaN(cant) && cant > 0) {
+                let sku = limpiarValor(row[col.art]);
+                let cant = parseInt(limpiarValor(row[col.cant]).replace(/[^\d]/g, ""));
+                if(sku && !isNaN(sku) && sku.length > 2 && cant > 0) {
                     itemsFinal.push({
-                        ubicacion: limpiarValor(row[colIdx.ubi]) || "S/D",
+                        ubicacion: limpiarValor(row[col.ubi]),
                         sku: sku,
-                        descripcion: limpiarValor(row[colIdx.desc]) || "Sin Desc.",
+                        descripcion: limpiarValor(row[col.desc]),
                         cantidad: cant
                     });
                 }
             });
 
-            if(itemsFinal.length === 0) {
-                return alert("⚠️ No se encontraron artículos en la sección de Pallets Mixtos. Revisá el archivo.");
-            }
-            
-            armarPallets(itemsFinal);
+            procesarLogicaPallets(itemsFinal);
         };
         reader.readAsArrayBuffer(file);
     }
 
-    // PASO 2: Lógica de Agrupación de Pallets
-    function armarPallets(items) {
+    function procesarLogicaPallets(items) {
         const pallets = [];
         let current = null;
 
-        // Ordenar ruta de picking: Por Ubicación Alfanumérica
+        // Orden de Picking
         items.sort((a, b) => a.ubicacion.localeCompare(b.ubicacion));
 
         items.forEach(item => {
-            // LÓGICA DE MAESTRO Y CAPACIDAD
-            // Fallback robusto por si no subieron el maestro, detecta Antares por nombre
-            let isAntares = item.descripcion.toUpperCase().includes("ANTARES");
-            let fallbackFamilia = isAntares ? "Antares" : "General";
-            let fallbackBase = isAntares ? 10 : 28;
-            let fallbackCamada = isAntares ? 45 : 5; // 450 para Antares, 140 para resto
-
-            const info = maestro[item.sku] || { "Base": fallbackBase, "Camada": fallbackCamada, "Familia": fallbackFamilia };
+            let skuStr = item.sku.toString();
+            let descUp = item.descripcion.toUpperCase();
             
-            // Determinación del depósito
-            const ubi = item.ubicacion.toUpperCase();
-            let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P014") ? "Dep. 3" : "Dep. 2";
-            
-            // Cálculo de Capacidad Máxima
-            const base = parseInt(info.Base) || fallbackBase;
-            const camada = parseInt(info.Camada) || fallbackCamada;
-            const capacidadMax = base * camada;
+            // --- LÓGICA DE CAPACIDAD JERÁRQUICA ---
+            let familia = "GENERAL";
+            let capacidadMax = 120; // Valor de seguridad
 
-            // Corte de Pallet: Si cambia de depósito, familia, o supera la capacidad permitida
-            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > capacidadMax) {
+            // 1. Intentar por Maestro
+            if (maestro[skuStr]) {
+                let m = maestro[skuStr];
+                familia = m.Familia || "MAESTRO";
+                let base = parseInt(m.Base) || 1;
+                let camada = parseInt(m.Camada) || 1;
+                capacidadMax = base * camada;
+            } 
+            // 2. Si no está en maestro, intentar por Reglas de Texto (REGLAS_POR_DEFECTO)
+            else {
+                let reglaMatch = REGLAS_POR_DEFECTO.find(r => descUp.includes(r.key));
+                if (reglaMatch) {
+                    familia = reglaMatch.familia;
+                    capacidadMax = reglaMatch.capacidad;
+                }
+            }
+
+            let dep = item.ubicacion.startsWith("P014") ? "Dep. 3" : "Dep. 2";
+
+            // Control de corte
+            if (!current || current.dep !== dep || current.familia !== familia || (current.total + item.cantidad) > capacidadMax) {
                 if (current) pallets.push(current);
-                current = { id: pallets.length + 1, dep, familia: info.Familia, capacidadMax, items: [], total: 0 };
+                current = { id: pallets.length + 1, dep, familia, capacidadMax, items: [], total: 0 };
             }
             
             current.items.push(item);
             current.total += item.cantidad;
         });
-        
+
         if (current) pallets.push(current);
-        render(pallets);
+        renderVisual(pallets);
     }
 
-    // PASO 3: Dibujar en Pantalla
-    function render(pallets) {
+    function renderVisual(pallets) {
         document.getElementById('resultadosArea').style.display = 'block';
         const tCon = document.getElementById('tabsContainer');
         const pCon = document.getElementById('palletsContainer');
         tCon.innerHTML = ""; pCon.innerHTML = "";
 
         pallets.forEach((p, idx) => {
-            // Crear Pestaña
             const tab = document.createElement('div');
             tab.className = `pm-tab ${idx===0?'active':''}`;
             tab.innerText = `PM ${p.id}`;
@@ -232,48 +194,24 @@
             };
             tCon.appendChild(tab);
 
-            // Crear Tarjeta de Pallet
             const card = document.createElement('div');
             card.id = `p-${p.id}`;
             card.className = `pallet-card ${idx===0?'active':''}`;
-            
-            let ocupacionPorcentaje = Math.round((p.total / p.capacidadMax) * 100);
+            let ocup = Math.round((p.total / p.capacidadMax) * 100);
             
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
-                        <h2 style="margin:0; color:var(--primary);">Pallet #${p.id} <span class="badge badge-dep">${p.dep}</span></h2>
-                        <p class="summary-text">Total: ${p.total} Bultos <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(Máx: ${p.capacidadMax} | Ocupación: ${ocupacionPorcentaje}%)</span></p>
-                    </div>
-                    <span class="badge" style="background:#f8f9fa; border:1px solid #dee2e6; font-size:1em;">Familia: ${p.familia}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 style="margin:0;">Pallet #${p.id} <small style="font-size:0.5em; color:#666;">(${p.dep})</small></h2>
+                    <span class="badge">FAMILIA: ${p.familia}</span>
                 </div>
-                
+                <p style="font-size:1.1em; color:var(--primary);"><b>Total: ${p.total} CA</b> (Capacidad: ${p.capacidadMax} | ${ocup}%)</p>
                 <table>
-                    <thead>
-                        <tr>
-                            <th style="width:20%;">Ubicación (Ruta)</th>
-                            <th style="width:15%;">SKU</th>
-                            <th style="width:50%;">Descripción</th>
-                            <th style="width:15%;">Cantidad</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${p.items.map(i => `
-                            <tr>
-                                <td><b>${i.ubicacion}</b></td>
-                                <td>${i.sku}</td>
-                                <td>${i.descripcion}</td>
-                                <td><strong>${i.cantidad} CA</strong></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
+                    <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
+                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubicacion}</b></td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad} CA</td></tr>`).join('')}</tbody>
                 </table>
             `;
             pCon.appendChild(card);
         });
-        
-        // Scroll automático hacia los resultados
-        document.getElementById('resultadosArea').scrollIntoView({ behavior: 'smooth' });
     }
 </script>
 </body>
