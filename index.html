@@ -2,37 +2,38 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v20.0 - Final</title>
+    <title>Picking JDE v21.1 - Clean Header</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #4b2c91; --success: #20c997; --bg: #f4f4f9; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 20px; color: #333; }
+        :root { --primary: #2c3e50; --accent: #e74c3c; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #333; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .box { border: 2px solid #eaedf2; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .btn-gen { background: var(--success); color: white; border: none; padding: 18px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
-        .btn-gen:hover { background: #17a67f; }
+        .box { border: 2px solid #eee; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .btn-gen { background: #27ae60; color: white; border: none; padding: 18px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
         .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding-bottom: 5px; }
-        .pm-tab { background: #e2e6ea; padding: 10px 15px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 0.85em; font-weight: bold; }
+        .pm-tab { background: #dfe6e9; padding: 10px 15px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 0.85em; font-weight: bold; }
         .pm-tab.active { background: var(--primary); color: white; }
-        .pallet-card { display: none; border: 2px solid #eee; padding: 30px; border-radius: 15px; background: white; }
+        .pallet-card { display: none; border: 1px solid #ccc; padding: 40px; border-radius: 0; background: white; }
         .pallet-card.active { display: block; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 3px solid #dee2e6; text-transform: uppercase; font-size: 0.8em; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.95em; }
-        .header-print { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-        .pdf-btn { width: 100%; padding: 18px; margin-top: 20px; cursor: pointer; background: #000; color: white; border: none; border-radius: 8px; font-weight: bold; }
-        .badge-order { background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 5px; font-weight: bold; font-size: 1.1em; }
+        th { background: #f2f2f2; padding: 12px; text-align: left; border: 1px solid #333; font-size: 0.9em; }
+        td { padding: 12px; border: 1px solid #333; font-size: 1em; }
+        .header-print { border-bottom: 4px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .pdf-btn { width: 100%; padding: 18px; margin-top: 20px; background: #2c3e50; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .badge-order { border: 2px solid #000; padding: 5px 15px; font-weight: bold; font-size: 1.2em; display: inline-block; }
+        .dep-info { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; color: #555; }
         @media print { 
             .no-print { display: none !important; } 
             .pallet-card { display: block !important; page-break-after: always; border: none; padding: 0; margin: 0; }
             body { background: white; padding: 0; }
+            .container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; }
         }
     </style>
 </head>
 <body>
 
 <div class="container no-print">
-    <h1 style="text-align:center;">📦 Sistema de Picking v20.0</h1>
+    <h1 style="text-align:center;">📦 Control de Picking v21.1</h1>
     
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br><br>
@@ -43,7 +44,7 @@
         <strong>2. Reporte de Surtido JDE (.xls):</strong><br><br>
         <input type="file" id="surtidoFile">
         <br><br>
-        <button class="btn-gen" onclick="procesar()">⚡ GENERAR HOJAS DE RUTA</button>
+        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS MIXTOS</button>
     </div>
 </div>
 
@@ -54,9 +55,8 @@
 </div>
 
 <script>
-    let maestroData = JSON.parse(localStorage.getItem('m_v20')) || {};
+    let maestroData = JSON.parse(localStorage.getItem('m_v21_1')) || {};
 
-    // 1. CARGA DEL MAESTRO
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -72,13 +72,12 @@
                     };
                 }
             });
-            localStorage.setItem('m_v20', JSON.stringify(maestroData));
-            alert("Maestro cargado.");
+            localStorage.setItem('m_v21_1', JSON.stringify(maestroData));
+            alert("Maestro sincronizado.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // 2. PROCESAMIENTO
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
         if(!file) return alert("Subí el archivo de JDE.");
@@ -89,42 +88,39 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(content, "text/html");
             
-            // Extraer Nro de Carga del encabezado (Surtido Mercado Interno XXXXX)
-            const bodyText = doc.body.innerText || "";
-            const cargaMatch = bodyText.match(/Interno\s+(\d+)/i);
-            const nroCarga = cargaMatch ? cargaMatch[1] : "S/C";
+            const fullText = doc.body.innerText || "";
+            const cargaMatch = fullText.match(/Interno\s+(\d+)/i) || fullText.match(/Carga[:\s]+(\d+)/i);
+            const nroCarga = cargaMatch ? cargaMatch[1] : "SIN CARGA";
 
             let itemsRaw = [];
             const rows = doc.querySelectorAll('tr');
 
             rows.forEach(tr => {
-                const cells = Array.from(tr.querySelectorAll('td')).map(c => c.textContent.replace(/\s+/g, ' ').trim());
-                
-                // Ubicacion[0], SKU[1], Desc[4], Orden[6], Linea[7], Cantidad[8]
+                const cells = Array.from(tr.querySelectorAll('td, th')).map(c => c.textContent.replace(/\s+/g, ' ').trim());
                 if(cells.length >= 9) {
                     let ubi = cells[0];
                     let sku = cells[1];
                     let orden = cells[6];
                     let linea = cells[7];
-                    let cantRaw = cells[8];
+                    let cant = parseInt(cells[8]);
 
-                    if(ubi.includes(".") && !isNaN(parseInt(sku)) && !isNaN(parseInt(cantRaw))) {
-                        let cant = parseInt(cantRaw);
+                    if(ubi.includes(".") && !isNaN(parseInt(sku)) && !isNaN(cant)) {
+                        let depPart = ubi.split('.')[1] || "00";
+                        let depId = "P0" + depPart; 
+
                         let m = maestroData[sku] || { cap: 120, fam: "9" };
                         let fam = cells[4].toUpperCase().includes("ANTARES") ? "ANT" : m.fam;
                         let cap = fam === "ANT" ? 350 : m.cap;
-                        let dep = (ubi.startsWith("14.") || ubi.includes("P0.14")) ? "503" : "100"; // Ejemplo de depósitos
 
-                        itemsRaw.push({ ubi, sku, desc: cells[4], orden, linea, cant, fam, cap, dep, nroCarga });
+                        itemsRaw.push({ ubi, sku, desc: cells[4], orden, linea, cant, fam, cap, depId, nroCarga });
                     }
                 }
             });
 
-            if(itemsRaw.length === 0) return alert("No se encontraron datos válidos.");
+            if(itemsRaw.length === 0) return alert("No se detectaron datos válidos.");
 
-            // ORDENAMIENTO ESTRICTO
             itemsRaw.sort((a, b) => {
-                if (a.dep !== b.dep) return a.dep.localeCompare(b.dep);
+                if (a.depId !== b.depId) return a.depId.localeCompare(b.depId);
                 if (a.orden !== b.orden) return a.orden.localeCompare(b.orden);
                 if (a.fam !== b.fam) return a.fam.localeCompare(b.fam);
                 return a.ubi.localeCompare(b.ubi);
@@ -141,37 +137,22 @@
         let globalCounter = 1;
 
         items.forEach(it => {
-            let cantRestante = it.cant;
-
-            while(cantRestante > 0) {
-                // REGLA DE CIERRE: Cambio de Depósito OR Cambio de Orden OR Pallet Lleno
-                if (!current || current.dep !== it.dep || current.orden !== it.orden || current.total >= current.cap) {
-                    current = {
-                        id: globalCounter++,
-                        dep: it.dep,
-                        carga: it.nroCarga,
-                        orden: it.orden,
-                        cap: it.cap,
-                        total: 0,
-                        items: []
-                    };
-                    pallets.push(current);
-                }
-
-                let espacio = current.cap - current.total;
-                let aInsertar = Math.min(cantRestante, espacio);
-
-                current.items.push({
-                    ubi: it.ubi,
-                    sku: it.sku,
-                    desc: it.desc,
-                    linea: it.linea,
-                    cant: aInsertar
-                });
-
-                current.total += aInsertar;
-                cantRestante -= aInsertar;
+            let hayEspacio = current && (current.total + it.cant <= current.cap);
+            
+            if (!current || current.depId !== it.depId || current.orden !== it.orden || !hayEspacio) {
+                current = {
+                    id: globalCounter++,
+                    dep: it.depId,
+                    carga: it.nroCarga,
+                    orden: it.orden,
+                    cap: it.cap,
+                    total: 0,
+                    items: []
+                };
+                pallets.push(current);
             }
+            current.items.push(it);
+            current.total += it.cant;
         });
 
         render(pallets);
@@ -186,7 +167,7 @@
         pallets.forEach((p, idx) => {
             const btn = document.createElement('div');
             btn.className = `pm-tab ${idx === 0 ? 'active' : ''}`;
-            btn.innerText = `PM #${p.id}`;
+            btn.innerText = `PM #${p.id} - ${p.carga}`;
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
@@ -199,25 +180,30 @@
             card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
             card.innerHTML = `
                 <div class="header-print">
-                    <div>
-                        <h1 style="margin:0; font-size: 1.8em;">Hoja de Ruta: ${p.dep}-${p.carga}</h1>
-                        <p style="margin:5px 0; font-weight:bold;">Pallet Mixto Correlativo: #${p.id}</p>
-                    </div>
-                    <div style="text-align:right;">
-                        <span class="badge-order">ORDEN: ${p.orden}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div>
+                            <h1 style="margin:0; font-size: 2.5em;">Hoja de Ruta: ${p.carga}</h1>
+                            <div class="dep-info">Depósito: ${p.dep} | Pallet Mixto #${p.id}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="badge-order">ORDEN: ${p.orden}</div>
+                        </div>
                     </div>
                 </div>
                 
-                <p><strong>Capacidad Pallet:</strong> ${p.total} / ${p.cap} CAJAS</p>
+                <div style="margin-bottom:20px; font-size: 1.1em; display: flex; justify-content: space-between;">
+                    <span><strong>Ocupación:</strong> ${p.total} / ${p.cap} cajas</span>
+                    <span><strong>Fecha:</strong> ${new Date().toLocaleDateString()}</span>
+                </div>
 
                 <table>
                     <thead>
                         <tr>
-                            <th>Ubicación</th>
-                            <th>SKU</th>
-                            <th>Descripción</th>
-                            <th>Línea</th>
-                            <th style="text-align:right;">Cant</th>
+                            <th style="width:15%">Ubicación</th>
+                            <th style="width:10%">SKU</th>
+                            <th style="width:50%">Descripción del Artículo</th>
+                            <th style="width:10%">Línea</th>
+                            <th style="width:15%; text-align:center;">Cant.</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -225,17 +211,18 @@
                             <tr>
                                 <td><b>${i.ubi}</b></td>
                                 <td>${i.sku}</td>
-                                <td style="font-size: 0.85em;">${i.desc}</td>
+                                <td style="font-size: 0.9em;">${i.desc}</td>
                                 <td>${i.linea}</td>
-                                <td style="text-align:right; font-weight:bold;">${i.cant}</td>
+                                <td style="text-align:center; font-weight:bold; font-size:1.2em;">${i.cant}</td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
                 
-                <div style="margin-top:40px; border-top:1px solid #ccc; padding-top:10px; font-style:italic; font-size: 0.8em; display:flex; justify-content:space-between;">
-                    <span>Preparado por: _______________________</span>
-                    <span>Fecha: ____/____/____</span>
+                <div style="margin-top:60px; display:flex; justify-content:space-between;">
+                    <div style="border-top: 2px solid #000; width: 250px; text-align:center; padding-top:5px; font-weight: bold;">Preparado por</div>
+                    <div style="border-top: 2px solid #000; width: 250px; text-align:center; padding-top:5px; font-weight: bold;">Control Despacho</div>
+                    <div style="text-align:right;">Pág. ${p.id}</div>
                 </div>
             `;
             cont.appendChild(card);
