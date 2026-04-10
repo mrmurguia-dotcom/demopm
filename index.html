@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asistente de Picking v11.0 - Estable</title>
+    <title>Asistente de Picking v11.1 - Estable</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #0056b3; --success: #28a745; --bg: #f4f7f6; }
@@ -43,14 +43,14 @@
     <div id="resArea" style="display:none;">
         <div id="tabs" class="pm-nav"></div>
         <div id="pallets"></div>
-        <button onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer;">🖨️ IMPRIMIR TODO</button>
+        <button onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer; background:#333; color:white; border-radius:8px;">🖨️ IMPRIMIR TODO</button>
     </div>
 </div>
 
 <script>
-    let maestroData = JSON.parse(localStorage.getItem('m_v11')) || {};
+    let maestroData = JSON.parse(localStorage.getItem('m_v11_1')) || {};
 
-    // --- CARGA DE MAESTRO (BASADO EN TU EXCEL DE COLUMNAS B, F, G, I) ---
+    // --- CARGA DE MAESTRO (BASADO EN image_e2b62c.png) ---
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -59,16 +59,16 @@
             maestroData = {};
             rows.forEach((row, i) => {
                 if(i === 0) return;
-                let sku = (row[1] || "").toString().trim(); // Col B
+                let sku = (row[1] || "").toString().trim(); // Col B (index 1)
                 if(sku) {
                     maestroData[sku] = {
-                        base: parseFloat(row[5]) || 1,    // Col F
-                        camada: parseFloat(row[6]) || 1,  // Col G
-                        familia: (row[8] || "9").toString().trim() // Col I
+                        base: parseFloat(row[5]) || 1,    // Col F (index 5)
+                        camada: parseFloat(row[6]) || 1,  // Col G (index 6)
+                        familia: (row[8] || "9").toString().trim() // Col I (index 8)
                     };
                 }
             });
-            localStorage.setItem('m_v11', JSON.stringify(maestroData));
+            localStorage.setItem('m_v11_1', JSON.stringify(maestroData));
             alert("Maestro cargado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
@@ -84,41 +84,45 @@
             const wb = XLSX.read(data, {type: 'array'});
             const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: ""});
 
-            // --- LÓGICA DE LECTURA QUE FUNCIONA ---
+            // --- BUSCAR SECCIÓN "PALLET MIXTO" ---
             let startIndex = -1;
             for(let i=0; i < rows.length; i++) {
                 let txt = rows[i].join(" ").toUpperCase();
-                if(txt.includes("PALLET MIXTO") || txt.includes("SURTIDO PM")) { //
+                if(txt.includes("PALLET MIXTO") || txt.includes("SURTIDO PM")) { 
                     startIndex = i;
                     break;
                 }
             }
 
-            if(startIndex === -1) return alert("No se encontró la sección de Pallets Mixtos.");
+            if(startIndex === -1) return alert("No se encontró la sección de Pallets Mixtos en el reporte.");
 
             let items = [];
+            // Empezamos a leer desde donde encontramos el encabezado
             for(let j = startIndex; j < rows.length; j++) {
                 let r = rows[j];
-                let sku = (r[1] || "").toString().trim(); // Col B
-                let cant = parseInt((r[9] || "").toString().replace(/[^\d]/g, "")); // Col J
+                let sku = (r[1] || "").toString().trim(); // Col B (index 1)
+                // AJUSTE: Cantidad está en Col I (index 8) según image_e23a4d.png
+                let cantStr = (r[8] || "").toString().replace(/[^\d]/g, "");
+                let cant = parseInt(cantStr);
                 
-                if(sku && !isNaN(sku) && sku.length > 2 && cant > 0) {
+                if(sku && !isNaN(sku) && sku.length > 2 && !isNaN(cant) && cant > 0) {
                     items.push({
-                        ubi: (r[0] || "").toString().trim(), // Col A
+                        ubi: (r[0] || "").toString().trim(),  // Col A (index 0)
                         sku: sku,
-                        desc: (r[4] || "").toString().trim(), // Col E
+                        desc: (r[4] || "").toString().trim(), // Col E (index 4)
                         cant: cant
                     });
                 }
             }
 
-            if(items.length === 0) return alert("No se encontraron productos válidos.");
+            if(items.length === 0) return alert("No se encontraron productos válidos en la sección 'Pallet Mixto'.");
             procesarAgrupado(items);
         };
         reader.readAsArrayBuffer(file);
     }
 
     function procesarAgrupado(items) {
+        // Ordenar por Ubicación (Picking Path)
         items.sort((a, b) => a.ubi.localeCompare(b.ubi));
 
         const pallets = [];
@@ -127,19 +131,29 @@
         items.forEach(it => {
             let m = maestroData[it.sku];
             let fam = m ? m.familia : "9";
-            let cap = m ? (m.base * m.camada) : 140; // Base * Camada corregido
+            // CORRECCIÓN: Capacidad = Base * Camada
+            let cap = m ? Math.floor(m.base * m.camada) : 140; 
 
-            // Override Antares
+            // Especial Antares (image_e23a4d.png / image_e23e8b.png)
             if(it.desc.toUpperCase().includes("ANTARES")) {
                 fam = "ANTARES";
-                cap = 450;
+                cap = 450; 
             }
 
-            let dep = it.ubi.includes("P0.14") || it.ubi.includes("P014") ? "Dep. 2" : "Dep. 1";
+            // Identificar Depósito
+            let dep = (it.ubi.includes("P0.14") || it.ubi.includes("P014")) ? "Dep. 2" : "Dep. 1";
 
+            // Regla de agrupamiento: mismo Dep, misma Familia y que quepa en el pallet
             if(!current || current.dep !== dep || current.fam !== fam || (current.total + it.cant) > current.cap) {
                 if(current) pallets.push(current);
-                current = { id: pallets.length + 1, dep, fam, cap, total: 0, items: [] };
+                current = { 
+                    id: pallets.length + 1, 
+                    dep: dep, 
+                    fam: fam, 
+                    cap: cap, 
+                    total: 0, 
+                    items: [] 
+                };
             }
             current.items.push(it);
             current.total += it.cant;
@@ -169,15 +183,17 @@
             const card = document.createElement('div');
             card.id = 'p-' + p.id;
             card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
+            let ocupacion = Math.round((p.total / p.cap) * 100);
+            
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h2>Pallet #${p.id} <span style="font-size:0.6em; color:#666;">(${p.dep})</span></h2>
+                    <h2>Pallet Mixto #${p.id} <span style="font-size:0.6em; color:#666;">(${p.dep})</span></h2>
                     <span class="badge">FAMILIA: ${p.fam}</span>
                 </div>
-                <p><strong>Total: ${p.total} CA</strong> (Capacidad: ${p.cap})</p>
+                <p><strong>Total: ${p.total} CA</strong> <small>(Capacidad: ${p.cap} | Ocupación: ${ocupacion}%)</small></p>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
-                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubi}</b></td><td>${i.sku}</td><td>${i.desc}</td><td>${i.cant}</td></tr>`).join('')}</tbody>
+                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubi}</b></td><td>${i.sku}</td><td>${i.desc}</td><td>${i.cant} CA</td></tr>`).join('')}</tbody>
                 </table>
             `;
             cont.appendChild(card);
