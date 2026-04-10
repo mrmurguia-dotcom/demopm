@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v27.5 - Agrupación Estricta</title>
+    <title>Picking JDE v27.7 - Regla de Base Acumulada</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; }
@@ -27,7 +27,7 @@
 <body>
 
 <div class="container no-print">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v27.5</h2>
+    <h2 style="text-align:center;">📦 Optimizador de Picking v27.7</h2>
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
@@ -107,7 +107,7 @@
                 }
             });
 
-            // Ordenamiento por Depósito, Orden y Línea
+            // Ordenamiento base: Depósito, Orden, Línea
             itemsRaw.sort((a,b) => 
                 a.dep.localeCompare(b.dep) || 
                 a.orden.localeCompare(b.orden) || 
@@ -120,37 +120,63 @@
     }
 
     function armarLogica(items) {
+        // 1. ANÁLISIS POR ORDEN Y FAMILIA
+        let resumenFamilias = {}; 
+        items.forEach(it => {
+            let key = it.orden + "_" + it.fam;
+            if(!resumenFamilias[key]) {
+                resumenFamilias[key] = { totalCant: 0, maxBase: 0 };
+            }
+            resumenFamilias[key].totalCant += it.cant;
+            if(it.base > resumenFamilias[key].maxBase) {
+                resumenFamilias[key].maxBase = it.base;
+            }
+        });
+
         let pallets = [];
         let pAct = null;
         let cont = 1;
 
         items.forEach(it => {
+            let infoFam = resumenFamilias[it.orden + "_" + it.fam];
+            let esEspecial = (it.fam === "4" || it.fam === "9");
+            
+            // REGLA CLAVE: Un artículo especial debe ir AISLADO si el TOTAL de su familia en la orden >= base máxima
+            let debeIrAislado = esEspecial && (infoFam.totalCant >= infoFam.maxBase);
+
             let forzarNuevo = false;
 
             if(!pAct) {
                 forzarNuevo = true;
             } else {
-                // 1. Cambio de Depósito u Orden
+                // A. Cambio de Depósito u Orden
                 if(pAct.dep !== it.dep || pAct.orden !== it.orden) forzarNuevo = true;
                 
-                // 2. SEGREGACIÓN ESTRICTA POR FAMILIA (4, 9 y Otras)
-                // Obtenemos la familia predominante del pallet actual
+                // B. Lógica de Aislamiento
                 let famPallet = pAct.items[0].fam;
-                
-                // Si el item nuevo es de una familia especial (4 o 9) y el pallet tiene OTRA cosa -> Nuevo
-                if ((it.fam === "4" || it.fam === "9") && it.fam !== famPallet) forzarNuevo = true;
-                
-                // Si el pallet es de una familia especial (4 o 9) y el item nuevo NO es de esa familia -> Nuevo
-                if ((famPallet === "4" || famPallet === "9") && it.fam !== famPallet) forzarNuevo = true;
+                let itemEnPalletAislado = pAct.items.some(x => {
+                    let f = resumenFamilias[x.orden + "_" + x.fam];
+                    return (x.fam === "4" || x.fam === "9") && (f.totalCant >= f.maxBase);
+                });
 
-                // 3. Límite de capacidad física
+                // Si el item nuevo debe ir aislado y el pallet tiene otra familia -> Nuevo
+                if (debeIrAislado && it.fam !== famPallet) forzarNuevo = true;
+                
+                // Si el pallet ya contiene algo que está aislado y el nuevo item es de otra familia -> Nuevo
+                if (itemEnPalletAislado && it.fam !== famPallet) forzarNuevo = true;
+
+                // C. Capacidad física
                 let itemsConNuevo = [...pAct.items, it];
                 let maxItem = itemsConNuevo.reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
                 let capLimite = maxItem.capFull;
 
-                // Si son todos chiquitos de familia 0, limitamos a 84
-                let todosChicosNormales = itemsConNuevo.every(x => x.cant < x.base && x.fam === "0");
-                if(todosChicosNormales) capLimite = 84;
+                // Si es un mix de cosas chicas (no aisladas), límite 84
+                let todosChicos = itemsConNuevo.every(x => {
+                    let f = resumenFamilias[x.orden + "_" + x.fam];
+                    let aislado = (x.fam === "4" || x.fam === "9") && (f.totalCant >= f.maxBase);
+                    return !aislado && x.cant < x.base;
+                });
+                if(todosChicos) capLimite = 84;
 
                 if(pAct.total + it.cant > capLimite) forzarNuevo = true;
             }
@@ -163,9 +189,12 @@
             pAct.items.push(it);
             pAct.total += it.cant;
             
-            // Recalcular capacidad máxima del pallet basada en el artículo más grande que contiene
+            // Recalcular capacidad visual del pallet
             let mItem = pAct.items.reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
-            pAct.capMax = pAct.items.every(x => x.cant < x.base && x.fam === "0") ? 84 : mItem.capFull;
+            pAct.capMax = pAct.items.every(x => {
+                let f = resumenFamilias[x.orden + "_" + x.fam];
+                return !((x.fam === "4" || x.fam === "9") && (f.totalCant >= f.maxBase)) && x.cant < x.base;
+            }) ? 84 : mItem.capFull;
         });
 
         render(pallets);
@@ -220,7 +249,7 @@
                 <div style="margin-top:40px; display:flex; justify-content: space-between;">
                     <div style="border-top:1px solid #000; width:200px; text-align:center;">Preparador</div>
                     <div style="border-top:1px solid #000; width:200px; text-align:center;">Control Despacho</div>
-                    <div style="font-size:0.8em">v27.5 - Picking Inteligente</div>
+                    <div style="font-size:0.8em">v27.7 - Picking Inteligente</div>
                 </div>
             `;
             cont.appendChild(card);
