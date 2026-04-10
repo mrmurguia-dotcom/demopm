@@ -2,55 +2,51 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking Inteligente v12.3 - Estructura Fija</title>
+    <title>Picking JDE v13.0 - Detector Dinámico</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #2ea44f; --bg: #f8f9fa; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); padding: 20px; line-height: 1.5; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); }
-        .box { border: 2px dashed #d1d5db; padding: 20px; border-radius: 8px; margin-bottom: 20px; transition: 0.3s; }
-        .box:hover { border-color: var(--primary); background: #f0f7ff; }
-        .btn-gen { background: var(--success); color: white; border: none; padding: 16px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; box-shadow: 0 4px 12px rgba(46,164,79,0.3); }
-        .btn-gen:hover { background: #2c974b; transform: translateY(-1px); }
-        .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding: 10px 0; }
-        .pm-tab { background: #eee; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+        body { font-family: sans-serif; background: var(--bg); padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .box { border: 2px dashed #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
+        .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; }
+        .pm-tab { background: #eee; padding: 10px 15px; border-radius: 6px; cursor: pointer; }
         .pm-tab.active { background: var(--primary); color: white; }
-        .pallet-card { display: none; border: 1px solid #e1e4e8; padding: 25px; border-radius: 12px; background: #fff; }
+        .pallet-card { display: none; border: 1px solid #ddd; padding: 20px; border-radius: 10px; }
         .pallet-card.active { display: block; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.95em; }
-        th { background: #f6f8fa; color: #57606a; padding: 12px; text-align: left; border-bottom: 2px solid #e1e4e8; }
-        td { padding: 12px; border-bottom: 1px solid #eff2f5; }
-        .badge { background: #f1f8ff; color: #0550ae; padding: 4px 12px; border-radius: 6px; font-size: 0.85em; font-weight: bold; border: 1px solid #c8e1ff; }
-        @media print { .box, .pm-nav, .btn-gen, h1 { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; padding: 0; } }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        .badge { background: #e8f0fe; color: #1967d2; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; }
+        @media print { .box, .pm-nav, .btn-gen, h1 { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align:center; color:#24292f; margin-bottom:30px;">📦 Optimizador de Picking v12.3</h1>
+    <h1 style="text-align:center;">📦 Picking v13.0 (Fila Dinámica)</h1>
 
     <div class="box">
-        <strong>1. Maestro (Columnas: B=SKU, F=Base, G=Camada, I=Familia)</strong><br><br>
+        <strong>1. Maestro de Productos:</strong><br><br>
         <input type="file" id="masterFile" accept=".xlsx, .xls">
     </div>
 
     <div class="box">
-        <strong>2. Reporte JDE (Columnas: A, B, E, I)</strong><br><br>
+        <strong>2. Reporte JDE:</strong><br><br>
         <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-        <button class="btn-gen" onclick="ejecutar()">🚀 GENERAR PALLETS</button>
+        <button class="btn-gen" onclick="ejecutar()">🚀 PROCESAR SURTIDO</button>
     </div>
 
     <div id="resArea" style="display:none;">
         <div id="tabs" class="pm-nav"></div>
         <div id="pallets"></div>
-        <button onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer; background:#24292f; color:white; border-radius:8px; border:none; font-weight:bold;">🖨️ IMPRIMIR TODO</button>
+        <button onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer;">🖨️ IMPRIMIR TODO</button>
     </div>
 </div>
 
 <script>
-    let maestroData = JSON.parse(localStorage.getItem('m_v12_3')) || {};
+    let maestroData = JSON.parse(localStorage.getItem('m_v13')) || {};
 
-    // Carga Maestro
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -68,37 +64,36 @@
                     };
                 }
             });
-            localStorage.setItem('m_v12_3', JSON.stringify(maestroData));
-            alert("✅ Maestro cargado con éxito.");
+            localStorage.setItem('m_v13', JSON.stringify(maestroData));
+            alert("Maestro cargado.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
     function ejecutar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Por favor, seleccioná el archivo de surtido.");
+        if(!file) return alert("Subí el reporte de JDE.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const wb = XLSX.read(data, {type: 'array'});
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
             const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: ""});
 
             let startIndex = -1;
-            // Buscamos la fila de encabezados de forma flexible
+            // ESCANEO DINÁMICO: Buscamos en qué fila están los encabezados
             for(let i=0; i < rows.length; i++) {
-                let cellA = (rows[i][0] || "").toString().toUpperCase();
-                let cellB = (rows[i][1] || "").toString().toUpperCase();
+                let txtA = (rows[i][0] || "").toString().toUpperCase();
+                let txtB = (rows[i][1] || "").toString().toUpperCase();
                 
-                // Si la celda A tiene "UBIC" y la B tiene "ART", es nuestra fila
-                if(cellA.includes("UBIC") && cellB.includes("ART")) {
-                    startIndex = i + 2; // Saltamos títulos y la fila en blanco
+                // Si la celda A tiene "UBIC" y la B tiene "ART", encontramos la tabla
+                if(txtA.includes("UBIC") && txtB.includes("ART")) {
+                    startIndex = i + 1; // La data empieza en la siguiente fila
                     break;
                 }
             }
 
             if(startIndex === -1) {
-                return alert("No se pudo encontrar la tabla. Verificá que el Excel tenga las columnas 'Ubicación' y 'Artículo' en la fila 10.");
+                return alert("No se detectó la tabla. Asegurate que el reporte tenga las columnas 'Ubicación' y 'Artículo'.");
             }
 
             let items = [];
@@ -107,26 +102,26 @@
                 let ubi = (r[0] || "").toString().trim();
                 let sku = (r[1] || "").toString().trim();
                 let desc = (r[4] || "").toString().trim();
-                let cantStr = (r[8] || "").toString().trim();
+                let cantRaw = (r[8] || "").toString().trim(); // Columna I (Cantidad)
 
-                // Solo procesamos si hay ubicación con formato (ej: 14.0X...) y hay SKU
+                // Filtro: Si tiene ubicación con punto (ej: 14.0X) y hay SKU, es un producto válido
                 if(ubi.includes(".") && sku !== "") {
-                    // Limpiamos la cantidad de cualquier texto (como "CA")
-                    let cant = parseInt(cantStr.replace(/[^\d]/g, "")) || 0;
+                    // Limpieza profunda de la cantidad (quitar "CA", espacios, etc)
+                    let cant = parseInt(cantRaw.replace(/[^\d]/g, "")) || 0;
                     if(cant > 0) {
                         items.push({ ubi, sku, desc, cant });
                     }
                 }
             }
 
-            if(items.length === 0) return alert("No se detectaron productos con cantidades válidas.");
+            if(items.length === 0) return alert("No se encontraron productos con cantidades válidas.");
             procesarLogica(items);
         };
         reader.readAsArrayBuffer(file);
     }
 
     function procesarLogica(items) {
-        // Ordenar por ubicación para picking eficiente
+        // Ordenar por ubicación para recorrido lógico
         items.sort((a, b) => a.ubi.localeCompare(b.ubi));
 
         const pallets = [];
@@ -137,15 +132,11 @@
             let fam = m ? m.familia : "9";
             let cap = (m && m.base > 0 && m.camada > 0) ? Math.floor(m.base * m.camada) : 100;
 
-            // Regla especial Antares (Dep 2)
-            if(it.desc.toUpperCase().includes("ANTARES")) {
-                fam = "ANTARES";
-                cap = 300; 
-            }
+            // Lógica especial Antares
+            if(it.desc.toUpperCase().includes("ANTARES")) { fam = "ANT"; cap = 300; }
 
-            let dep = (it.ubi.toUpperCase().startsWith("P0.14") || it.ubi.toUpperCase().startsWith("P014")) ? "Dep. 2" : "Dep. 1";
+            let dep = (it.ubi.includes("P0.14") || it.ubi.includes("P014")) ? "Dep. 2" : "Dep. 1";
 
-            // Si cambia el depósito, la familia o se supera la capacidad, creamos nuevo pallet
             if(!current || current.dep !== dep || current.fam !== fam || (current.total + it.cant) > current.cap) {
                 if(current) pallets.push(current);
                 current = { id: pallets.length + 1, dep, fam, cap, total: 0, items: [] };
@@ -179,27 +170,13 @@
             const card = document.createElement('div');
             card.id = 'p-' + p.id;
             card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
-            let ocupacion = Math.round((p.total / p.cap) * 100);
-            
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; margin-bottom:15px; padding-bottom:10px;">
-                    <h2 style="margin:0;">Pallet #${p.id} <span style="font-weight:normal; color:#666; font-size:0.7em;">— ${p.dep}</span></h2>
-                    <span class="badge">FAMILIA ${p.fam}</span>
-                </div>
-                <div style="margin-bottom:15px; font-weight:bold;">
-                    Total: ${p.total} CA <span style="color:#666; font-weight:normal;">(Ocupación: ${ocupacion}%)</span>
-                </div>
+                <h2>Pallet #${p.id} <small>(${p.dep})</small></h2>
+                <p><strong>Familia:</strong> ${p.fam} | <strong>Total:</strong> ${p.total} CA</p>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
                     <tbody>
-                        ${p.items.map(i => `
-                            <tr>
-                                <td><code style="background:#f4f4f4; padding:2px 5px; border-radius:4px;">${i.ubi}</code></td>
-                                <td>${i.sku}</td>
-                                <td>${i.desc}</td>
-                                <td style="font-weight:bold;">${i.cant}</td>
-                            </tr>
-                        `).join('')}
+                        ${p.items.map(i => `<tr><td>${i.ubi}</td><td>${i.sku}</td><td>${i.desc}</td><td>${i.cant}</td></tr>`).join('')}
                     </tbody>
                 </table>
             `;
