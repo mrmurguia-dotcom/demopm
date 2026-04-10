@@ -2,24 +2,25 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v17.0 - Oracle BI Edition</title>
+    <title>Picking JDE v18.0 - DOM Parser</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --success: #2ea44f; --bg: #f1f3f4; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); padding: 20px; color: #3c4043; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .box { border: 2px dashed #dadce0; padding: 20px; border-radius: 8px; margin-bottom: 20px; background: #fff; }
+        :root { --primary: #6f42c1; --success: #20c997; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); padding: 20px; color: #343a40; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .box { border: 2px solid #e9ecef; padding: 20px; border-radius: 8px; margin-bottom: 20px; transition: 0.3s; }
+        .box:hover { border-color: var(--primary); }
         .btn-gen { background: var(--success); color: white; border: none; padding: 18px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.2s; }
-        .btn-gen:hover { background: #268a42; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .btn-gen:hover { background: #1aa179; transform: translateY(-2px); }
         .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding-bottom: 5px; }
-        .pm-tab { background: #e8eaed; padding: 10px 18px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 0.9em; font-weight: 500; }
+        .pm-tab { background: #e9ecef; padding: 10px 18px; border-radius: 20px; cursor: pointer; font-size: 0.9em; font-weight: 600; color: #495057; }
         .pm-tab.active { background: var(--primary); color: white; }
-        .pallet-card { display: none; border: 1px solid #e0e0e0; padding: 25px; border-radius: 10px; background: white; }
-        .pallet-card.active { display: block; animation: fadeIn 0.3s; }
+        .pallet-card { display: none; border: 1px solid #dee2e6; padding: 25px; border-radius: 10px; background: white; }
+        .pallet-card.active { display: block; animation: fadeIn 0.4s; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #ddd; color: #5f6368; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; color: #495057; }
         td { padding: 12px; border-bottom: 1px solid #eee; }
-        .badge { background: #e8f0fe; color: #1967d2; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
+        .badge { background: #e0cffc; color: #5227a1; padding: 5px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @media print { .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
@@ -27,7 +28,8 @@
 <body>
 
 <div class="container no-print">
-    <h1 style="text-align:center; margin-bottom:30px;">📦 Picking v17.0 (Oracle Native)</h1>
+    <h1 style="text-align:center; margin-bottom:10px;">📦 Picking JDE v18.0</h1>
+    <p style="text-align:center; color:#6c757d; margin-bottom:30px;">Motor de Extracción DOM Native (Oracle BI)</p>
 
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br><br>
@@ -35,22 +37,23 @@
     </div>
 
     <div class="box">
-        <strong>2. Reporte BI Publisher JDE (.xls):</strong><br><br>
+        <strong>2. Reporte de Surtido JDE (.xls nativo):</strong><br><br>
         <input type="file" id="surtidoFile">
-        <button class="btn-gen" onclick="procesar()">⚡ PROCESAR SURTIDO</button>
+        <br><br>
+        <button class="btn-gen" onclick="procesar()">⚡ PROCESAR Y GENERAR</button>
     </div>
 </div>
 
 <div id="resArea" class="container" style="display:none; margin-top:20px;">
     <div id="tabs" class="pm-nav no-print"></div>
     <div id="pallets"></div>
-    <button class="no-print" onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer; background:#3c4043; color:white; border:none; border-radius:8px; font-weight:bold;">🖨️ IMPRIMIR TODO</button>
+    <button class="no-print" onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer; background:#343a40; color:white; border:none; border-radius:8px; font-weight:bold; font-size: 1.1em;">🖨️ IMPRIMIR PALLETS MIXTOS</button>
 </div>
 
 <script>
-    let maestroData = JSON.parse(localStorage.getItem('m_v17')) || {};
+    let maestroData = JSON.parse(localStorage.getItem('m_v18')) || {};
 
-    // Carga Maestro tradicional
+    // Carga de Maestro
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -66,56 +69,78 @@
                     };
                 }
             });
-            localStorage.setItem('m_v17', JSON.stringify(maestroData));
-            alert("Maestro cargado con éxito.");
+            localStorage.setItem('m_v18', JSON.stringify(maestroData));
+            alert("✅ Maestro sincronizado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Subí el archivo de surtido.");
+        if(!file) return alert("Por favor, subí el archivo de surtido de JDE.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
             const content = e.target.result;
-            // 1. EXTRAER TODOS LOS TD (CELDAS) DEL HTML USANDO REGEX
-            const regex = /<td[^>]*>(.*?)<\/td>/gi;
-            let cells = [];
-            let match;
-            while ((match = regex.exec(content)) !== null) {
-                // Limpiar etiquetas internas (spans, divs, brs)
-                let val = match[1].replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim();
-                cells.push(val);
-            }
-
-            // 2. AGRUPAR EN FILAS (El reporte JDE tiene 11 columnas según vimos)
+            
+            // EL MOTOR NATIVO: Dejamos que el navegador parsee el HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, "text/html");
+            
             let items = [];
-            for (let i = 0; i < cells.length; i++) {
-                // Buscamos algo que parezca una ubicación (tiene un punto y no es el título)
-                if (cells[i].includes(".") && cells[i].toLowerCase() !== "ubicación") {
-                    let ubi = cells[i];
-                    let sku = cells[i+1] || "";
-                    let desc = cells[i+4] || "";
-                    let cantRaw = cells[i+8] || "0";
 
-                    // Validamos que el SKU sea numérico y la cantidad sea válida
-                    if (!isNaN(sku) && sku !== "") {
+            // ESTRATEGIA 1: Leer fila por fila (<tr>)
+            const rows = doc.querySelectorAll('tr');
+            rows.forEach(tr => {
+                // extraemos el texto de cada celda y borramos los saltos de línea internos
+                const cells = Array.from(tr.querySelectorAll('td, th')).map(c => c.textContent.replace(/\s+/g, ' ').trim());
+                
+                // Si la fila tiene suficientes columnas (al menos hasta cantidad que es la 9na)
+                if(cells.length >= 9) {
+                    let ubi = cells[0];
+                    let sku = cells[1];
+                    let desc = cells[4];
+                    let cantRaw = cells[8];
+                    
+                    // Validamos que parezca una ubicación (ej: P0.14.001.0) y un SKU válido
+                    if(ubi.includes(".") && ubi.length > 5 && !isNaN(parseInt(sku))) {
                         let cant = parseInt(cantRaw.replace(/[^\d]/g, "")) || 0;
-                        if (cant > 0) {
+                        if(cant > 0) {
                             items.push({ ubi, sku, desc, cant });
-                            i += 10; // Saltamos a la siguiente fila probable
+                        }
+                    }
+                }
+            });
+
+            // ESTRATEGIA 2: Si el HTML de Oracle anida las tablas mal, leemos todas las celdas sueltas
+            if(items.length === 0) {
+                const allCells = Array.from(doc.querySelectorAll('td')).map(c => c.textContent.replace(/\s+/g, ' ').trim());
+                for(let i = 0; i < allCells.length; i++) {
+                    let ubi = allCells[i];
+                    if(ubi.includes('.') && ubi.length > 5 && (ubi.startsWith('P0.') || ubi.startsWith('14.'))) {
+                        let sku = allCells[i+1] || "";
+                        if(!isNaN(parseInt(sku)) && sku.length > 3) {
+                            let desc = allCells[i+4] || "";
+                            let cantRaw = allCells[i+8] || "0";
+                            let cant = parseInt(cantRaw.replace(/[^\d]/g, "")) || 0;
+                            
+                            if(cant > 0) {
+                                items.push({ ubi, sku, desc, cant });
+                                i += 8; // Saltamos a la siguiente fila lógica
+                            }
                         }
                     }
                 }
             }
 
-            if(items.length === 0) return alert("No se pudo extraer información. ¿Seguro que es el reporte de surtido?");
+            if(items.length === 0) return alert("❌ No se detectaron productos. El archivo está muy vacío o el formato cambió drásticamente.");
             
+            // Ordenar por ubicación
             items.sort((a, b) => a.ubi.localeCompare(b.ubi));
             logicaPallets(items);
         };
-        reader.readAsText(file, "UTF-8");
+        // Leemos como ISO-8859-1 para que los acentos y ñ de JDE salgan bien
+        reader.readAsText(file, "ISO-8859-1"); 
     }
 
     function logicaPallets(items) {
@@ -149,7 +174,7 @@
         pallets.forEach((p, idx) => {
             const btn = document.createElement('div');
             btn.className = `pm-tab ${idx === 0 ? 'active' : ''}`;
-            btn.innerText = `PM #${p.id} (${p.fam})`;
+            btn.innerText = `Pallet #${p.id} (${p.fam})`;
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
@@ -162,10 +187,10 @@
             card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h2 style="margin:0;">Pallet Mixto #${p.id}</h2>
+                    <h2 style="margin:0;">Hoja de Ruta - Pallet Mixto #${p.id}</h2>
                     <span class="badge">${p.dep}</span>
                 </div>
-                <p><strong>Familia:</strong> ${p.fam} | <strong>Total:</strong> ${p.total} / ${p.cap} CA</p>
+                <p><strong>Familia:</strong> ${p.fam} | <strong>Ocupación:</strong> ${p.total} / ${p.cap} Cajas</p>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
                     <tbody>${p.items.map(i => `<tr><td><b>${i.ubi}</b></td><td>${i.sku}</td><td>${i.desc}</td><td>${i.cant}</td></tr>`).join('')}</tbody>
