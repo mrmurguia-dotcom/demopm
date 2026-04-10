@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v27.2 - Termos y Latas</title>
+    <title>Picking JDE v27.3 - Fix Agrupamiento</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; }
@@ -27,7 +27,7 @@
 <body>
 
 <div class="container no-print">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v27.2</h2>
+    <h2 style="text-align:center;">📦 Optimizador de Picking v27.3</h2>
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
@@ -107,8 +107,7 @@
                 }
             });
 
-            // --- UNICO CAMBIO RESPECTO A v27.0 ---
-            // Ordenamos por Depósito, Orden y estrictamente por LÍNEA (quitamos familia del orden inicial)
+            // Orden por Depósito, Orden y Línea Ascendente
             itemsRaw.sort((a,b) => 
                 a.dep.localeCompare(b.dep) || 
                 a.orden.localeCompare(b.orden) || 
@@ -126,21 +125,31 @@
         let cont = 1;
 
         items.forEach(it => {
-            // APLICAMOS LA REGLA A LA FAMILIA 9 (LATAS) Y 4 (TERMO)
-            let esEspecialGrande = ((it.fam === "9" || it.fam === "4") && it.cant >= it.base);
+            let esEspecial = (it.fam === "9" || it.fam === "4");
             let forzarNuevo = false;
 
             if(!pAct) {
                 forzarNuevo = true;
             } else {
+                // 1. Cambio de Depósito u Orden obliga a pallet nuevo
                 if(pAct.dep !== it.dep || pAct.orden !== it.orden) forzarNuevo = true;
                 
-                let tieneEspecialGrande = pAct.items.some(x => (x.fam === "9" || x.fam === "4") && x.cant >= x.base);
-                if(esEspecialGrande || tieneEspecialGrande) forzarNuevo = true;
+                // 2. Lógica corregida para Familias Especiales (4 y 9)
+                // Solo forzamos pallet nuevo si el artículo actual es especial Y el pallet actual tiene algo que NO es de la misma familia especial.
+                let tieneAlgoDiferente = pAct.items.some(x => x.fam !== it.fam);
+                
+                if(esEspecial && tieneAlgoDiferente) {
+                    // Si el pallet ya tiene otras familias, el "termo" o "lata" grande se va a pallet nuevo
+                    if(it.cant >= it.base) forzarNuevo = true;
+                }
 
+                // 3. Si el pallet actual ya tiene un "especial" grande y este item NO es de esa misma familia
+                let tieneEspecialGrande = pAct.items.some(x => (x.fam === "4" || x.fam === "9") && x.cant >= x.base && x.fam !== it.fam);
+                if(tieneEspecialGrande) forzarNuevo = true;
+
+                // 4. Límite de capacidad
                 let maxItem = [...pAct.items, it].reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
                 let capLimite = maxItem.capFull;
-
                 let todosChicos = [...pAct.items, it].every(x => x.cant < x.base && x.fam !== "9" && x.fam !== "4");
                 if(todosChicos) capLimite = 84;
 
@@ -183,7 +192,6 @@
             card.id = 'pc-'+p.id;
             card.className = `pallet-card ${i===0?'active':''}`;
             
-            // Re-ordenar items por línea dentro del pallet antes de mostrar por si la lógica de familias lo alteró
             p.items.sort((a,b) => a.linea - b.linea);
 
             card.innerHTML = `
@@ -212,7 +220,7 @@
                 <div style="margin-top:40px; display:flex; justify-content: space-between;">
                     <div style="border-top:1px solid #000; width:200px; text-align:center;">Preparador</div>
                     <div style="border-top:1px solid #000; width:200px; text-align:center;">Control Despacho</div>
-                    <div style="font-size:0.8em">v27.2 - Picking Inteligente</div>
+                    <div style="font-size:0.8em">v27.3 - Picking Inteligente</div>
                 </div>
             `;
             cont.appendChild(card);
