@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Escáner de Diagnóstico JDE</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: monospace; background: #222; color: #0f0; padding: 20px; }
+        input { margin-bottom: 20px; color: #fff; }
+        pre { background: #111; padding: 15px; border: 1px solid #333; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h2>🔍 Escáner de Archivos JDE</h2>
+    <p>Subí el archivo de surtido para ver su estructura real:</p>
+    <input type="file" id="file" accept=".xls, .xlsx">
+    <pre id="output">Esperando archivo...</pre>
+
+    <script>
+        document.getElementById('file').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, {type: 'array'});
+                    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+                    
+                    let txt = "=== LECTURA CRUDA (Primeras 30 filas) ===\n\n";
+                    for(let i = 0; i < Math.min(30, rows.length); i++) {
+                        txt += `Fila ${i}: ` + JSON.stringify(rows[i]) + "\n";
+                    }
+                    
+                    if(rows.length === 0) txt += "\nERROR: El archivo parece estar vacío o el formato es ilegible.";
+                    
+                    document.getElementById('output').innerText = txt;
+                } catch (error) {
+                    document.getElementById('output').innerText = "ERROR DE LECTURA: " + error.message;
+                }
+            };
+            reader.readAsArrayBuffer(e.target.files[0]);
+        });
+    </script>
+</body>
+</html>
