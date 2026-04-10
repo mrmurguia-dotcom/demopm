@@ -2,40 +2,42 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Escáner de Diagnóstico JDE</title>
+    <title>Súper Escáner de Columnas v2</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: monospace; background: #222; color: #0f0; padding: 20px; }
-        input { margin-bottom: 20px; color: #fff; }
-        pre { background: #111; padding: 15px; border: 1px solid #333; overflow-x: auto; }
+        body { font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
+        .box { background: #000; border: 1px solid #00ff00; padding: 15px; margin-top: 20px; }
+        .row-info { border-bottom: 1px solid #333; padding: 5px 0; }
+        .col-index { color: #ff00ff; font-weight: bold; margin-right: 10px; }
     </style>
 </head>
 <body>
-    <h2>🔍 Escáner de Archivos JDE</h2>
-    <p>Subí el archivo de surtido para ver su estructura real:</p>
+    <h2>🚀 Diagnóstico de Matriz JDE</h2>
     <input type="file" id="file" accept=".xls, .xlsx">
-    <pre id="output">Esperando archivo...</pre>
+    
+    <div id="output"></div>
 
     <script>
         document.getElementById('file').addEventListener('change', function(e) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, {type: 'array'});
-                    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
-                    
-                    let txt = "=== LECTURA CRUDA (Primeras 30 filas) ===\n\n";
-                    for(let i = 0; i < Math.min(30, rows.length); i++) {
-                        txt += `Fila ${i}: ` + JSON.stringify(rows[i]) + "\n";
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type: 'array'});
+                const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+                
+                let html = "";
+                rows.forEach((row, i) => {
+                    // Solo mostramos filas donde haya algo de texto (para no llenar de basura)
+                    if (row.length > 0 && row.some(cell => cell !== null && cell !== "")) {
+                        html += `<div class="box"><strong>FILA ${i}:</strong><br>`;
+                        row.forEach((cell, c) => {
+                            let cleanCell = (cell === null) ? "NULL" : `"${cell}"`;
+                            html += `<span class="row-info"><span class="col-index">[Col ${c}]</span> ${cleanCell}</span><br>`;
+                        });
+                        html += `</div>`;
                     }
-                    
-                    if(rows.length === 0) txt += "\nERROR: El archivo parece estar vacío o el formato es ilegible.";
-                    
-                    document.getElementById('output').innerText = txt;
-                } catch (error) {
-                    document.getElementById('output').innerText = "ERROR DE LECTURA: " + error.message;
-                }
+                });
+                document.getElementById('output').innerHTML = html || "No se encontraron datos.";
             };
             reader.readAsArrayBuffer(e.target.files[0]);
         });
