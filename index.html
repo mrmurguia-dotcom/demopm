@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v29.0 - Protección Termos y Latas</title>
+    <title>Picking JDE v27.1 - Line Order Fixed</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; --warning: #f39c12; }
+        :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .box { border: 2px dashed #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
@@ -20,16 +20,14 @@
         th { background: #f2f2f2; }
         .header-info { border-bottom: 4px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
         .order-badge { border: 3px solid #000; padding: 8px 15px; font-size: 1.5em; font-weight: bold; float: right; margin-top: -10px; }
-        .tag { color: #fff; padding: 2px 6px; font-size: 0.75em; border-radius: 3px; margin-left: 10px; font-weight: bold; }
-        .tag-lata { background: #000; }
-        .tag-termo { background: var(--warning); color: #000; }
+        .lata-tag { background: #000; color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 10px; }
         @media print { .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
 </head>
 <body>
 
 <div class="container no-print">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v29.0</h2>
+    <h2 style="text-align:center;">📦 Optimizador de Picking v27.1</h2>
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
@@ -38,7 +36,7 @@
         <strong>2. Reporte JDE (Surtido):</strong><br>
         <input type="file" id="surtidoFile">
         <br><br>
-        <button class="btn-gen" onclick="procesar()">⚡ GENERAR HOJAS DE RUTA</button>
+        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS MIXTOS</button>
     </div>
 </div>
 
@@ -49,7 +47,7 @@
 </div>
 
 <script>
-    let maestro = JSON.parse(localStorage.getItem('m_v29')) || {};
+    let maestro = JSON.parse(localStorage.getItem('m_v27')) || {};
 
     document.getElementById('masterFile').onchange = (e) => {
         const reader = new FileReader();
@@ -65,21 +63,22 @@
                     maestro[sku] = { base: base, cap: base * camadas, fam: String(r[8] || "0") };
                 }
             });
-            localStorage.setItem('m_v29', JSON.stringify(maestro));
-            alert("Maestro actualizado.");
+            localStorage.setItem('m_v27', JSON.stringify(maestro));
+            alert("Maestro cargado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Cargá el reporte");
+        if(!file) return alert("Cargá el reporte de JDE primero.");
 
         const reader = new FileReader();
         reader.onload = (e) => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(e.target.result, "text/html");
             const rows = Array.from(doc.querySelectorAll('tr'));
+            
             let itemsRaw = [];
             let cargaNro = "S/C";
             let esMixto = false;
@@ -97,6 +96,7 @@
                 if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
                     let sku = c[1];
                     let info = maestro[sku] || { base: 21, cap: 120, fam: "0" };
+
                     itemsRaw.push({
                         ubi: c[0], sku: sku, desc: c[4], orden: c[6],
                         linea: parseFloat(c[7]) || 0,
@@ -107,22 +107,26 @@
                 }
             });
 
-            // ORDENAMIENTO POR LÍNEA (No por familia)
-            itemsRaw.sort((a,b) => a.dep.localeCompare(b.dep) || a.orden.localeCompare(b.orden) || (a.linea - b.linea));
+            // --- UNICO CAMBIO RESPECTO A v27.0 ---
+            // Ordenamos por Depósito, Orden y estrictamente por LÍNEA (quitamos familia del orden inicial)
+            itemsRaw.sort((a,b) => 
+                a.dep.localeCompare(b.dep) || 
+                a.orden.localeCompare(b.orden) || 
+                (a.linea - b.linea)
+            );
 
-            armarPallets(itemsRaw);
+            armarLogica(itemsRaw);
         };
         reader.readAsText(file, "ISO-8859-1");
     }
 
-    function armarPallets(items) {
+    function armarLogica(items) {
         let pallets = [];
         let pAct = null;
         let cont = 1;
 
         items.forEach(it => {
-            // Un item es "Especial Grande" si es Fam 4 (Termo) o Fam 9 (Lata) y tiene al menos 1 base.
-            let esEspecialGrande = (it.fam === "4" || it.fam === "9") && it.cant >= it.base;
+            let esLataGrande = (it.fam === "9" && it.cant >= it.base);
             let forzarNuevo = false;
 
             if(!pAct) {
@@ -130,17 +134,13 @@
             } else {
                 if(pAct.dep !== it.dep || pAct.orden !== it.orden) forzarNuevo = true;
                 
-                // Si el item nuevo es Especial Grande -> Pallet Nuevo
-                if(esEspecialGrande) forzarNuevo = true;
+                let tieneLataGrande = pAct.items.some(x => x.fam === "9" && x.cant >= x.base);
+                if(esLataGrande || tieneLataGrande) forzarNuevo = true;
 
-                // Si el pallet ya tiene un Especial Grande -> Pallet Nuevo para lo que sigue
-                let tieneEspecialGrande = pAct.items.some(x => (x.fam === "4" || x.fam === "9") && x.cant >= x.base);
-                if(tieneEspecialGrande) forzarNuevo = true;
-
-                // Capacidad Dinámica
                 let maxItem = [...pAct.items, it].reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
                 let capLimite = maxItem.capFull;
-                let todosChicos = [...pAct.items, it].every(x => x.cant < x.base && x.fam !== "9" && x.fam !== "4");
+
+                let todosChicos = [...pAct.items, it].every(x => x.cant < x.base && x.fam !== "9");
                 if(todosChicos) capLimite = 84;
 
                 if(pAct.total + it.cant > capLimite) forzarNuevo = true;
@@ -153,8 +153,9 @@
 
             pAct.items.push(it);
             pAct.total += it.cant;
+            
             let mItem = pAct.items.reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
-            pAct.capMax = pAct.items.every(x => x.cant < x.base && x.fam !== "4" && x.fam !== "9") ? 84 : mItem.capFull;
+            pAct.capMax = pAct.items.every(x => x.cant < x.base && x.fam !== "9") ? 84 : mItem.capFull;
         });
 
         render(pallets);
@@ -169,7 +170,7 @@
         pallets.forEach((p, i) => {
             const btn = document.createElement('div');
             btn.className = `pm-tab ${i===0?'active':''}`;
-            btn.innerText = `#${p.id}`;
+            btn.innerText = `PM #${p.id}`;
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
@@ -180,6 +181,10 @@
             const card = document.createElement('div');
             card.id = 'pc-'+p.id;
             card.className = `pallet-card ${i===0?'active':''}`;
+            
+            // Re-ordenar items por línea dentro del pallet antes de mostrar por si la lógica de familias lo alteró
+            p.items.sort((a,b) => a.linea - b.linea);
+
             card.innerHTML = `
                 <div class="header-info">
                     <div class="order-badge">ORDEN: ${p.orden}</div>
@@ -190,21 +195,24 @@
                     </p>
                 </div>
                 <table>
-                    <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant.</th></tr></thead>
+                    <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant.</th><th>Fam.</th></tr></thead>
                     <tbody>
                         ${p.items.map(it => `
                             <tr>
                                 <td>${it.linea.toFixed(3)}</td>
                                 <td><b>${it.ubi}</b></td>
                                 <td>${it.sku}</td>
-                                <td>${it.desc} 
-                                    ${it.fam === "9" ? '<span class="tag tag-lata">LATA</span>' : ''}
-                                    ${it.fam === "4" ? '<span class="tag tag-termo">TERMO</span>' : ''}
-                                </td>
+                                <td>${it.desc}${it.fam === "9" ? '<span class="lata-tag">LATA</span>' : ''}</td>
                                 <td><b style="font-size:1.2em">${it.cant}</b></td>
+                                <td>${it.fam}</td>
                             </tr>`).join('')}
                     </tbody>
                 </table>
+                <div style="margin-top:40px; display:flex; justify-content: space-between;">
+                    <div style="border-top:1px solid #000; width:200px; text-align:center;">Preparador</div>
+                    <div style="border-top:1px solid #000; width:200px; text-align:center;">Control Despacho</div>
+                    <div style="font-size:0.8em">v27.1 - Picking Inteligente</div>
+                </div>
             `;
             cont.appendChild(card);
         });
