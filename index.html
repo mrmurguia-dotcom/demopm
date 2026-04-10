@@ -2,63 +2,79 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Optimizador de Picking - Limpieza Automática</title>
+    <title>Optimizador de Picking - Asistente de Armado</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #0056b3; --secondary: #f8f9fa; --success: #28a745; --accent: #007bff; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #e9ecef; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { max-width: 950px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); text-align: center; margin-bottom: 30px; }
         .step-box { border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; background: var(--secondary); margin-bottom: 20px; }
         .step-title { font-weight: bold; color: var(--primary); margin-bottom: 10px; display: block; font-size: 1.1em; }
         .buttons-group { display: flex; gap: 10px; align-items: center; margin-top: 15px; }
-        button { border: none; padding: 12px 20px; cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.3s; }
-        .btn-convert { background-color: #6c757d; color: white; }
-        .btn-generate { background-color: var(--success); color: white; flex-grow: 1; font-size: 1.1em; }
+        button { border: none; padding: 15px 20px; cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.3s; font-size: 1.05em; }
+        .btn-generate { background-color: var(--success); color: white; width: 100%; box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2); }
+        .btn-generate:hover { background-color: #218838; }
         .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
-        .pm-tab { background-color: #ddd; padding: 10px 15px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+        .pm-tab { background-color: #e2e6ea; padding: 10px 15px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 500; transition: 0.2s; }
+        .pm-tab:hover { background-color: #d3d9df; }
         .pm-tab.active { background-color: var(--primary); color: white; }
-        .pallet-card { display: none; border: 2px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; background: white; }
-        .pallet-card.active { display: block; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; font-size: 0.9em; }
-        th { background: #f2f2f2; }
-        .badge { background: #ffc107; padding: 20px 8px; border-radius: 10px; font-size: 0.8em; font-weight: bold; }
-        @media print { .step-box, .pm-nav, h1, .buttons-group { display: none; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
+        .pallet-card { display: none; border: 2px solid #e9ecef; padding: 25px; border-radius: 8px; margin-top: 20px; background: white; }
+        .pallet-card.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; font-size: 0.95em; }
+        th { background: #f4f6f9; color: #495057; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        .badge { background: #ffc107; padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; color: #333; }
+        .badge-dep { background: #17a2b8; color: white; }
+        .summary-text { font-size: 1.2em; color: var(--primary); font-weight: bold; margin-top: 10px; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Estilos para impresión */
+        @media print { 
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; max-width: 100%; padding: 0; }
+            .step-box, .pm-nav, h1, .buttons-group, hr, button { display: none !important; } 
+            .pallet-card { display: block !important; page-break-after: always; border: 1px solid #000; padding: 20px; margin: 0 0 20px 0; } 
+            table th { background-color: #e9ecef !important; -webkit-print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📦 Asistente de Armado v8.5 (Auto-Clean)</h1>
+    <h1>📦 Asistente de Armado v9.0 (Auto-Clean & Routing)</h1>
 
     <div class="step-box">
-        <span class="step-title">⚙️ 0. Cargar Maestro:</span>
+        <span class="step-title">⚙️ 0. Cargar Maestro de Artículos (Opcional):</span>
         <input type="file" id="masterFile" accept=".xlsx, .xls">
+        <p style="font-size: 0.85em; color: #666; margin-top: 5px;">Define capacidades Base x Camada. (Por defecto: Antares=450, General=140)</p>
     </div>
 
     <div class="step-box">
         <span class="step-title">🚚 1. Procesar Reporte JDE:</span>
-        <p style="font-size: 0.9em; color: #666;">Cargá el archivo tal cual sale del sistema (no hace falta "Guardar como"):</p>
+        <p style="font-size: 0.9em; color: #555;">Seleccioná el archivo crudo del sistema. El script ignorará los Pallets Homogéneos y agrupará los Mixtos.</p>
         <input type="file" id="surtidoFile" accept=".xlsx, .xls">
         
         <div class="buttons-group">
-            <button class="btn-generate" onclick="generarPallets()">🚀 GENERAR PALLETS (CON LIMPIEZA)</button>
+            <button class="btn-generate" onclick="generarPallets()">🚀 GENERAR PALLETS DE PICKING</button>
         </div>
     </div>
 
     <div id="resultadosArea" style="display: none;">
-        <hr>
+        <hr style="border-color: #dee2e6; margin: 30px 0;">
         <div id="tabsContainer" class="pm-nav"></div>
         <div id="palletsContainer"></div>
-        <button onclick="window.print()" style="width:100%; margin-top:20px; background:#444; color:white; padding:15px; border-radius: 8px; font-weight: bold; cursor: pointer;">🖨️ IMPRIMIR TODOS LOS PALLETS</button>
+        <button onclick="window.print()" style="width:100%; margin-top:25px; background:#343a40; color:white; padding:15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.3s;">🖨️ IMPRIMIR HOJAS DE PICKING</button>
     </div>
 </div>
 
 <script>
+    // Recuperar Maestro guardado si existe
     let maestro = JSON.parse(localStorage.getItem('maestroConfig')) || {};
 
-    // Cargar Maestro
+    // Cargar nuevo Maestro
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -70,63 +86,73 @@
                 if(sku) maestro[sku.toString().trim()] = item;
             });
             localStorage.setItem('maestroConfig', JSON.stringify(maestro));
-            alert("Maestro sincronizado correctamente.");
+            alert("✅ Maestro sincronizado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    // FUNCIÓN DE LIMPIEZA PROFUNDA
+    // Función auxiliar para limpiar basura de celdas JDE
     function limpiarValor(val) {
         if (val === null || val === undefined) return "";
-        // Elimina espacios extras, caracteres raros y saltos de línea de JDE
         return val.toString().trim().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
     }
 
+    // PASO PRINCIPAL: Lectura y Filtrado del Archivo
     function generarPallets() {
         const file = document.getElementById('surtidoFile').files[0];
-        if (!file) return alert("Selecciona el archivo del sistema.");
+        if (!file) return alert("⚠️ Selecciona el archivo del sistema primero.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
-            // {cellNF: false} ayuda a que no traiga formatos de moneda raros
             const wb = XLSX.read(data, {type: 'array', cellNF: false, cellText: false});
             const ws = wb.Sheets[wb.SheetNames[0]];
-            // Leemos todo como texto crudo primero para limpiar nosotros
             const rows = XLSX.utils.sheet_to_json(ws, {header: 1, raw: false, defval: ""});
 
-            let itemsFinal = [];
+            let startIndex = -1;
             let colIdx = { ubi: -1, art: -1, desc: -1, cant: -1 };
 
-            // BUSCADOR DINÁMICO MEJORADO
-            for(let i=0; i < Math.min(rows.length, 20); i++){
-                let row = rows[i].map(c => limpiarValor(c).toUpperCase());
+            // 1. Encontrar dónde empieza la sección de Pallet Mixto (Ignorar Homogéneos)
+            for(let i=0; i<rows.length; i++){
+                let rowStr = rows[i].map(c => limpiarValor(c).toUpperCase()).join(" ");
+                if(rowStr.includes("PM PALLET MIXTO") || rowStr.includes("PALLET MIXTO")){
+                    startIndex = i;
+                    break;
+                }
+            }
+
+            if (startIndex === -1) {
+                console.warn("No se encontró el título 'Pallet Mixto'. Procesando desde el inicio.");
+                startIndex = 0;
+            }
+
+            let pmRows = rows.slice(startIndex);
+
+            // 2. Buscar Cabeceras dinámicamente dentro de la sección permitida
+            for(let i=0; i < Math.min(pmRows.length, 20); i++){
+                let row = pmRows[i].map(c => limpiarValor(c).toUpperCase());
                 if(row.includes("UBICACIÓN") || row.includes("ARTÍCULO") || row.includes("ARTICULO")){
                     colIdx.ubi = row.indexOf("UBICACIÓN");
                     colIdx.art = row.findIndex(c => c.includes("ARTÍCULO") || c === "ARTICULO");
                     colIdx.desc = row.findIndex(c => c.includes("DESCRIPCIÓN") || c === "DESCRIPCION");
-                    colIdx.cant = row.indexOf("CANTIDAD");
+                    // Puede llamarse "CANTIDAD", "CANT", "CANTIDA"
+                    colIdx.cant = row.findIndex(c => c.includes("CANTIDA") || c === "CANT"); 
                     break; 
                 }
             }
 
-            // Si falla la detección, usamos el estándar de JDE por posición
-            if(colIdx.art === -1) { 
-                console.warn("No se detectaron cabeceras, usando mapeo por defecto.");
-                colIdx = { ubi: 0, art: 1, desc: 4, cant: 9 }; 
-            }
+            // Fallback por defecto si las columnas están muy rotas
+            if(colIdx.art === -1) colIdx = { ubi: 0, art: 1, desc: 4, cant: 9 }; 
 
-            rows.forEach(row => {
-                // Limpiamos cada celda antes de procesarla
+            let itemsFinal = [];
+
+            // 3. Extraer y limpiar datos
+            pmRows.forEach(row => {
                 let sku = limpiarValor(row[colIdx.art]);
                 let cantRaw = limpiarValor(row[colIdx.cant]);
-                
-                // Convertir cantidad a número puro (quitando puntos de miles o basura)
                 let cant = parseInt(cantRaw.replace(/[^\d]/g, ""));
 
-                // FILTRO ANTIBASURA: 
-                // Solo procesamos si el SKU es numérico, tiene largo suficiente 
-                // y no es parte de un encabezado de reporte (ej: "Página")
+                // Filtro: Solo SKUs válidos numéricos y con cantidad
                 if(sku && !isNaN(sku) && sku.length >= 3 && !isNaN(cant) && cant > 0) {
                     itemsFinal.push({
                         ubicacion: limpiarValor(row[colIdx.ubi]) || "S/D",
@@ -137,44 +163,57 @@
                 }
             });
 
-            if(itemsFinal.length === 0) return alert("No se encontraron artículos válidos. Verificá que el archivo tenga datos de surtido.");
+            if(itemsFinal.length === 0) {
+                return alert("⚠️ No se encontraron artículos en la sección de Pallets Mixtos. Revisá el archivo.");
+            }
             
             armarPallets(itemsFinal);
         };
         reader.readAsArrayBuffer(file);
     }
 
+    // PASO 2: Lógica de Agrupación de Pallets
     function armarPallets(items) {
         const pallets = [];
         let current = null;
 
-        // Ordenar por ubicación para optimizar recorrido de picking
+        // Ordenar ruta de picking: Por Ubicación Alfanumérica
         items.sort((a, b) => a.ubicacion.localeCompare(b.ubicacion));
 
         items.forEach(item => {
-            const info = maestro[item.sku] || { "Base": 28, "Camada": 5, "Familia": "General" };
-            const ubi = item.ubicacion.toUpperCase();
+            // LÓGICA DE MAESTRO Y CAPACIDAD
+            // Fallback robusto por si no subieron el maestro, detecta Antares por nombre
+            let isAntares = item.descripcion.toUpperCase().includes("ANTARES");
+            let fallbackFamilia = isAntares ? "Antares" : "General";
+            let fallbackBase = isAntares ? 10 : 28;
+            let fallbackCamada = isAntares ? 45 : 5; // 450 para Antares, 140 para resto
+
+            const info = maestro[item.sku] || { "Base": fallbackBase, "Camada": fallbackCamada, "Familia": fallbackFamilia };
             
-            // Lógica de depósito según ubicación
+            // Determinación del depósito
+            const ubi = item.ubicacion.toUpperCase();
             let dep = ubi.startsWith("P00A") ? "Dep. 1" : ubi.startsWith("P014") ? "Dep. 3" : "Dep. 2";
             
-            // Calculamos capacidad según maestro (Base * Camada)
-            const base = parseInt(info.Base) || 28;
-            const camada = parseInt(info.Camada) || 5;
+            // Cálculo de Capacidad Máxima
+            const base = parseInt(info.Base) || fallbackBase;
+            const camada = parseInt(info.Camada) || fallbackCamada;
             const capacidadMax = base * camada;
 
-            // Lógica de corte de pallet: si cambia depósito, familia o supera capacidad
-            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > (capacidadMax + 5)) {
+            // Corte de Pallet: Si cambia de depósito, familia, o supera la capacidad permitida
+            if (!current || current.dep !== dep || current.familia !== info.Familia || (current.total + item.cantidad) > capacidadMax) {
                 if (current) pallets.push(current);
-                current = { id: pallets.length + 1, dep, familia: info.Familia, items: [], total: 0 };
+                current = { id: pallets.length + 1, dep, familia: info.Familia, capacidadMax, items: [], total: 0 };
             }
+            
             current.items.push(item);
             current.total += item.cantidad;
         });
+        
         if (current) pallets.push(current);
         render(pallets);
     }
 
+    // PASO 3: Dibujar en Pantalla
     function render(pallets) {
         document.getElementById('resultadosArea').style.display = 'block';
         const tCon = document.getElementById('tabsContainer');
@@ -182,6 +221,7 @@
         tCon.innerHTML = ""; pCon.innerHTML = "";
 
         pallets.forEach((p, idx) => {
+            // Crear Pestaña
             const tab = document.createElement('div');
             tab.className = `pm-tab ${idx===0?'active':''}`;
             tab.innerText = `PM ${p.id}`;
@@ -192,22 +232,48 @@
             };
             tCon.appendChild(tab);
 
+            // Crear Tarjeta de Pallet
             const card = document.createElement('div');
             card.id = `p-${p.id}`;
             card.className = `pallet-card ${idx===0?'active':''}`;
+            
+            let ocupacionPorcentaje = Math.round((p.total / p.capacidadMax) * 100);
+            
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h2 style="margin:0;">Pallet #${p.id} - ${p.dep}</h2>
-                    <span class="badge" style="background:#eee; border:1px solid #ccc;">${p.familia}</span>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <h2 style="margin:0; color:var(--primary);">Pallet #${p.id} <span class="badge badge-dep">${p.dep}</span></h2>
+                        <p class="summary-text">Total: ${p.total} Bultos <span style="font-size:0.7em; color:#6c757d; font-weight:normal;">(Máx: ${p.capacidadMax} | Ocupación: ${ocupacionPorcentaje}%)</span></p>
+                    </div>
+                    <span class="badge" style="background:#f8f9fa; border:1px solid #dee2e6; font-size:1em;">Familia: ${p.familia}</span>
                 </div>
-                <p style="margin:10px 0;"><b>Resumen:</b> <span style="font-size:1.2em; color:var(--primary);">${p.total} Bultos</span></p>
+                
                 <table>
-                    <thead><tr><th>Ubicación</th><th>Art.</th><th>Descripción</th><th>Cant</th></tr></thead>
-                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubicacion}</b></td><td>${i.sku}</td><td>${i.descripcion}</td><td>${i.cantidad}</td></tr>`).join('')}</tbody>
+                    <thead>
+                        <tr>
+                            <th style="width:20%;">Ubicación (Ruta)</th>
+                            <th style="width:15%;">SKU</th>
+                            <th style="width:50%;">Descripción</th>
+                            <th style="width:15%;">Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${p.items.map(i => `
+                            <tr>
+                                <td><b>${i.ubicacion}</b></td>
+                                <td>${i.sku}</td>
+                                <td>${i.descripcion}</td>
+                                <td><strong>${i.cantidad} CA</strong></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
                 </table>
             `;
             pCon.appendChild(card);
         });
+        
+        // Scroll automático hacia los resultados
+        document.getElementById('resultadosArea').scrollIntoView({ behavior: 'smooth' });
     }
 </script>
 </body>
