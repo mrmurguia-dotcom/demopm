@@ -2,42 +2,49 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Súper Escáner de Columnas v2</title>
+    <title>Detector de Columnas JDE</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
-        .box { background: #000; border: 1px solid #00ff00; padding: 15px; margin-top: 20px; }
-        .row-info { border-bottom: 1px solid #333; padding: 5px 0; }
-        .col-index { color: #ff00ff; font-weight: bold; margin-right: 10px; }
+        body { font-family: sans-serif; padding: 30px; background: #f0f2f5; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .col-box { display: inline-block; background: #e8f0fe; border: 1px solid #1a73e8; margin: 5px; padding: 10px; border-radius: 5px; font-family: monospace; }
+        .index { color: #d93025; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2>🚀 Diagnóstico de Matriz JDE</h2>
-    <input type="file" id="file" accept=".xls, .xlsx">
-    
-    <div id="output"></div>
+    <div class="card">
+        <h2>🔍 Detector de Mapa de Columnas</h2>
+        <p>Subí el Excel de Surtido. Vamos a ver cómo se llaman las columnas según el sistema:</p>
+        <input type="file" id="file" accept=".xls, .xlsx">
+        <hr>
+        <div id="resultado"></div>
+    </div>
 
     <script>
         document.getElementById('file').addEventListener('change', function(e) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
+            reader.onload = function(ev) {
+                const data = new Uint8Array(ev.target.result);
                 const wb = XLSX.read(data, {type: 'array'});
-                const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
-                
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+
                 let html = "";
-                rows.forEach((row, i) => {
-                    // Solo mostramos filas donde haya algo de texto (para no llenar de basura)
-                    if (row.length > 0 && row.some(cell => cell !== null && cell !== "")) {
-                        html += `<div class="box"><strong>FILA ${i}:</strong><br>`;
-                        row.forEach((cell, c) => {
-                            let cleanCell = (cell === null) ? "NULL" : `"${cell}"`;
-                            html += `<span class="row-info"><span class="col-index">[Col ${c}]</span> ${cleanCell}</span><br>`;
+                // Buscamos en las primeras 15 filas cuál tiene los títulos
+                for(let i = 0; i < Math.min(15, rows.length); i++) {
+                    let row = rows[i];
+                    if (row && row.join("").toUpperCase().includes("UBIC")) {
+                        html += `<h3>✅ Títulos detectados en la Fila ${i}:</h3>`;
+                        row.forEach((cell, idx) => {
+                            let nombre = cell ? cell.toString().trim() : "VACÍO";
+                            html += `<div class="col-box"><span class="index">[${idx}]</span> ${nombre}</div>`;
                         });
-                        html += `</div>`;
+                        break; 
                     }
-                });
-                document.getElementById('output').innerHTML = html || "No se encontraron datos.";
+                }
+                
+                if(!html) html = "❌ No encontré ninguna fila que diga 'Ubicación'. Probablemente el sistema usa otro nombre o el archivo está muy protejido.";
+                document.getElementById('resultado').innerHTML = html;
             };
             reader.readAsArrayBuffer(e.target.files[0]);
         });
