@@ -2,33 +2,28 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v13.1 - Edición Tanque</title>
+    <title>Picking JDE v14.0 - Radar de Columnas</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #2ea44f; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 20px; color: #333; }
-        .container { max-width: 950px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .box { border: 2px dashed #cbd5e0; padding: 25px; border-radius: 12px; margin-bottom: 25px; background: #fff; transition: 0.3s; }
-        .box:hover { border-color: var(--primary); background: #f0f7ff; }
-        .btn-gen { background: var(--success); color: white; border: none; padding: 18px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.2em; box-shadow: 0 4px 15px rgba(46,164,79,0.3); }
-        .btn-gen:active { transform: scale(0.98); }
-        .pm-nav { display: flex; gap: 10px; margin: 25px 0; overflow-x: auto; padding: 5px; }
-        .pm-tab { background: #edf2f7; padding: 12px 20px; border-radius: 30px; cursor: pointer; font-weight: 600; white-space: nowrap; color: #4a5568; }
-        .pm-tab.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
-        .pallet-card { display: none; border: 1px solid #e2e8f0; padding: 30px; border-radius: 15px; background: #fff; }
-        .pallet-card.active { display: block; animation: fadeIn 0.3s; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #f7fafc; color: #718096; padding: 15px; text-align: left; border-bottom: 2px solid #edf2f7; font-size: 0.9em; text-transform: uppercase; }
-        td { padding: 15px; border-bottom: 1px solid #edf2f7; font-size: 1em; }
-        .badge { background: #ebf8ff; color: #2b6cb0; padding: 5px 12px; border-radius: 6px; font-size: 0.85em; font-weight: bold; border: 1px solid #bee3f8; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @media print { .box, .pm-nav, .btn-gen, h1, .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; padding: 0; } }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .box { border: 2px dashed #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
+        .pm-nav { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; padding: 5px; }
+        .pm-tab { background: #eee; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+        .pm-tab.active { background: var(--primary); color: white; }
+        .pallet-card { display: none; border: 1px solid #ddd; padding: 20px; border-radius: 10px; }
+        .pallet-card.active { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        @media print { .box, .pm-nav, .btn-gen, h1 { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align:center; color:#2d3748; margin-bottom:40px;">📦 Optimizador de Picking v13.1</h1>
+    <h1 style="text-align:center;">📦 Picking v14.0 (Radar JDE)</h1>
 
     <div class="box">
         <strong>1. Maestro de Capacidades:</strong><br><br>
@@ -36,20 +31,20 @@
     </div>
 
     <div class="box">
-        <strong>2. Reporte de Surtido JDE:</strong><br><br>
+        <strong>2. Reporte de Surtido (JDE):</strong><br><br>
         <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-        <button class="btn-gen" onclick="ejecutar()">🚀 PROCESAR AHORA</button>
+        <button class="btn-gen" onclick="ejecutar()">🚀 PROCESAR SURTIDO</button>
     </div>
 
     <div id="resArea" style="display:none;">
         <div id="tabs" class="pm-nav"></div>
         <div id="pallets"></div>
-        <button class="no-print" onclick="window.print()" style="width:100%; padding:18px; margin-top:25px; cursor:pointer; background:#2d3748; color:white; border-radius:10px; border:none; font-weight:bold; font-size:1.1em;">🖨️ IMPRIMIR HOJAS DE RUTA</button>
+        <button onclick="window.print()" style="width:100%; padding:15px; margin-top:20px; cursor:pointer; background:#333; color:white; border-radius:8px;">🖨️ IMPRIMIR TODO</button>
     </div>
 </div>
 
 <script>
-    let maestroData = JSON.parse(localStorage.getItem('m_v13_1')) || {};
+    let maestroData = JSON.parse(localStorage.getItem('m_v14')) || {};
 
     // Carga Maestro
     document.getElementById('masterFile').addEventListener('change', function(e) {
@@ -69,60 +64,63 @@
                     };
                 }
             });
-            localStorage.setItem('m_v13_1', JSON.stringify(maestroData));
-            alert("✅ Maestro cargado correctamente.");
+            localStorage.setItem('m_v14', JSON.stringify(maestroData));
+            alert("Maestro cargado.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
     function ejecutar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Por favor, seleccioná el reporte de JDE.");
+        if(!file) return alert("Subí el archivo.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const wb = XLSX.read(data, {type: 'array'});
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
             const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: ""});
 
-            let headerIndex = -1;
-            // ESCANEO DINÁMICO BUSCANDO TÍTULOS EN CUALQUIER LUGAR DE LA FILA
+            let colUbi = -1, headerRow = -1;
+
+            // 1. Buscamos el radar: ¿Dónde está "UBICACIÓN"?
             for(let i=0; i < rows.length; i++) {
-                let filaString = rows[i].join("|").toUpperCase();
-                if(filaString.includes("UBICACI") && filaString.includes("ARTICULO")) {
-                    headerIndex = i;
-                    break;
+                let row = rows[i];
+                for(let c=0; c < row.length; c++) {
+                    let val = (row[c] || "").toString().toUpperCase();
+                    if(val.includes("UBICACI")) {
+                        colUbi = c;
+                        headerRow = i;
+                        break;
+                    }
                 }
+                if(colUbi !== -1) break;
             }
 
-            if(headerIndex === -1) {
-                return alert("No se encontró la fila de títulos. Revisá que el Excel tenga las columnas 'Ubicación' y 'Artículo'.");
-            }
+            if(colUbi === -1) return alert("No encontré la columna 'Ubicación'. Revisá el archivo.");
+
+            // 2. Definimos posiciones relativas según tu lista (a, b, c, d, e...)
+            const colSku = colUbi + 1;
+            const colDesc = colUbi + 4;
+            const colCant = colUbi + 8;
 
             let items = [];
-            // Empezamos a leer justo después de los títulos
-            for(let j = headerIndex + 1; j < rows.length; j++) {
+            // Empezamos 2 filas después del título para saltar la fila en blanco
+            for(let j = headerRow + 1; j < rows.length; j++) {
                 let r = rows[j];
-                if(!r || r.length < 5) continue;
+                let ubi = (r[colUbi] || "").toString().trim();
+                let sku = (r[colSku] || "").toString().trim();
+                let desc = (r[colDesc] || "").toString().trim();
+                let cantRaw = (r[colCant] || "").toString().trim();
 
-                // Mapeo flexible por si Publisher movió columnas un lugar a la derecha
-                let ubi = (r[0] || "").toString().trim();
-                let sku = (r[1] || "").toString().trim();
-                let desc = (r[4] || r[5] || "").toString().trim(); // Busca descripción en E o F
-                let cantStr = (r[8] || r[9] || "").toString().trim(); // Busca cantidad en I o J
-
-                // REGLA DE ORO: Si tiene un punto en la ubicación y hay un SKU, es un producto.
+                // Si la ubicación tiene un punto y el SKU no está vacío, es producto
                 if(ubi.includes(".") && sku !== "") {
-                    let cant = parseInt(cantStr.replace(/[^\d]/g, "")) || 0;
+                    let cant = parseInt(cantRaw.replace(/[^\d]/g, "")) || 0;
                     if(cant > 0) {
                         items.push({ ubi, sku, desc, cant });
                     }
                 }
             }
 
-            if(items.length === 0) {
-                return alert("Se encontraron los títulos pero no hubo productos válidos abajo. Verificá si las ubicaciones tienen puntos (ej: 14.01.01).");
-            }
+            if(items.length === 0) return alert("No se detectaron productos. Verificá que las ubicaciones tengan puntos.");
             
             procesarLogica(items);
         };
@@ -131,28 +129,21 @@
 
     function procesarLogica(items) {
         items.sort((a, b) => a.ubi.localeCompare(b.ubi));
-
         const pallets = [];
         let current = null;
 
         items.forEach(it => {
             let m = maestroData[it.sku];
             let fam = m ? m.familia : "9";
-            let cap = (m && m.base > 0 && m.camada > 0) ? Math.floor(m.base * m.camada) : 100;
+            let cap = (m && m.base > 0 && m.camada > 0) ? Math.floor(m.base * m.camada) : 120;
+            if(it.desc.toUpperCase().includes("ANTARES")) { fam = "ANT"; cap = 350; }
 
-            if(it.desc.toUpperCase().includes("ANTARES")) { fam = "ANT"; cap = 300; }
-
-            // Lógica de Depósitos
-            let dep = "Dep. 1";
-            if(it.ubi.includes("P0.14") || it.ubi.includes("P014") || it.ubi.startsWith("14.")) {
-                dep = "Dep. 2";
-            }
+            let dep = (it.ubi.includes("P0.14") || it.ubi.includes("P014")) ? "Dep. 2" : "Dep. 1";
 
             if(!current || current.dep !== dep || current.fam !== fam || (current.total + it.cant) > current.cap) {
                 if(current) pallets.push(current);
                 current = { id: pallets.length + 1, dep, fam, cap, total: 0, items: [] };
             }
-            
             current.items.push(it);
             current.total += it.cant;
         });
@@ -170,7 +161,7 @@
         pallets.forEach((p, idx) => {
             const btn = document.createElement('div');
             btn.className = `pm-tab ${idx === 0 ? 'active' : ''}`;
-            btn.innerText = `PM #${p.id} (${p.fam})`;
+            btn.innerText = `PM #${p.id}`;
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
@@ -181,32 +172,13 @@
             const card = document.createElement('div');
             card.id = 'p-' + p.id;
             card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
-            
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:20px;">
-                    <h2 style="margin:0;">PALLET MIXTO #${p.id}</h2>
-                    <span class="badge" style="font-size:1.2em;">FAMILIA: ${p.fam}</span>
-                </div>
-                <div style="display:flex; gap:40px; margin-bottom:20px; font-size:1.1em;">
-                    <div><strong>Depósito:</strong> ${p.dep}</div>
-                    <div><strong>Total Unidades:</strong> ${p.total} CA</div>
-                </div>
+                <h2>Pallet Mixto #${p.id} <small>(${p.dep})</small></h2>
+                <p><strong>Familia:</strong> ${p.fam} | <strong>Total:</strong> ${p.total} CA</p>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
-                    <tbody>
-                        ${p.items.map(i => `
-                            <tr>
-                                <td style="font-family:monospace; font-weight:bold;">${i.ubi}</td>
-                                <td>${i.sku}</td>
-                                <td>${i.desc}</td>
-                                <td style="font-weight:bold; font-size:1.1em;">${i.cant}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
+                    <tbody>${p.items.map(i => `<tr><td><b>${i.ubi}</b></td><td>${i.sku}</td><td>${i.desc}</td><td>${i.cant}</td></tr>`).join('')}</tbody>
                 </table>
-                <div class="no-print" style="margin-top:20px; color:#718096; font-size:0.8em; text-align:right;">
-                    Capacidad calculada: ${p.cap} CA
-                </div>
             `;
             cont.appendChild(card);
         });
