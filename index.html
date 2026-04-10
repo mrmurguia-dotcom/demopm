@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v27.1 - Line Order Fixed</title>
+    <title>Picking JDE v27.2 - Termos y Latas</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; }
@@ -27,7 +27,7 @@
 <body>
 
 <div class="container no-print">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v27.1</h2>
+    <h2 style="text-align:center;">📦 Optimizador de Picking v27.2</h2>
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
@@ -126,7 +126,8 @@
         let cont = 1;
 
         items.forEach(it => {
-            let esLataGrande = (it.fam === "9" && it.cant >= it.base);
+            // APLICAMOS LA REGLA A LA FAMILIA 9 (LATAS) Y 4 (TERMO)
+            let esEspecialGrande = ((it.fam === "9" || it.fam === "4") && it.cant >= it.base);
             let forzarNuevo = false;
 
             if(!pAct) {
@@ -134,13 +135,13 @@
             } else {
                 if(pAct.dep !== it.dep || pAct.orden !== it.orden) forzarNuevo = true;
                 
-                let tieneLataGrande = pAct.items.some(x => x.fam === "9" && x.cant >= x.base);
-                if(esLataGrande || tieneLataGrande) forzarNuevo = true;
+                let tieneEspecialGrande = pAct.items.some(x => (x.fam === "9" || x.fam === "4") && x.cant >= x.base);
+                if(esEspecialGrande || tieneEspecialGrande) forzarNuevo = true;
 
                 let maxItem = [...pAct.items, it].reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
                 let capLimite = maxItem.capFull;
 
-                let todosChicos = [...pAct.items, it].every(x => x.cant < x.base && x.fam !== "9");
+                let todosChicos = [...pAct.items, it].every(x => x.cant < x.base && x.fam !== "9" && x.fam !== "4");
                 if(todosChicos) capLimite = 84;
 
                 if(pAct.total + it.cant > capLimite) forzarNuevo = true;
@@ -155,7 +156,7 @@
             pAct.total += it.cant;
             
             let mItem = pAct.items.reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
-            pAct.capMax = pAct.items.every(x => x.cant < x.base && x.fam !== "9") ? 84 : mItem.capFull;
+            pAct.capMax = pAct.items.every(x => x.cant < x.base && x.fam !== "9" && x.fam !== "4") ? 84 : mItem.capFull;
         });
 
         render(pallets);
@@ -202,7 +203,7 @@
                                 <td>${it.linea.toFixed(3)}</td>
                                 <td><b>${it.ubi}</b></td>
                                 <td>${it.sku}</td>
-                                <td>${it.desc}${it.fam === "9" ? '<span class="lata-tag">LATA</span>' : ''}</td>
+                                <td>${it.desc}${it.fam === "9" ? '<span class="lata-tag">LATA</span>' : ''}${it.fam === "4" ? '<span class="lata-tag">TERMO</span>' : ''}</td>
                                 <td><b style="font-size:1.2em">${it.cant}</b></td>
                                 <td>${it.fam}</td>
                             </tr>`).join('')}
@@ -211,7 +212,7 @@
                 <div style="margin-top:40px; display:flex; justify-content: space-between;">
                     <div style="border-top:1px solid #000; width:200px; text-align:center;">Preparador</div>
                     <div style="border-top:1px solid #000; width:200px; text-align:center;">Control Despacho</div>
-                    <div style="font-size:0.8em">v27.1 - Picking Inteligente</div>
+                    <div style="font-size:0.8em">v27.2 - Picking Inteligente</div>
                 </div>
             `;
             cont.appendChild(card);
