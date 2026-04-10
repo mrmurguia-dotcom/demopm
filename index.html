@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Optimizador de Picking v10.0 - PRO</title>
+    <title>Optimizador de Picking v10.1 - PRO</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #0056b3; --success: #28a745; --bg: #f4f7f6; }
@@ -14,19 +14,18 @@
         label { font-weight: bold; display: block; margin-bottom: 10px; color: #555; }
         .btn-main { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.3s; margin-top: 15px; }
         .btn-main:hover { background: #218838; transform: translateY(-2px); }
-        .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding: 10px 0; }
+        .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding: 10px 0; border-bottom: 1px solid #eee; }
         .pm-tab { background: #e0e0e0; padding: 10px 20px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: 0.2s; font-weight: 500; }
         .pm-tab.active { background: var(--primary); color: white; }
         .pallet-card { display: none; background: white; border: 2px solid #e0e6ed; border-radius: 12px; padding: 25px; margin-top: 20px; }
-        .pallet-card.active { display: block; animation: fadeIn 0.4s; }
+        .pallet-card.active { display: block; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #f8f9fa; color: #666; text-transform: uppercase; font-size: 0.85em; padding: 12px; border-bottom: 2px solid #dee2e6; }
+        th { background: #f8f9fa; color: #666; text-transform: uppercase; font-size: 0.85em; padding: 12px; border-bottom: 2px solid #dee2e6; text-align: left; }
         td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.95em; }
         .badge-fam { background: #ffc107; padding: 4px 12px; border-radius: 15px; font-weight: bold; font-size: 0.8em; }
         .badge-dep { background: #17a2b8; color: white; padding: 4px 12px; border-radius: 15px; font-weight: bold; font-size: 0.8em; }
         .total-box { font-size: 1.3em; font-weight: bold; color: var(--primary); margin: 15px 0; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @media print { .config-section, .pm-nav, h1, .btn-main, button { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: 1px solid #000; } }
+        @media print { .config-section, .pm-nav, h1, .btn-main, button { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: 1px solid #000; margin-bottom: 20px; } }
     </style>
 </head>
 <body>
@@ -38,12 +37,12 @@
         <div class="card-input">
             <label>📂 1. Maestro de Capacidades:</label>
             <input type="file" id="masterFile" accept=".xlsx, .xls">
-            <p style="font-size: 0.75em; color: #888; margin-top: 8px;">Columnas: SKU (B), Base (F), Camada (G), Familia (I).</p>
+            <p style="font-size: 0.75em; color: #888; margin-top: 8px;">SKU (B), Base (F), Camada (G), Familia (I).</p>
         </div>
         <div class="card-input">
             <label>🚚 2. Reporte de Surtido:</label>
             <input type="file" id="surtidoFile" accept=".xlsx, .xls">
-            <button class="btn-main" onclick="procesar()">GENERAR PALLETS</button>
+            <button class="btn-main" onclick="procesarSurtido()">🚀 GENERAR PALLETS</button>
         </div>
     </div>
 
@@ -55,97 +54,129 @@
 </div>
 
 <script>
+    // Variables globales
     let dbMaestro = JSON.parse(localStorage.getItem('maestro_v10')) || {};
 
     // Cargar Maestro
     document.getElementById('masterFile').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
-            dbMaestro = {};
-            
-            data.forEach((row, index) => {
-                if(index === 0) return; // Saltar cabecera
-                let sku = (row[1] || "").toString().trim(); // Col B
-                if(sku) {
-                    dbMaestro[sku] = {
-                        base: parseFloat(row[5]) || 1, // Col F
-                        camada: parseFloat(row[6]) || 1, // Col G
-                        familia: (row[8] || "N/A").toString().trim() // Col I
-                    };
-                }
-            });
-            localStorage.setItem('maestro_v10', JSON.stringify(dbMaestro));
-            alert("✅ Maestro cargado: " + Object.keys(dbMaestro).length + " productos.");
+            try {
+                const data = new Uint8Array(ev.target.result);
+                const wb = XLSX.read(data, {type: 'array'});
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                
+                dbMaestro = {};
+                rows.forEach((row, idx) => {
+                    if(idx === 0) return; // Cabecera
+                    let sku = (row[1] || "").toString().trim(); // Col B
+                    if(sku) {
+                        dbMaestro[sku] = {
+                            base: parseFloat(row[5]) || 1,    // Col F
+                            camada: parseFloat(row[6]) || 1,  // Col G
+                            familia: (row[8] || "9").toString().trim() // Col I
+                        };
+                    }
+                });
+                localStorage.setItem('maestro_v10', JSON.stringify(dbMaestro));
+                alert("✅ Maestro cargado con éxito.");
+            } catch (err) {
+                alert("Error al leer el maestro: " + err.message);
+            }
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    function procesar() {
-        const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Subí el archivo de surtido.");
+    // Función Principal
+    function procesarSurtido() {
+        console.log("Iniciando procesamiento...");
+        const fileInput = document.getElementById('surtidoFile');
+        if(!fileInput.files.length) return alert("Por favor, seleccioná el archivo de Surtido.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: ""});
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type: 'array'});
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
 
-            // 1. FILTRAR SOLO "PALLET MIXTO"
-            let startIdx = rows.findIndex(r => r.join(" ").toUpperCase().includes("PM PALLET MIXTO"));
-            if(startIdx === -1) return alert("No se encontró la sección 'Pallet Mixto'");
+                console.log("Filas leídas:", rows.length);
 
-            let items = [];
-            rows.slice(startIdx).forEach(row => {
-                let sku = row[1]?.toString().trim();
-                let cant = parseInt(row[9]?.toString().replace(/[^\d]/g, ""));
-                if(sku && !isNaN(sku) && cant > 0) {
-                    items.push({
-                        ubi: row[0] || "S/D",
-                        sku: sku,
-                        desc: row[4] || "",
-                        cant: cant
-                    });
+                // 1. Encontrar la sección de Pallet Mixto
+                let startIdx = -1;
+                for(let i=0; i < rows.length; i++) {
+                    let filaTexto = rows[i].join(" ").toUpperCase();
+                    if(filaTexto.includes("PALLET MIXTO") || filaTexto.includes("SURTIDO PM")) {
+                        startIdx = i;
+                        break;
+                    }
                 }
-            });
 
-            agruparEnPallets(items);
+                if(startIdx === -1) {
+                    return alert("No se encontró la frase 'Pallet Mixto' en el Excel. Verificá el formato.");
+                }
+
+                console.log("Sección mixtos empieza en fila:", startIdx);
+
+                // 2. Extraer ítems
+                let itemsRaw = [];
+                for(let j = startIdx; j < rows.length; j++) {
+                    let row = rows[j];
+                    let sku = (row[1] || "").toString().trim();
+                    let cantStr = (row[9] || "").toString().replace(/[^\d]/g, "");
+                    let cant = parseInt(cantStr);
+
+                    // Validamos que sea un SKU numérico y tenga cantidad
+                    if(sku && !isNaN(sku) && sku.length > 2 && !isNaN(cant) && cant > 0) {
+                        itemsRaw.push({
+                            ubi: (row[0] || "S/D").trim(),
+                            sku: sku,
+                            desc: (row[4] || "Sin descripción").trim(),
+                            cant: cant
+                        });
+                    }
+                }
+
+                if(itemsRaw.length === 0) return alert("No se encontraron productos válidos después de 'Pallet Mixto'.");
+
+                console.log("Items encontrados:", itemsRaw.length);
+                generarAgrupacion(itemsRaw);
+
+            } catch (err) {
+                console.error(err);
+                alert("Error crítico: " + err.message);
+            }
         };
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(fileInput.files[0]);
     }
 
-    function agruparEnPallets(items) {
-        // Ordenar por ubicación (Picking Path)
+    function generarAgrupacion(items) {
+        // Ordenar por Ubicación
         items.sort((a, b) => a.ubi.localeCompare(b.ubi));
 
         const pallets = [];
         let current = null;
 
         items.forEach(item => {
-            let info = dbMaestro[item.sku];
-            let fam = info ? info.familia : "9"; // Familia 9 por defecto
-            let cap = info ? (info.base * info.camada) : 140;
+            let m = dbMaestro[item.sku];
+            let fam = m ? m.familia : "9";
+            let cap = m ? Math.floor(m.base * m.camada) : 140;
 
-            // REGLA ESPECIAL ANTARES (Si no está en maestro o viene con cap errónea)
+            // Regla Antares
             if(item.desc.toUpperCase().includes("ANTARES")) {
                 fam = "ANTARES";
-                cap = 450; // 45 camadas * 10 base
+                cap = 450;
             }
 
-            let dep = item.ubi.startsWith("P0.14") ? "Dep. 2" : (item.ubi.startsWith("P0.0A") ? "Dep. 1" : "Otros");
+            // Depósito
+            let dep = item.ubi.startsWith("P0.14") || item.ubi.startsWith("P014") ? "Dep. 2" : "Dep. 1";
 
-            // ¿Necesitamos abrir un nuevo pallet?
-            // Solo si cambia de DEPÓSITO, de FAMILIA o si el ítem ya no cabe físicamente.
-            if (!current || current.dep !== dep || current.familia !== fam || (current.total + item.cant) > current.cap) {
-                if (current) pallets.push(current);
-                current = { 
-                    id: pallets.length + 1, 
-                    dep: dep, 
-                    familia: fam, 
-                    cap: cap, 
-                    total: 0, 
-                    items: [] 
-                };
+            // Lógica de corte
+            if(!current || current.dep !== dep || current.familia !== fam || (current.total + item.cant) > current.cap) {
+                if(current) pallets.push(current);
+                current = { id: pallets.length + 1, dep, familia: fam, cap, total: 0, items: [] };
             }
 
             current.items.push(item);
@@ -153,39 +184,39 @@
         });
 
         if(current) pallets.push(current);
-        render(pallets);
+        dibujarUI(pallets);
     }
 
-    function render(pallets) {
+    function dibujarUI(pallets) {
         const tabs = document.getElementById('tabs');
         const cont = document.getElementById('pallets');
         tabs.innerHTML = ""; cont.innerHTML = "";
         document.getElementById('resultArea').style.display = "block";
 
-        pallets.forEach((p, i) => {
-            // Tab
+        pallets.forEach((p, idx) => {
+            // Botón Tab
             const btn = document.createElement('div');
-            btn.className = `pm-tab ${i===0?'active':''}`;
+            btn.className = `pm-tab ${idx === 0 ? 'active' : ''}`;
             btn.innerText = `PM ${p.id}`;
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById('card-'+p.id).classList.add('active');
+                document.getElementById('p-' + p.id).classList.add('active');
             };
             tabs.appendChild(btn);
 
-            // Card
+            // Contenedor Pallet
             const card = document.createElement('div');
-            card.id = 'card-' + p.id;
-            card.className = `pallet-card ${i===0?'active':''}`;
-            let perc = Math.round((p.total / p.cap) * 100);
+            card.id = 'p-' + p.id;
+            card.className = `pallet-card ${idx === 0 ? 'active' : ''}`;
+            let ocup = Math.round((p.total / p.cap) * 100);
 
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h2 style="margin:0;">Pallet Mixto #${p.id} <span class="badge-dep">${p.dep}</span></h2>
                     <span class="badge-fam">FAMILIA: ${p.familia}</span>
                 </div>
-                <div class="total-box">Total: ${p.total} CA <small style="font-size:0.6em; color:#999;">(Capacidad: ${p.cap} | ${perc}%)</small></div>
+                <div class="total-box">Total: ${p.total} CA <small style="font-size:0.6em; color:#999;">(Capacidad: ${p.cap} | ${ocup}%)</small></div>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
                     <tbody>
