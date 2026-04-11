@@ -41,6 +41,11 @@
 </div>
 
 <div id="resArea" class="container" style="display:none; margin-top:20px;">
+    <div id="filterContainer" class="no-print" style="margin-bottom: 10px; background: #ecf0f1; padding: 10px 15px; border-radius: 5px; display: inline-block; border: 1px solid #bdc3c7;">
+        <label for="orderFilter" style="font-weight:bold; margin-right: 10px; color: #2c3e50;">🔍 Filtrar por Orden:</label>
+        <select id="orderFilter" style="padding: 5px 10px; font-size: 1em; border-radius: 3px; border: 1px solid #ccc; font-weight: bold; cursor: pointer;"></select>
+    </div>
+
     <div id="tabs" class="pm-nav no-print"></div>
     <div id="pallets"></div>
     <button class="btn-gen no-print" style="background:#34495e; margin-top:20px;" onclick="window.print()">📄 IMPRIMIR / GUARDAR PDF</button>
@@ -171,12 +176,26 @@
         document.getElementById('resArea').style.display = "block";
         const tabs = document.getElementById('tabs');
         const cont = document.getElementById('pallets');
+        const orderFilter = document.getElementById('orderFilter');
+        
         tabs.innerHTML = ""; cont.innerHTML = "";
+        
+        // Llenar el combo de filtro con las órdenes únicas
+        orderFilter.innerHTML = '<option value="ALL">Mostrar Todas</option>';
+        const ordenesUnicas = [...new Set(pallets.map(p => p.orden))];
+        ordenesUnicas.forEach(ord => {
+            const opt = document.createElement('option');
+            opt.value = ord;
+            opt.innerText = "Orden " + ord;
+            orderFilter.appendChild(opt);
+        });
 
         pallets.forEach((p, i) => {
             const btn = document.createElement('div');
             btn.className = `pm-tab ${i===0?'active':''}`;
             btn.innerText = `PM #${p.id} (${p.total})`;
+            btn.setAttribute('data-orden', p.orden); // Atributo para el filtro
+            
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
@@ -215,11 +234,34 @@
                 </table>
                 <div style="margin-top:15px; border-top:1px solid #ccc; padding-top:10px; font-size:0.8em; color:#666;">
                     <div>Interfaz diseñada para optimizar el armado lógico de pallets mixtos en JDE 9.2. Desarrollado por M2 Consultora Digital.</div>
-
                 </div>
             `;
             cont.appendChild(card);
         });
+
+        // Evento que se dispara al cambiar el filtro
+        orderFilter.onchange = (e) => {
+            const seleccion = e.target.value;
+            let primerVisible = null;
+
+            // Recorrer los tabs para ocultar o mostrar según la orden
+            document.querySelectorAll('.pm-tab').forEach(btn => {
+                if (seleccion === "ALL" || btn.getAttribute('data-orden') === seleccion) {
+                    btn.style.display = "block";
+                    if (!primerVisible) primerVisible = btn;
+                } else {
+                    btn.style.display = "none";
+                }
+            });
+
+            // Hacer clic automático en el primer PM de la orden filtrada para mostrar la tabla
+            if (primerVisible) {
+                primerVisible.click();
+            } else {
+                // Por si no quedara nada visible, limpiamos todo
+                document.querySelectorAll('.pallet-card').forEach(el => el.classList.remove('active'));
+            }
+        };
     }
 </script>
 </body>
