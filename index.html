@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v27.7 - Regla de Base Acumulada</title>
+    <title>Picking JDE v29.0 - Agrupación por Familia y Ruta</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; }
+        :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; --warning: #f39c12; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .box { border: 2px dashed #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
@@ -20,14 +20,16 @@
         th { background: #f2f2f2; }
         .header-info { border-bottom: 4px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
         .order-badge { border: 3px solid #000; padding: 8px 15px; font-size: 1.5em; font-weight: bold; float: right; margin-top: -10px; }
-        .lata-tag { background: #000; color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 10px; }
+        .tag { color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 10px; font-weight: bold; }
+        .tag-lata { background: #e67e22; }
+        .tag-termo { background: #2980b9; }
         @media print { .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
 </head>
 <body>
 
 <div class="container no-print">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v27.7</h2>
+    <h2 style="text-align:center;">📦 Optimizador de Picking v29.0</h2>
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
@@ -36,7 +38,7 @@
         <strong>2. Reporte JDE (Surtido):</strong><br>
         <input type="file" id="surtidoFile">
         <br><br>
-        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS MIXTOS</button>
+        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS (FAMILIA + RUTA)</button>
     </div>
 </div>
 
@@ -47,7 +49,7 @@
 </div>
 
 <script>
-    let maestro = JSON.parse(localStorage.getItem('m_v27')) || {};
+    let maestro = JSON.parse(localStorage.getItem('m_v29')) || {};
 
     document.getElementById('masterFile').onchange = (e) => {
         const reader = new FileReader();
@@ -63,15 +65,15 @@
                     maestro[sku] = { base: base, cap: base * camadas, fam: String(r[8] || "0") };
                 }
             });
-            localStorage.setItem('m_v27', JSON.stringify(maestro));
-            alert("Maestro cargado correctamente.");
+            localStorage.setItem('m_v29', JSON.stringify(maestro));
+            alert("Maestro v29 cargado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Cargá el reporte de JDE primero.");
+        if(!file) return alert("Cargá el reporte de JDE.");
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -107,13 +109,6 @@
                 }
             });
 
-            // Ordenamiento base: Depósito, Orden, Línea
-            itemsRaw.sort((a,b) => 
-                a.dep.localeCompare(b.dep) || 
-                a.orden.localeCompare(b.orden) || 
-                (a.linea - b.linea)
-            );
-
             armarLogica(itemsRaw);
         };
         reader.readAsText(file, "ISO-8859-1");
@@ -124,61 +119,54 @@
         let resumenFamilias = {}; 
         items.forEach(it => {
             let key = it.orden + "_" + it.fam;
-            if(!resumenFamilias[key]) {
-                resumenFamilias[key] = { totalCant: 0, maxBase: 0 };
-            }
+            if(!resumenFamilias[key]) resumenFamilias[key] = { totalCant: 0, maxBase: 0 };
             resumenFamilias[key].totalCant += it.cant;
-            if(it.base > resumenFamilias[key].maxBase) {
-                resumenFamilias[key].maxBase = it.base;
-            }
+            if(it.base > resumenFamilias[key].maxBase) resumenFamilias[key].maxBase = it.base;
         });
+
+        // 2. DETERMINAR AISLAMIENTO
+        items.forEach(it => {
+            let infoFam = resumenFamilias[it.orden + "_" + it.fam];
+            let esEspecial = (it.fam === "4" || it.fam === "9");
+            it.aislado = esEspecial && (infoFam.totalCant >= infoFam.maxBase);
+        });
+
+        // 3. ORDENAMIENTO (EL CAMBIO CLAVE): 
+        // Depósito -> Orden -> Familia (Para que se junten) -> Ubicación (Para el recorrido)
+        items.sort((a,b) => 
+            a.dep.localeCompare(b.dep) || 
+            a.orden.localeCompare(b.orden) || 
+            a.fam.localeCompare(b.fam) || 
+            a.ubi.localeCompare(b.ubi)
+        );
 
         let pallets = [];
         let pAct = null;
         let cont = 1;
 
         items.forEach(it => {
-            let infoFam = resumenFamilias[it.orden + "_" + it.fam];
-            let esEspecial = (it.fam === "4" || it.fam === "9");
-            
-            // REGLA CLAVE: Un artículo especial debe ir AISLADO si el TOTAL de su familia en la orden >= base máxima
-            let debeIrAislado = esEspecial && (infoFam.totalCant >= infoFam.maxBase);
-
             let forzarNuevo = false;
 
             if(!pAct) {
                 forzarNuevo = true;
             } else {
-                // A. Cambio de Depósito u Orden
-                if(pAct.dep !== it.dep || pAct.orden !== it.orden) forzarNuevo = true;
-                
-                // B. Lógica de Aislamiento
-                let famPallet = pAct.items[0].fam;
-                let itemEnPalletAislado = pAct.items.some(x => {
-                    let f = resumenFamilias[x.orden + "_" + x.fam];
-                    return (x.fam === "4" || x.fam === "9") && (f.totalCant >= f.maxBase);
-                });
+                // REGLAS DE CORTE DE PALLET
+                if(pAct.dep !== it.dep || pAct.orden !== it.orden) {
+                    forzarNuevo = true;
+                } else {
+                    // Si el ítem actual es AISLADO y es de otra familia que la del pallet -> Nuevo
+                    if(it.aislado && it.fam !== pAct.items[0].fam) forzarNuevo = true;
+                    
+                    // Si el pallet ya tiene algo AISLADO y entra una familia distinta -> Nuevo
+                    let palletTieneAislado = pAct.items.some(x => x.aislado);
+                    if(palletTieneAislado && it.fam !== pAct.items[0].fam) forzarNuevo = true;
 
-                // Si el item nuevo debe ir aislado y el pallet tiene otra familia -> Nuevo
-                if (debeIrAislado && it.fam !== famPallet) forzarNuevo = true;
-                
-                // Si el pallet ya contiene algo que está aislado y el nuevo item es de otra familia -> Nuevo
-                if (itemEnPalletAislado && it.fam !== famPallet) forzarNuevo = true;
-
-                // C. Capacidad física
-                let itemsConNuevo = [...pAct.items, it];
-                let maxItem = itemsConNuevo.reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
-                let capLimite = maxItem.capFull;
-
-                // Si es un mix de cosas chicas (no aisladas), límite 84
-                let todosChicos = itemsConNuevo.every(x => {
-                    let f = resumenFamilias[x.orden + "_" + x.fam];
-                    let aislado = (x.fam === "4" || x.fam === "9") && (f.totalCant >= f.maxBase);
-                    return !aislado && x.cant < x.base;
-                });
-                if(todosChicos) capLimite = 84;
-
-                if(pAct.total + it.cant > capLimite) forzarNuevo = true;
+                    // Capacidad Física
+                    let maxItem = [...pAct.items, it].reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
+                    let capLimite = (it.fam === "0" && it.cant < it.base) ? 84 : maxItem.capFull;
+                    
+                    if(pAct.total + it.cant > capLimite) forzarNuevo = true;
+                }
             }
 
             if(forzarNuevo) {
@@ -189,12 +177,8 @@
             pAct.items.push(it);
             pAct.total += it.cant;
             
-            // Recalcular capacidad visual del pallet
             let mItem = pAct.items.reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
-            pAct.capMax = pAct.items.every(x => {
-                let f = resumenFamilias[x.orden + "_" + x.fam];
-                return !((x.fam === "4" || x.fam === "9") && (f.totalCant >= f.maxBase)) && x.cant < x.base;
-            }) ? 84 : mItem.capFull;
+            pAct.capMax = pAct.items.every(x => x.fam === "0" || !x.aislado) ? 84 : mItem.capFull;
         });
 
         render(pallets);
@@ -209,7 +193,7 @@
         pallets.forEach((p, i) => {
             const btn = document.createElement('div');
             btn.className = `pm-tab ${i===0?'active':''}`;
-            btn.innerText = `PM #${p.id}`;
+            btn.innerText = `PM #${p.id} (${p.items[0].fam === '0' ? 'MIX' : (p.items[0].fam === '4' ? 'TER' : 'LAT')})`;
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
@@ -221,35 +205,32 @@
             card.id = 'pc-'+p.id;
             card.className = `pallet-card ${i===0?'active':''}`;
             
-            p.items.sort((a,b) => a.linea - b.linea);
-
             card.innerHTML = `
                 <div class="header-info">
                     <div class="order-badge">ORDEN: ${p.orden}</div>
                     <h1 style="margin:0">Carga: ${p.carga}</h1>
                     <p style="font-size:1.2em; margin:10px 0;">
-                        <b>Sector:</b> ${p.dep} | <b>Pallet:</b> #${p.id} | 
+                        <b>Sector:</b> ${p.dep} | <b>Pallet Mixto:</b> #${p.id} | 
                         <b>Ocupación:</b> <span style="background:yellow; padding:2px 8px;">${p.total} / ${p.capMax} cajas</span>
                     </p>
                 </div>
                 <table>
-                    <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant.</th><th>Fam.</th></tr></thead>
+                    <thead><tr><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant.</th><th>Familia</th></tr></thead>
                     <tbody>
                         ${p.items.map(it => `
                             <tr>
-                                <td>${it.linea.toFixed(3)}</td>
                                 <td><b>${it.ubi}</b></td>
                                 <td>${it.sku}</td>
-                                <td>${it.desc}${it.fam === "9" ? '<span class="lata-tag">LATA</span>' : ''}${it.fam === "4" ? '<span class="lata-tag">TERMO</span>' : ''}</td>
-                                <td><b style="font-size:1.2em">${it.cant}</b></td>
+                                <td>${it.desc}${it.fam === "9" ? '<span class="tag tag-lata">LATA</span>' : ''}${it.fam === "4" ? '<span class="tag tag-termo">TERMO</span>' : ''}</td>
+                                <td><b style="font-size:1.3em">${it.cant}</b></td>
                                 <td>${it.fam}</td>
                             </tr>`).join('')}
                     </tbody>
                 </table>
-                <div style="margin-top:40px; display:flex; justify-content: space-between;">
-                    <div style="border-top:1px solid #000; width:200px; text-align:center;">Preparador</div>
-                    <div style="border-top:1px solid #000; width:200px; text-align:center;">Control Despacho</div>
-                    <div style="font-size:0.8em">v27.7 - Picking Inteligente</div>
+                <div style="margin-top:40px; display:flex; justify-content: space-between; font-size: 0.9em;">
+                    <div style="border-top:1px solid #000; width:200px; text-align:center; padding-top:5px;">Preparador</div>
+                    <div style="border-top:1px solid #000; width:200px; text-align:center; padding-top:5px;">Control Despacho</div>
+                    <div>v29.0 - Agrupación Familiar e Intrapallet</div>
                 </div>
             `;
             cont.appendChild(card);
