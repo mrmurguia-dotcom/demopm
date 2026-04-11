@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v30.1 - Prioridad Ubicación</title>
+    <title>Picking JDE v31.0 - Mezcla y Ubicación</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --danger: #c0392b; --success: #27ae60; }
@@ -20,14 +20,15 @@
         th { background: #f2f2f2; }
         .header-info { border-bottom: 4px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
         .order-badge { border: 3px solid #000; padding: 8px 15px; font-size: 1.5em; font-weight: bold; float: right; margin-top: -10px; }
-        .lata-tag { background: #000; color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 10px; }
+        .tag { color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 10px; font-weight: bold; }
+        .tag-4 { background: #2980b9; } .tag-9 { background: #e67e22; }
         @media print { .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
     </style>
 </head>
 <body>
 
 <div class="container no-print">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v30.1</h2>
+    <h2 style="text-align:center;">📦 Optimizador de Picking v31.0</h2>
     <div class="box">
         <strong>1. Maestro de Capacidades (.xlsx):</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
@@ -36,7 +37,7 @@
         <strong>2. Reporte JDE (Surtido):</strong><br>
         <input type="file" id="surtidoFile">
         <br><br>
-        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS (POR UBICACIÓN)</button>
+        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS (OPTIMIZADOS)</button>
     </div>
 </div>
 
@@ -47,7 +48,7 @@
 </div>
 
 <script>
-    let maestro = JSON.parse(localStorage.getItem('m_v30')) || {};
+    let maestro = JSON.parse(localStorage.getItem('m_v31')) || {};
 
     document.getElementById('masterFile').onchange = (e) => {
         const reader = new FileReader();
@@ -59,26 +60,24 @@
                 let sku = String(r[1] || "").trim();
                 if(sku) {
                     let base = parseInt(r[5]) || 21;
-                    let camadas = parseInt(r[6]) || 4;
-                    maestro[sku] = { base: base, cap: base * camadas, fam: String(r[8] || "0") };
+                    maestro[sku] = { base: base, cap: base * (parseInt(r[6]) || 4), fam: String(r[8] || "0") };
                 }
             });
-            localStorage.setItem('m_v30', JSON.stringify(maestro));
-            alert("Maestro v30 cargado.");
+            localStorage.setItem('m_v31', JSON.stringify(maestro));
+            alert("Maestro v31 cargado.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Cargá el reporte de JDE primero.");
+        if(!file) return alert("Cargá el reporte.");
 
         const reader = new FileReader();
         reader.onload = (e) => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(e.target.result, "text/html");
             const rows = Array.from(doc.querySelectorAll('tr'));
-            
             let itemsRaw = [];
             let cargaNro = "S/C";
             let esMixto = false;
@@ -95,8 +94,7 @@
                 const c = Array.from(tr.cells).map(td => td.innerText.trim());
                 if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
                     let sku = c[1];
-                    let info = maestro[sku] || { base: 21, cap: 120, fam: "0" };
-
+                    let info = maestro[sku] || { base: 21, cap: 84, fam: "0" };
                     itemsRaw.push({
                         ubi: c[0], sku: sku, desc: c[4], orden: c[6],
                         linea: parseFloat(c[7]) || 0,
@@ -107,92 +105,75 @@
                 }
             });
 
-            // --- LÓGICA DE AGRUPACIÓN ---
-            // 1. Calculamos el volumen total por Familia/Orden para saber si se "aíslan"
-            let resumenFam = {};
-            itemsRaw.forEach(it => {
-                let key = it.orden + "_" + it.fam;
-                if(!resumenFam[key]) resumenFam[key] = { total: 0, base: it.base };
-                resumenFam[key].total += it.cant;
-            });
-
-            // 2. Ordenamos PRIORIZANDO: Familia (para agrupar 4 y 9) y luego UBICACIÓN (para el recorrido)
+            // LOGICA: Agrupar por Deposito > Orden > Ubicación (Recorrido físico)
             itemsRaw.sort((a,b) => 
                 a.dep.localeCompare(b.dep) || 
                 a.orden.localeCompare(b.orden) || 
-                a.fam.localeCompare(b.fam) || 
                 a.ubi.localeCompare(b.ubi)
             );
 
-            armarLogica(itemsRaw, resumenFam);
+            armarLogica(itemsRaw);
         };
         reader.readAsText(file, "ISO-8859-1");
     }
 
-    function armarLogica(items, resumenFam) {
+    function armarLogica(items) {
+        // 1. Calcular volumen total de cada familia especial por orden
+        let volFam = {};
+        items.forEach(it => {
+            let k = it.orden + "_" + it.fam;
+            volFam[k] = (volFam[k] || 0) + it.cant;
+        });
+
         let pallets = [];
         let pAct = null;
         let cont = 1;
 
         items.forEach(it => {
-            let infoFam = resumenFam[it.orden + "_" + it.fam];
-            // Un item es "Aislado" si es fam 4 o 9 Y entre todos sus compañeros de orden superan la base
-            let esAislado = (it.fam === "4" || it.fam === "9") && (infoFam.total >= infoFam.base);
+            let vTotalFam = volFam[it.orden + "_" + it.fam];
+            // Solo aislamos si la familia entera en la orden supera su base
+            let debeIrAislado = (it.fam === "4" || it.fam === "9") && (vTotalFam >= it.base);
             
             let forzarNuevo = false;
-
             if(!pAct) {
                 forzarNuevo = true;
             } else {
-                if(pAct.dep !== it.dep || pAct.orden !== it.orden) forzarNuevo = true;
-                
-                // Si el item debe ir aislado y el pallet tiene otra familia -> Nuevo
-                if(esAislado && pAct.famPrincipal !== it.fam) forzarNuevo = true;
-                
-                // Si el pallet ya tiene algo aislado y llega otra familia -> Nuevo
-                if(pAct.aislado && pAct.famPrincipal !== it.fam) forzarNuevo = true;
+                if(pAct.dep !== it.dep || pAct.orden !== it.orden) {
+                    forzarNuevo = true;
+                } else {
+                    // Si el pallet ya tiene algo "Aislado" y entra otra familia -> Corte
+                    if(pAct.esPalletAislado && pAct.famAislada !== it.fam) forzarNuevo = true;
+                    // Si el item actual debe ir "Aislado" y el pallet tiene mezcla -> Corte
+                    if(debeIrAislado && !pAct.esPalletAislado && pAct.total > 0) forzarNuevo = true;
 
-                // Cálculo de capacidad limite
-                let limite = 120;
-                let todosChicos = [...pAct.items, it].every(x => {
-                    let f = resumenFam[x.orden + "_" + x.fam];
-                    return !((x.fam === "4" || x.fam === "9") && f.total >= f.base);
-                });
-                
-                // Si en el pallet solo hay "mezcla" de cosas que no completan base -> 84
-                if(todosChicos) limite = 84;
-                else {
+                    // Capacidad
                     let maxItem = [...pAct.items, it].reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
-                    limite = maxItem.capFull;
-                }
+                    let limite = 84; 
+                    // Si hay familias especiales aisladas o items que superan la base solos, usamos capFull
+                    let hayAislado = [...pAct.items, it].some(x => (x.fam === "4" || x.fam === "9") && volFam[x.orden + "_" + x.fam] >= x.base);
+                    if (hayAislado || it.cant >= it.base) limite = maxItem.capFull;
 
-                if(pAct.total + it.cant > limite) forzarNuevo = true;
+                    if(pAct.total + it.cant > limite) forzarNuevo = true;
+                }
             }
 
             if(forzarNuevo) {
                 pAct = { 
                     id: cont++, dep: it.dep, carga: it.carga, orden: it.orden, 
-                    total: 0, items: [], capMax: 120, 
-                    famPrincipal: it.fam, aislado: esAislado 
+                    total: 0, items: [], esPalletAislado: debeIrAislado, 
+                    famAislada: debeIrAislado ? it.fam : null 
                 };
                 pallets.push(pAct);
             }
 
             pAct.items.push(it);
             pAct.total += it.cant;
-            
-            // Recalcular tope visual
-            let esMix = pAct.items.every(x => {
-                let f = resumenFam[x.orden + "_" + x.fam];
-                return !((x.fam === "4" || x.fam === "9") && f.total >= f.base);
-            });
-            pAct.capMax = esMix ? 84 : pAct.items.reduce((prev, curr) => (prev.capFull > curr.capFull) ? prev : curr).capFull;
         });
 
-        render(pallets);
+        render(pallets, volFam);
     }
 
-    function render(pallets) {
+    function render(pallets, volFam) {
         document.getElementById('resArea').style.display = "block";
         const tabs = document.getElementById('tabs');
         const cont = document.getElementById('pallets');
@@ -213,8 +194,13 @@
             card.id = 'pc-'+p.id;
             card.className = `pallet-card ${i===0?'active':''}`;
             
-            // VOLVEMOS A ACOMODAR POR LÍNEA PARA LA VISTA DEL USUARIO
+            // Re-ordenar por línea para que la interfaz sea amigable al usuario
             p.items.sort((a,b) => a.linea - b.linea);
+
+            // Calcular tope para mostrar
+            let maxI = p.items.reduce((prev, curr) => (prev.cant > curr.cant) ? prev : curr);
+            let hayAislado = p.items.some(x => (x.fam === "4" || x.fam === "9") && volFam[x.orden + "_" + x.fam] >= x.base);
+            let capVis = (hayAislado || p.items.some(x => x.cant >= x.base)) ? maxI.capFull : 84;
 
             card.innerHTML = `
                 <div class="header-info">
@@ -222,27 +208,26 @@
                     <h1 style="margin:0">Carga: ${p.carga}</h1>
                     <p style="font-size:1.2em; margin:10px 0;">
                         <b>Sector:</b> ${p.dep} | <b>Pallet:</b> #${p.id} | 
-                        <b>Ocupación:</b> <span style="background:yellow; padding:2px 8px;">${p.total} / ${p.capMax} cajas</span>
+                        <b>Ocupación:</b> <span style="background:yellow; padding:2px 8px;">${p.total} / ${capVis} cajas</span>
                     </p>
                 </div>
                 <table>
-                    <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant.</th><th>Fam.</th></tr></thead>
+                    <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant.</th></tr></thead>
                     <tbody>
                         ${p.items.map(it => `
                             <tr>
                                 <td>${it.linea.toFixed(3)}</td>
                                 <td><b>${it.ubi}</b></td>
                                 <td>${it.sku}</td>
-                                <td>${it.desc}${it.fam === "9" ? '<span class="lata-tag">LATA</span>' : ''}${it.fam === "4" ? '<span class="lata-tag">TERMO</span>' : ''}</td>
+                                <td>${it.desc}${it.fam!=="0"?`<span class="tag tag-${it.fam}">${it.fam==="4"?'TERMO':'LATA'}</span>`:''}</td>
                                 <td><b style="font-size:1.2em">${it.cant}</b></td>
-                                <td>${it.fam}</td>
                             </tr>`).join('')}
                     </tbody>
                 </table>
-                <div style="margin-top:40px; display:flex; justify-content: space-between;">
-                    <div style="border-top:1px solid #000; width:200px; text-align:center;">Preparador</div>
-                    <div style="border-top:1px solid #000; width:200px; text-align:center;">Control Despacho</div>
-                    <div style="font-size:0.8em">v30.1 - Ubicación & Línea</div>
+                <div style="margin-top:40px; display:flex; justify-content: space-between; font-size:0.8em">
+                    <div>Preparador: _________________</div>
+                    <div>Control: _________________</div>
+                    <div>v31.0 - Recorrido por Ubicación</div>
                 </div>
             `;
             cont.appendChild(card);
