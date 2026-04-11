@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Picking JDE v31.1 - Máxima Capacidad</title>
+    <title>Picking JDE v.PRO - M2 Consultora</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --success: #27ae60; }
@@ -27,13 +27,13 @@
 <body>
 
 <div class="container no-print">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v31.1</h2>
+    <h2 style="text-align:center;">📦 Optimizador de Picking v.PRO - M2 Consultora Digital</h2>
     <div class="box">
         <strong>1. Maestro de Capacidades:</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
     </div>
     <div class="box">
-        <strong>2. Reporte JDE:</strong><br>
+        <strong>2. Reporte de Surtido JDE:</strong><br>
         <input type="file" id="surtidoFile">
         <br><br>
         <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS OPTIMIZADOS</button>
@@ -63,7 +63,7 @@
                 }
             });
             localStorage.setItem('m_v31_1', JSON.stringify(maestro));
-            alert("Maestro v31.1 cargado.");
+            alert("Maestro cargado.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
@@ -214,9 +214,8 @@
                     </tbody>
                 </table>
                 <div style="margin-top:40px; display:flex; justify-content: space-between; font-size:0.9em">
-                    <div>Preparador: _________________</div>
-                    <div>Control: _________________</div>
-                    <div>v31.1 - Optimización por 50% Cap.</div>
+                    <div>Interfaz diseñada para optimizar el armado lógico de pallets mixtos en JDE 9.2. Desarrollado por M2 Consultora Digital.</div>
+
                 </div>
             `;
             cont.appendChild(card);
