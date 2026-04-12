@@ -2,47 +2,47 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Extractor Totales Surtido - JDE</title>
+    <title>Extractor JDE - Final</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --success: #27ae60; --export: #2980b9; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: var(--primary); }
-        .box { border: 2px dashed #ccc; padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center; background: #fafafa; }
-        .btn { border: none; padding: 15px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; color: white; transition: 0.3s; }
+        h2 { text-align: center; color: var(--primary); margin-top: 0; }
+        .box { border: 2px dashed #ccc; padding: 25px; border-radius: 8px; margin-bottom: 20px; text-align: center; background: #fafafa; }
+        .info-header { display: flex; justify-content: space-around; background: #ebf2f7; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-weight: bold; border: 1px solid #d1d9e0; }
+        .btn { border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1em; color: white; transition: 0.3s; }
         .btn-process { background: var(--success); }
-        .btn-process:hover { background: #219653; }
-        .btn-export { background: var(--export); margin-bottom: 15px; display: inline-block; }
-        .btn-export:hover { background: #1f6391; }
-        
-        .table-container { overflow-x: auto; margin-top: 20px; border: 1px solid #ddd; border-radius: 5px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.9em; white-space: nowrap; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: var(--primary); color: white; position: sticky; top: 0; }
+        .btn-export { background: var(--export); margin-bottom: 15px; }
+        .table-container { overflow-x: auto; margin-top: 10px; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; white-space: nowrap; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: var(--primary); color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .hidden { display: none; }
-        .highlight-qty { font-weight: bold; color: #d35400; font-size: 1.1em; }
+        .badge-un { color: #8e44ad; font-weight: bold; }
+        .badge-ca { color: #2e86de; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>📦 Extractor de Totales de Surtido (JDE)</h2>
+        <h2>📦 Extractor de Totales JDE (Optimizado)</h2>
         
         <div class="box">
-            <label for="fileInput" style="font-weight:bold; font-size: 1.2em; display:block; margin-bottom:15px; color:#333;">
-                1. Subir Reporte JDE (.xls bajado por Publisher)
-            </label>
-            <input type="file" id="fileInput" accept=".xls,.xlsx,.htm,.html" style="font-size: 1.1em; margin-bottom: 20px;">
+            <input type="file" id="fileInput" accept=".xls,.xlsx,.htm,.html" style="margin-bottom: 15px;">
             <br>
-            <button class="btn btn-process" onclick="procesarArchivo()">⚡ EXTRAER TOTALES SURTIDOS</button>
+            <button class="btn btn-process" onclick="procesarArchivo()">⚡ PROCESAR Y ORDENAR</button>
         </div>
 
         <div id="resultArea" class="hidden">
-            <hr style="border: 1px solid #eee; margin: 30px 0;">
-            <button class="btn btn-export" onclick="exportarExcel()">📥 EXPORTAR A EXCEL (.xlsx)</button>
-            <p style="margin: 0 0 10px 0; color: #666;">Vista previa de los totales consolidados:</p>
+            <div class="info-header">
+                <div id="infoCarga">CARGA: -</div>
+                <div id="infoTotalUN">TOTAL UN: 0</div>
+                <div id="infoTotalCA">TOTAL CA: 0</div>
+            </div>
+
+            <button class="btn btn-export" onclick="exportarExcel()">📥 EXPORTAR EXCEL REAL</button>
             
             <div class="table-container">
                 <table id="tablaTotales">
@@ -50,8 +50,11 @@
                         <tr>
                             <th>Ubicación</th>
                             <th>Artículo</th>
-                            <th>Descripción</th> <th>Descripción</th> <th>Cliente</th>
-                            <th>Línea</th>       <th>Línea</th>
+                            <th>Descripción (Lote)</th>
+                            <th>Descripción</th>
+                            <th>Cliente</th>
+                            <th>Línea (Orden)</th>
+                            <th>Línea</th>
                             <th>Cantidad</th>
                             <th>UM</th>
                             <th>Realizado</th>
@@ -64,11 +67,12 @@
     </div>
 
     <script>
-        let datosExtraidos = [];
+        let datosFinales = [];
+        let infoGral = { carga: "", totalUN: 0, totalCA: 0 };
 
         function procesarArchivo() {
             const file = document.getElementById('fileInput').files[0];
-            if (!file) return alert("Por favor, seleccioná el reporte de JDE primero.");
+            if (!file) return alert("Seleccioná el archivo.");
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -76,131 +80,123 @@
                 const doc = parser.parseFromString(e.target.result, "text/html");
                 const rows = Array.from(doc.querySelectorAll('tr'));
                 
-                datosExtraidos = [];
+                let temporal = [];
                 let contextoActual = {};
-                
-                rows.forEach(tr => {
-                    // Limpiamos el texto de la fila entera para usar Regex después
-                    let text = tr.innerText.replace(/\s+/g, ' ').trim();
-                    if (!text) return;
+                infoGral.totalUN = 0;
+                infoGral.totalCA = 0;
 
-                    let c = Array.from(tr.cells).map(td => td.innerText.trim());
-                    
-                    // Si es una línea de detalle (sabemos que empieza con una Ubicación tipo "P0..." o tiene contenido en c[0] y c[1])
-                    if (c.length >= 8 && c[0].includes('.')) {
-                        // Guardamos en "memoria" los datos de esta línea.
-                        // Cuando JDE agrupa varias líneas, todas comparten este contexto antes del total.
+                rows.forEach(tr => {
+                    let text = tr.innerText.trim();
+                    let cells = Array.from(tr.cells).map(td => td.innerText.trim());
+
+                    // 1. Capturar Número de Carga
+                    if (text.includes("CARGA:")) {
+                        let matchCarga = text.match(/CARGA:\s*(\d+)/i);
+                        if (matchCarga) infoGral.carga = matchCarga[1];
+                    }
+
+                    // 2. Capturar datos de la fila de artículo
+                    if (cells.length >= 8 && cells[0].includes('.')) {
                         contextoActual = {
-                            ubicacion: c[0],
-                            articulo: c[1],
-                            lote: c[2] || '',
-                            desc: c[3] || '',
-                            cliente: c[4] || '',
-                            orden: c[5] || '',
-                            linea: c[6] || ''
+                            ubicacionOriginal: cells[0],
+                            ubicacionLimpia: cells[0].replace(/\./g, ''), // REGLA 2: Quitar puntos
+                            articulo: cells[1],
+                            lote: cells[2],
+                            desc: cells[3],
+                            cliente: cells[4],
+                            orden: cells[5],
+                            linea: cells[6]
                         };
                     }
 
-                    // Si encontramos la línea sumatoria de JDE
+                    // 3. Capturar Total Surtido
                     if (text.toUpperCase().includes('TOTAL SURTIDO')) {
-                        // Usamos una Expresión Regular para "robar" el número y la UM de la fila, 
-                        // sin importar cómo JDE haya fusionado (colspans) las celdas en el HTML.
-                        let match = text.match(/TOTAL SURTIDO:?\s*([\d\.,]+)\s*([A-Za-z]+)?/i);
-                        let cantidadTotal = "";
-                        let umTotal = "CA";
+                        let match = text.match(/TOTAL SURTIDO:?\s*([\d\.,]+)\s*([A-Za-z]+)/i);
+                        if (match && contextoActual.articulo) {
+                            let cant = parseFloat(match[1].replace(',', '.'));
+                            let um = match[2].toUpperCase();
 
-                        if (match) {
-                            cantidadTotal = match[1];
-                            if (match[2]) umTotal = match[2];
-                        }
-
-                        // Si tenemos datos capturados, los pusheamos al array final
-                        if (contextoActual.ubicacion) {
-                            datosExtraidos.push({
-                                ubicacion: contextoActual.ubicacion,
-                                articulo: contextoActual.articulo,
-                                lote: contextoActual.lote,
-                                desc: contextoActual.desc,
-                                cliente: contextoActual.cliente,
-                                orden: contextoActual.orden,
-                                linea: contextoActual.linea, // Se queda con la última leída
-                                cantidad: cantidadTotal,
-                                um: umTotal,
-                                realizado: ''
+                            temporal.push({
+                                ...contextoActual,
+                                cantidad: cant,
+                                um: um
                             });
+
+                            // Sumatoria para la cabecera (REGLA 1)
+                            if (um === 'UN') infoGral.totalUN += cant;
+                            if (um === 'CA') infoGral.totalCA += cant;
                         }
                     }
                 });
 
-                if (datosExtraidos.length === 0) {
-                    alert("No se encontraron filas de 'Total Surtido'. Verificá que el archivo sea el correcto.");
-                    return;
-                }
+                // REGLA 3 y 4: Ordenar (UN primero, luego CA, y dentro de eso por orden de aparición/ubicación)
+                datosFinales = temporal.sort((a, b) => {
+                    if (a.um === 'UN' && b.um !== 'UN') return -1;
+                    if (a.um !== 'UN' && b.um === 'UN') return 1;
+                    return 0; // Mantiene el orden original de depósito dentro de la misma UM
+                });
 
-                mostrarTabla();
+                renderizarUI();
             };
-            
-            // ISO-8859-1 mantiene intactos los acentos y las ñ en los archivos de JDE
             reader.readAsText(file, "ISO-8859-1");
         }
 
-        function mostrarTabla() {
+        function renderizarUI() {
+            document.getElementById('infoCarga').innerText = `CARGA: ${infoGral.carga}`;
+            document.getElementById('infoTotalUN').innerText = `TOTAL UN: ${infoGral.totalUN.toFixed(2)}`;
+            document.getElementById('infoTotalCA').innerText = `TOTAL CA: ${infoGral.totalCA.toFixed(2)}`;
+
             const tbody = document.getElementById('tbodyTotales');
             tbody.innerHTML = '';
 
-            datosExtraidos.forEach(r => {
+            datosFinales.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><b>${r.ubicacion}</b></td>
+                    <td>${r.ubicacionLimpia}</td>
                     <td>${r.articulo}</td>
                     <td>${r.lote}</td>
                     <td>${r.desc}</td>
                     <td>${r.cliente}</td>
                     <td>${r.orden}</td>
                     <td>${r.linea}</td>
-                    <td class="highlight-qty">${r.cantidad}</td>
-                    <td>${r.um}</td>
-                    <td>${r.realizado}</td>
+                    <td style="font-weight:bold">${r.cantidad.toFixed(2)}</td>
+                    <td class="${r.um === 'UN' ? 'badge-un' : 'badge-ca'}">${r.um}</td>
+                    <td></td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // Mostramos el contenedor oculto
             document.getElementById('resultArea').classList.remove('hidden');
         }
 
         function exportarExcel() {
-            // 1. Creamos el libro y armamos el array de datos con los títulos originales
             const wb = XLSX.utils.book_new();
-            const dataSheet = [
+            
+            // Estructura de columnas exacta de JDE
+            const wsData = [
                 ["Ubicación", "Artículo", "Descripción", "Descripción", "Cliente", "Línea", "Línea", "Cantidad", "UM", "Realizado"]
             ];
 
-            datosExtraidos.forEach(r => {
-                // Intentamos convertir la cantidad a número real para que en Excel puedas sumarlo/operar
-                let cantNumero = Number(r.cantidad);
-                let valorCantidad = isNaN(cantNumero) ? r.cantidad : cantNumero;
-
-                dataSheet.push([
-                    r.ubicacion,
+            datosFinales.forEach(r => {
+                wsData.push([
+                    r.ubicacionLimpia,
                     r.articulo,
                     r.lote,
                     r.desc,
                     r.cliente,
                     r.orden,
                     r.linea,
-                    valorCantidad,
+                    r.cantidad,
                     r.um,
-                    r.realizado
+                    ""
                 ]);
             });
 
-            // 2. Convertimos a hoja
-            const ws = XLSX.utils.aoa_to_sheet(dataSheet);
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "Surtido");
             
-            // 3. Agregamos y descargamos
-            XLSX.utils.book_append_sheet(wb, ws, "Surtido_Export");
-            XLSX.writeFile(wb, "Totales_Surtido_JDE.xlsx");
+            // Nombre de archivo con el numero de carga
+            XLSX.writeFile(wb, `Surtido_Carga_${infoGral.carga}.xlsx`);
         }
     </script>
 </body>
