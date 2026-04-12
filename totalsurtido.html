@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Extractor JDE - Final</title>
+    <title>Extractor JDE - Versión Final Ordenada</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --success: #27ae60; --export: #2980b9; }
@@ -27,7 +27,7 @@
 <body>
 
     <div class="container">
-        <h2>📦 Extractor de Totales JDE (Optimizado)</h2>
+        <h2>📦 Extractor JDE (Orden de Ubicación Corregido)</h2>
         
         <div class="box">
             <input type="file" id="fileInput" accept=".xls,.xlsx,.htm,.html" style="margin-bottom: 15px;">
@@ -42,7 +42,7 @@
                 <div id="infoTotalCA">TOTAL CA: 0</div>
             </div>
 
-            <button class="btn btn-export" onclick="exportarExcel()">📥 EXPORTAR EXCEL REAL</button>
+            <button class="btn btn-export" onclick="exportarExcel()">📥 EXPORTAR EXCEL (.xlsx)</button>
             
             <div class="table-container">
                 <table id="tablaTotales">
@@ -70,6 +70,14 @@
         let datosFinales = [];
         let infoGral = { carga: "", totalUN: 0, totalCA: 0 };
 
+        // Función para definir la prioridad de la ubicación
+        function obtenerPrioridadUbicacion(loc) {
+            if (loc.startsWith('P00A')) return 1;
+            if (loc.startsWith('P014')) return 2;
+            if (loc.startsWith('P002')) return 3;
+            return 99; // Otras ubicaciones al final
+        }
+
         function procesarArchivo() {
             const file = document.getElementById('fileInput').files[0];
             if (!file) return alert("Seleccioná el archivo.");
@@ -84,36 +92,37 @@
                 let contextoActual = {};
                 infoGral.totalUN = 0;
                 infoGral.totalCA = 0;
+                infoGral.carga = "";
 
                 rows.forEach(tr => {
                     let text = tr.innerText.trim();
                     let cells = Array.from(tr.cells).map(td => td.innerText.trim());
 
-                    // 1. Capturar Número de Carga
+                    // Capturar Número de Carga
                     if (text.includes("CARGA:")) {
                         let matchCarga = text.match(/CARGA:\s*(\d+)/i);
                         if (matchCarga) infoGral.carga = matchCarga[1];
                     }
 
-                    // 2. Capturar datos de la fila de artículo
-                    if (cells.length >= 8 && cells[0].includes('.')) {
+                    // Capturar datos de la fila de artículo (Ubicación con puntos)
+                    if (cells.length >= 8 && (cells[0].includes('.') || cells[0].startsWith('P0'))) {
                         contextoActual = {
-                            ubicacionOriginal: cells[0],
-                            ubicacionLimpia: cells[0].replace(/\./g, ''), // REGLA 2: Quitar puntos
                             articulo: cells[1],
                             lote: cells[2],
                             desc: cells[3],
                             cliente: cells[4],
                             orden: cells[5],
-                            linea: cells[6]
+                            linea: cells[6],
+                            ubicacionLimpia: cells[0].replace(/\./g, '') // Quitar puntos
                         };
                     }
 
-                    // 3. Capturar Total Surtido
+                    // Capturar Total Surtido
                     if (text.toUpperCase().includes('TOTAL SURTIDO')) {
                         let match = text.match(/TOTAL SURTIDO:?\s*([\d\.,]+)\s*([A-Za-z]+)/i);
                         if (match && contextoActual.articulo) {
-                            let cant = parseFloat(match[1].replace(',', '.'));
+                            let cantStr = match[1].replace(/\./g, '').replace(',', '.');
+                            let cant = parseFloat(cantStr);
                             let um = match[2].toUpperCase();
 
                             temporal.push({
@@ -122,18 +131,25 @@
                                 um: um
                             });
 
-                            // Sumatoria para la cabecera (REGLA 1)
                             if (um === 'UN') infoGral.totalUN += cant;
                             if (um === 'CA') infoGral.totalCA += cant;
                         }
                     }
                 });
 
-                // REGLA 3 y 4: Ordenar (UN primero, luego CA, y dentro de eso por orden de aparición/ubicación)
+                // Lógica de ordenamiento combinada
                 datosFinales = temporal.sort((a, b) => {
+                    // 1. Prioridad de UM (UN primero)
                     if (a.um === 'UN' && b.um !== 'UN') return -1;
                     if (a.um !== 'UN' && b.um === 'UN') return 1;
-                    return 0; // Mantiene el orden original de depósito dentro de la misma UM
+
+                    // 2. Prioridad de Prefijo de Ubicación (P00A > P014 > P002)
+                    let prioA = obtenerPrioridadUbicacion(a.ubicacionLimpia);
+                    let prioB = obtenerPrioridadUbicacion(b.ubicacionLimpia);
+                    if (prioA !== prioB) return prioA - prioB;
+
+                    // 3. Orden alfabético dentro de la misma ubicación
+                    return a.ubicacionLimpia.localeCompare(b.ubicacionLimpia);
                 });
 
                 renderizarUI();
@@ -171,8 +187,6 @@
 
         function exportarExcel() {
             const wb = XLSX.utils.book_new();
-            
-            // Estructura de columnas exacta de JDE
             const wsData = [
                 ["Ubicación", "Artículo", "Descripción", "Descripción", "Cliente", "Línea", "Línea", "Cantidad", "UM", "Realizado"]
             ];
@@ -193,9 +207,7 @@
             });
 
             const ws = XLSX.utils.aoa_to_sheet(wsData);
-            XLSX.utils.book_append_sheet(wb, ws, "Surtido");
-            
-            // Nombre de archivo con el numero de carga
+            XLSX.utils.book_append_sheet(wb, ws, "Totales_Surtido");
             XLSX.writeFile(wb, `Surtido_Carga_${infoGral.carga}.xlsx`);
         }
     </script>
