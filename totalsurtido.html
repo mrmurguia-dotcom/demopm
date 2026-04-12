@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Extractor JDE - Versión Final Ordenada</title>
+    <title>Extractor JDE - Versión Corregida</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --success: #27ae60; --export: #2980b9; }
@@ -10,7 +10,7 @@
         .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: var(--primary); margin-top: 0; }
         .box { border: 2px dashed #ccc; padding: 25px; border-radius: 8px; margin-bottom: 20px; text-align: center; background: #fafafa; }
-        .info-header { display: flex; justify-content: space-around; background: #ebf2f7; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-weight: bold; border: 1px solid #d1d9e0; }
+        .info-header { display: flex; justify-content: space-around; background: #ebf2f7; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-weight: bold; border: 1px solid #d1d9e0; font-size: 1.1em; }
         .btn { border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1em; color: white; transition: 0.3s; }
         .btn-process { background: var(--success); }
         .btn-export { background: var(--export); margin-bottom: 15px; }
@@ -22,24 +22,25 @@
         .hidden { display: none; }
         .badge-un { color: #8e44ad; font-weight: bold; }
         .badge-ca { color: #2e86de; font-weight: bold; }
+        .qty-cell { font-weight: bold; text-align: right; background: #fffdf0; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>📦 Extractor JDE (Orden de Ubicación Corregido)</h2>
+        <h2>📦 Extractor JDE (Cantidades y Orden Corregidos)</h2>
         
         <div class="box">
             <input type="file" id="fileInput" accept=".xls,.xlsx,.htm,.html" style="margin-bottom: 15px;">
             <br>
-            <button class="btn btn-process" onclick="procesarArchivo()">⚡ PROCESAR Y ORDENAR</button>
+            <button class="btn btn-process" onclick="procesarArchivo()">⚡ PROCESAR Y CORREGIR</button>
         </div>
 
         <div id="resultArea" class="hidden">
             <div class="info-header">
-                <div id="infoCarga">CARGA: -</div>
-                <div id="infoTotalUN">TOTAL UN: 0</div>
-                <div id="infoTotalCA">TOTAL CA: 0</div>
+                <div id="infoCarga" style="color:#2c3e50">CARGA: -</div>
+                <div id="infoTotalUN" style="color:#8e44ad">TOTAL UN: 0.00</div>
+                <div id="infoTotalCA" style="color:#2980b9">TOTAL CA: 0.00</div>
             </div>
 
             <button class="btn btn-export" onclick="exportarExcel()">📥 EXPORTAR EXCEL (.xlsx)</button>
@@ -70,12 +71,30 @@
         let datosFinales = [];
         let infoGral = { carga: "", totalUN: 0, totalCA: 0 };
 
-        // Función para definir la prioridad de la ubicación
+        function parsearCantidad(str) {
+            if (!str) return 0;
+            // Limpiamos espacios raros
+            let clean = str.trim().replace(/\s/g, '');
+            
+            // LÓGICA DE JDE: Si tiene coma, es el decimal (formato ES). Si no, el punto es el decimal (formato EN).
+            if (clean.includes(',') && clean.includes('.')) {
+                // Formato 1.234,56 -> quitamos punto y cambiamos coma por punto
+                clean = clean.replace(/\./g, '').replace(',', '.');
+            } else if (clean.includes(',')) {
+                // Formato 1234,56
+                clean = clean.replace(',', '.');
+            }
+            // Si solo tiene punto (2.00), lo dejamos como está para que parseFloat lo tome bien
+            
+            let num = parseFloat(clean);
+            return isNaN(num) ? 0 : num;
+        }
+
         function obtenerPrioridadUbicacion(loc) {
             if (loc.startsWith('P00A')) return 1;
             if (loc.startsWith('P014')) return 2;
             if (loc.startsWith('P002')) return 3;
-            return 99; // Otras ubicaciones al final
+            return 99;
         }
 
         function procesarArchivo() {
@@ -92,20 +111,19 @@
                 let contextoActual = {};
                 infoGral.totalUN = 0;
                 infoGral.totalCA = 0;
-                infoGral.carga = "";
 
                 rows.forEach(tr => {
                     let text = tr.innerText.trim();
                     let cells = Array.from(tr.cells).map(td => td.innerText.trim());
 
-                    // Capturar Número de Carga
+                    // Buscar Carga
                     if (text.includes("CARGA:")) {
                         let matchCarga = text.match(/CARGA:\s*(\d+)/i);
                         if (matchCarga) infoGral.carga = matchCarga[1];
                     }
 
-                    // Capturar datos de la fila de artículo (Ubicación con puntos)
-                    if (cells.length >= 8 && (cells[0].includes('.') || cells[0].startsWith('P0'))) {
+                    // Capturar contexto de artículo
+                    if (cells.length >= 8 && cells[0].includes('.')) {
                         contextoActual = {
                             articulo: cells[1],
                             lote: cells[2],
@@ -113,16 +131,16 @@
                             cliente: cells[4],
                             orden: cells[5],
                             linea: cells[6],
-                            ubicacionLimpia: cells[0].replace(/\./g, '') // Quitar puntos
+                            ubicacionLimpia: cells[0].replace(/\./g, '')
                         };
                     }
 
-                    // Capturar Total Surtido
+                    // Capturar Fila de Total Surtido
                     if (text.toUpperCase().includes('TOTAL SURTIDO')) {
+                        // Regex mejorado para capturar el número con decimales y la UM
                         let match = text.match(/TOTAL SURTIDO:?\s*([\d\.,]+)\s*([A-Za-z]+)/i);
                         if (match && contextoActual.articulo) {
-                            let cantStr = match[1].replace(/\./g, '').replace(',', '.');
-                            let cant = parseFloat(cantStr);
+                            let cant = parsearCantidad(match[1]);
                             let um = match[2].toUpperCase();
 
                             temporal.push({
@@ -137,18 +155,18 @@
                     }
                 });
 
-                // Lógica de ordenamiento combinada
+                // ORDENAMIENTO ESTRICTO
                 datosFinales = temporal.sort((a, b) => {
-                    // 1. Prioridad de UM (UN primero)
+                    // 1. UN primero, CA después
                     if (a.um === 'UN' && b.um !== 'UN') return -1;
                     if (a.um !== 'UN' && b.um === 'UN') return 1;
 
-                    // 2. Prioridad de Prefijo de Ubicación (P00A > P014 > P002)
+                    // 2. Prioridad de prefijos: P00A > P014 > P002
                     let prioA = obtenerPrioridadUbicacion(a.ubicacionLimpia);
                     let prioB = obtenerPrioridadUbicacion(b.ubicacionLimpia);
                     if (prioA !== prioB) return prioA - prioB;
 
-                    // 3. Orden alfabético dentro de la misma ubicación
+                    // 3. Alfabético por ubicación limpia
                     return a.ubicacionLimpia.localeCompare(b.ubicacionLimpia);
                 });
 
@@ -159,8 +177,8 @@
 
         function renderizarUI() {
             document.getElementById('infoCarga').innerText = `CARGA: ${infoGral.carga}`;
-            document.getElementById('infoTotalUN').innerText = `TOTAL UN: ${infoGral.totalUN.toFixed(2)}`;
-            document.getElementById('infoTotalCA').innerText = `TOTAL CA: ${infoGral.totalCA.toFixed(2)}`;
+            document.getElementById('infoTotalUN').innerText = `TOTAL UN: ${infoGral.totalUN.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('infoTotalCA').innerText = `TOTAL CA: ${infoGral.totalCA.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
             const tbody = document.getElementById('tbodyTotales');
             tbody.innerHTML = '';
@@ -175,7 +193,7 @@
                     <td>${r.cliente}</td>
                     <td>${r.orden}</td>
                     <td>${r.linea}</td>
-                    <td style="font-weight:bold">${r.cantidad.toFixed(2)}</td>
+                    <td class="qty-cell">${r.cantidad.toFixed(2)}</td>
                     <td class="${r.um === 'UN' ? 'badge-un' : 'badge-ca'}">${r.um}</td>
                     <td></td>
                 `;
@@ -207,7 +225,14 @@
             });
 
             const ws = XLSX.utils.aoa_to_sheet(wsData);
-            XLSX.utils.book_append_sheet(wb, ws, "Totales_Surtido");
+            // Formatear columna de cantidad como número en Excel
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for(let i = range.s.r + 1; i <= range.e.r; ++i) {
+                const cell = ws[XLSX.utils.encode_col(7) + (i + 1)];
+                if(cell) cell.t = 'n'; 
+            }
+
+            XLSX.utils.book_append_sheet(wb, ws, "Surtido");
             XLSX.writeFile(wb, `Surtido_Carga_${infoGral.carga}.xlsx`);
         }
     </script>
