@@ -41,9 +41,14 @@
 </div>
 
 <div id="resArea" class="container" style="display:none; margin-top:20px;">
-    <div id="filterContainer" class="no-print" style="margin-bottom: 10px; background: #ecf0f1; padding: 10px 15px; border-radius: 5px; display: inline-block; border: 1px solid #bdc3c7;">
-        <label for="orderFilter" style="font-weight:bold; margin-right: 10px; color: #2c3e50;">🔍 Filtrar por Orden:</label>
-        <select id="orderFilter" style="padding: 5px 10px; font-size: 1em; border-radius: 3px; border: 1px solid #ccc; font-weight: bold; cursor: pointer;"></select>
+    <div id="filterContainer" class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: #ecf0f1; padding: 10px 15px; border-radius: 5px; border: 1px solid #bdc3c7;">
+        <div>
+            <label for="orderFilter" style="font-weight:bold; margin-right: 10px; color: #2c3e50;">🔍 Filtrar por Orden:</label>
+            <select id="orderFilter" style="padding: 5px 10px; font-size: 1em; border-radius: 3px; border: 1px solid #ccc; font-weight: bold; cursor: pointer;"></select>
+        </div>
+        <div style="font-size: 1.2em; font-weight: bold; color: #c0392b;">
+            📦 Total Carga: <span id="totalCargaCount">0</span> CA
+        </div>
     </div>
 
     <div id="tabs" class="pm-nav no-print"></div>
@@ -109,11 +114,11 @@
                 }
             });
 
-            // PRIORIDAD DE ARMADO: Depósito > Orden > Ubicación (Eficiencia de camino)
+            // PRIORIDAD DE ARMADO: Depósito > Orden > Ubicación DE MAYOR A MENOR (Mejora solicitada)
             itemsRaw.sort((a,b) => 
                 a.dep.localeCompare(b.dep) || 
                 a.orden.localeCompare(b.orden) || 
-                a.ubi.localeCompare(b.ubi)
+                b.ubi.localeCompare(a.ubi)
             );
 
             armarLogica(itemsRaw);
@@ -121,52 +126,63 @@
         reader.readAsText(file, "ISO-8859-1");
     }
 
+    // Calcula el máximo del pallet respetando la regla de "cantidades menores a una camada"
+    function obtenerCapacidadPallet(items) {
+        let maxCap = 84; // Default estricto si todo es menor a una camada
+        for (let x of items) {
+            if (x.cant >= x.base) {
+                maxCap = Math.max(maxCap, x.capFull);
+            }
+        }
+        return maxCap;
+    }
+
     function armarLogica(items) {
         let pallets = [];
-        let pAct = null;
         let cont = 1;
 
         items.forEach(it => {
-            let forzarNuevo = false;
+            let placed = false;
             
-            // Calculamos el límite teórico según el ítem que entra
-            let limiteItem = (it.fam === "0") ? 84 : it.capFull;
-
-            if(!pAct) {
-                forzarNuevo = true;
-            } else {
-                // 1. Corte por Deposito u Orden (Regla inquebrantable)
-                if(pAct.dep !== it.dep || pAct.orden !== it.orden) {
-                    forzarNuevo = true;
-                } else {
-                    // 2. Lógica de Mezcla Inteligente:
-                    // Si el pallet actual tiene familias especiales (4 o 9)
-                    let cantEspecial = pAct.items.filter(x => x.fam !== "0").reduce((s, x) => s + x.cant, 0);
-                    let capacidadMaxPallet = pAct.items.reduce((m, x) => Math.max(m, x.capFull), 84);
-                    
-                    // Si lo especial que ya hay en el pallet SUPERA el 50% de su capacidad, 
-                    // y el item que entra es de OTRA familia, cerramos para proteger integridad.
-                    if (cantEspecial > (capacidadMaxPallet * 0.5) && it.fam !== "0" && !pAct.items.some(x => x.fam === it.fam)) {
-                        forzarNuevo = true;
-                    }
-
-                    // 3. Corte por capacidad física
-                    if(pAct.total + it.cant > capacidadMaxPallet) forzarNuevo = true;
-                }
+            // Lógica First-Fit: Trata de encajar el saldo en CUALQUIER pallet abierto existente que cumpla las reglas
+            for (let p of pallets) {
+                // Mismo deposito y orden
+                if (p.dep !== it.dep || p.orden !== it.orden) continue;
+                
+                // Si la cantidad es >= base, la regla de familia entra en vigencia (no se mezcla).
+                // Si es menor a la camada, pierde rigurosidad y se vuelve mezclable.
+                let isItStrict = (it.cant >= it.base && it.fam !== "0"); 
+                let pHasStrict = p.items.some(x => x.cant >= x.base && x.fam !== "0");
+                let pStrictFam = pHasStrict ? p.items.find(x => x.cant >= x.base && x.fam !== "0").fam : null;
+                
+                // Si ingresa uno estricto, exige que el pallet no contenga productos de otras familias
+                if (isItStrict && p.items.some(x => x.fam !== it.fam)) continue;
+                // Si el pallet ya es estricto, el que ingresa debe tener la misma familia sí o sí
+                if (pHasStrict && it.fam !== pStrictFam) continue;
+                
+                // Capacidad
+                let mockItems = [...p.items, it];
+                let newMaxCap = obtenerCapacidadPallet(mockItems);
+                
+                // Si excede la capacidad lógica
+                if (p.total + it.cant > newMaxCap) continue;
+                
+                // Encaja perfectamente y rellenamos espacios muertos optimizando el palletizado
+                p.items.push(it);
+                p.total += it.cant;
+                p.capMaxVisual = newMaxCap;
+                placed = true;
+                break;
             }
 
-            if(forzarNuevo) {
-                pAct = { 
+            // Si no entró en ningún pallet existente, abrimos uno nuevo
+            if (!placed) {
+                let newCap = obtenerCapacidadPallet([it]);
+                pallets.push({ 
                     id: cont++, dep: it.dep, carga: it.carga, orden: it.orden, 
-                    total: 0, items: [], capMaxVisual: limiteItem 
-                };
-                pallets.push(pAct);
+                    total: it.cant, items: [it], capMaxVisual: newCap 
+                });
             }
-
-            pAct.items.push(it);
-            pAct.total += it.cant;
-            // Actualizamos la capacidad máxima visual del pallet según el item más "voluminoso" que contenga
-            pAct.capMaxVisual = pAct.items.reduce((m, x) => Math.max(m, x.capFull), 84);
         });
 
         render(pallets);
@@ -177,10 +193,13 @@
         const tabs = document.getElementById('tabs');
         const cont = document.getElementById('pallets');
         const orderFilter = document.getElementById('orderFilter');
+        const countDisplay = document.getElementById('totalCargaCount');
         
         tabs.innerHTML = ""; cont.innerHTML = "";
         
-        // Llenar el combo de filtro con las órdenes únicas
+        // Carga inicial del contador
+        countDisplay.innerText = pallets.reduce((sum, p) => sum + p.total, 0);
+        
         orderFilter.innerHTML = '<option value="ALL">Mostrar Todas</option>';
         const ordenesUnicas = [...new Set(pallets.map(p => p.orden))];
         ordenesUnicas.forEach(ord => {
@@ -194,7 +213,7 @@
             const btn = document.createElement('div');
             btn.className = `pm-tab ${i===0?'active':''}`;
             btn.innerText = `PM #${p.id} (${p.total})`;
-            btn.setAttribute('data-orden', p.orden); // Atributo para el filtro
+            btn.setAttribute('data-orden', p.orden);
             
             btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
@@ -207,8 +226,8 @@
             card.id = 'pc-'+p.id;
             card.className = `pallet-card ${i===0?'active':''}`;
             
-            // Re-ordenar por LÍNEA para que el operario vea el orden administrativo
-            p.items.sort((a,b) => a.linea - b.linea);
+            // Re-ordenar por UBICACIÓN DE MAYOR A MENOR para la visualización del operario
+            p.items.sort((a,b) => b.ubi.localeCompare(a.ubi));
 
             card.innerHTML = `
                 <div class="header-info">
@@ -239,12 +258,10 @@
             cont.appendChild(card);
         });
 
-        // Evento que se dispara al cambiar el filtro
         orderFilter.onchange = (e) => {
             const seleccion = e.target.value;
             let primerVisible = null;
 
-            // Recorrer los tabs para ocultar o mostrar según la orden
             document.querySelectorAll('.pm-tab').forEach(btn => {
                 if (seleccion === "ALL" || btn.getAttribute('data-orden') === seleccion) {
                     btn.style.display = "block";
@@ -254,11 +271,13 @@
                 }
             });
 
-            // Hacer clic automático en el primer PM de la orden filtrada para mostrar la tabla
+            // Actualizar el contador general dinámicamente según la orden elegida
+            let fPallets = (seleccion === "ALL") ? pallets : pallets.filter(p => p.orden === seleccion);
+            countDisplay.innerText = fPallets.reduce((acc, p) => acc + p.total, 0);
+
             if (primerVisible) {
                 primerVisible.click();
             } else {
-                // Por si no quedara nada visible, limpiamos todo
                 document.querySelectorAll('.pallet-card').forEach(el => el.classList.remove('active'));
             }
         };
