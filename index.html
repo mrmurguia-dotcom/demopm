@@ -8,8 +8,14 @@
         :root { --primary: #2c3e50; --success: #27ae60; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .box { border: 2px dashed #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
+        
+        /* Modificaciones para el Drag & Drop */
+        .box { border: 2px dashed #ccc; padding: 30px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; transition: all 0.3s ease; position: relative; background: #fafafa; }
+        .box.dragover { background-color: #e8f4f8; border-color: #2980b9; box-shadow: inset 0 0 10px rgba(41, 128, 185, 0.2); }
+        .drop-text { color: #7f8c8d; font-size: 0.95em; margin: 10px 0; display: block; }
+        
+        .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: background 0.2s; }
+        .btn-gen:hover { background: #219653; }
         .pm-nav { display: flex; gap: 5px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
         .pm-tab { background: #eee; padding: 10px 15px; border-radius: 4px; cursor: pointer; white-space: nowrap; border: 1px solid #ddd; font-weight: bold; }
         .pm-tab.active { background: var(--primary); color: white; }
@@ -28,12 +34,16 @@
 
 <div class="container no-print">
     <h2 style="text-align:center;">📦 Optimizador de Picking v.PRO - M2 Consultora Digital</h2>
-    <div class="box">
-        <strong>1. Maestro de Capacidades:</strong><br>
+    
+    <div class="box" id="dropZoneMaster">
+        <strong style="font-size: 1.1em; color: var(--primary);">1. Maestro de Capacidades</strong><br>
+        <span class="drop-text">Arrastrá y soltá el archivo Excel (.xlsx) aquí o hacé clic en el botón</span>
         <input type="file" id="masterFile" accept=".xlsx">
     </div>
-    <div class="box">
-        <strong>2. Reporte de Surtido JDE:</strong><br>
+    
+    <div class="box" id="dropZoneSurtido">
+        <strong style="font-size: 1.1em; color: var(--primary);">2. Reporte de Surtido JDE</strong><br>
+        <span class="drop-text">Arrastrá y soltá el reporte HTML/XLS aquí o hacé clic en el botón</span>
         <input type="file" id="surtidoFile">
         <br><br>
         <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS OPTIMIZADOS</button>
@@ -59,7 +69,50 @@
 <script>
     let maestro = JSON.parse(localStorage.getItem('m_v31_1')) || {};
 
+    // Configuración de Drag & Drop
+    function setupDragAndDrop(zoneId, inputId, isMaster = false) {
+        const dropZone = document.getElementById(zoneId);
+        const fileInput = document.getElementById(inputId);
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            if (files.length > 0) {
+                fileInput.files = files; // Asignar el archivo arrastrado al input
+                
+                // Si es el maestro, disparamos el evento onchange para que lo cargue automáticamente
+                if (isMaster) {
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
+            }
+        }, false);
+    }
+
+    // Inicializar Drag & Drop
+    setupDragAndDrop('dropZoneMaster', 'masterFile', true);
+    setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
+
+    // Lógica original de lectura de archivos
     document.getElementById('masterFile').onchange = (e) => {
+        if (!e.target.files.length) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
             const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
@@ -73,14 +126,14 @@
                 }
             });
             localStorage.setItem('m_v31_1', JSON.stringify(maestro));
-            alert("Maestro cargado.");
+            alert("✅ Maestro cargado correctamente.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("Cargá el reporte.");
+        if(!file) return alert("⚠️ Por favor, seleccioná o arrastrá el reporte de surtido.");
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -114,7 +167,7 @@
                 }
             });
 
-            // PRIORIDAD DE ARMADO: Depósito > Orden > Ubicación DE MAYOR A MENOR (Mejora solicitada)
+            // PRIORIDAD DE ARMADO: Depósito > Orden > Ubicación DE MAYOR A MENOR
             itemsRaw.sort((a,b) => 
                 a.dep.localeCompare(b.dep) || 
                 a.orden.localeCompare(b.orden) || 
@@ -126,9 +179,8 @@
         reader.readAsText(file, "ISO-8859-1");
     }
 
-    // Calcula el máximo del pallet respetando la regla de "cantidades menores a una camada"
     function obtenerCapacidadPallet(items) {
-        let maxCap = 84; // Default estricto si todo es menor a una camada
+        let maxCap = 84; 
         for (let x of items) {
             if (x.cant >= x.base) {
                 maxCap = Math.max(maxCap, x.capFull);
@@ -144,30 +196,21 @@
         items.forEach(it => {
             let placed = false;
             
-            // Lógica First-Fit: Trata de encajar el saldo en CUALQUIER pallet abierto existente que cumpla las reglas
             for (let p of pallets) {
-                // Mismo deposito y orden
                 if (p.dep !== it.dep || p.orden !== it.orden) continue;
                 
-                // Si la cantidad es >= base, la regla de familia entra en vigencia (no se mezcla).
-                // Si es menor a la camada, pierde rigurosidad y se vuelve mezclable.
                 let isItStrict = (it.cant >= it.base && it.fam !== "0"); 
                 let pHasStrict = p.items.some(x => x.cant >= x.base && x.fam !== "0");
                 let pStrictFam = pHasStrict ? p.items.find(x => x.cant >= x.base && x.fam !== "0").fam : null;
                 
-                // Si ingresa uno estricto, exige que el pallet no contenga productos de otras familias
                 if (isItStrict && p.items.some(x => x.fam !== it.fam)) continue;
-                // Si el pallet ya es estricto, el que ingresa debe tener la misma familia sí o sí
                 if (pHasStrict && it.fam !== pStrictFam) continue;
                 
-                // Capacidad
                 let mockItems = [...p.items, it];
                 let newMaxCap = obtenerCapacidadPallet(mockItems);
                 
-                // Si excede la capacidad lógica
                 if (p.total + it.cant > newMaxCap) continue;
                 
-                // Encaja perfectamente y rellenamos espacios muertos optimizando el palletizado
                 p.items.push(it);
                 p.total += it.cant;
                 p.capMaxVisual = newMaxCap;
@@ -175,7 +218,6 @@
                 break;
             }
 
-            // Si no entró en ningún pallet existente, abrimos uno nuevo
             if (!placed) {
                 let newCap = obtenerCapacidadPallet([it]);
                 pallets.push({ 
@@ -196,8 +238,6 @@
         const countDisplay = document.getElementById('totalCargaCount');
         
         tabs.innerHTML = ""; cont.innerHTML = "";
-        
-        // Carga inicial del contador
         countDisplay.innerText = pallets.reduce((sum, p) => sum + p.total, 0);
         
         orderFilter.innerHTML = '<option value="ALL">Mostrar Todas</option>';
@@ -226,7 +266,6 @@
             card.id = 'pc-'+p.id;
             card.className = `pallet-card ${i===0?'active':''}`;
             
-            // Re-ordenar por UBICACIÓN DE MAYOR A MENOR para la visualización del operario
             p.items.sort((a,b) => b.ubi.localeCompare(a.ubi));
 
             card.innerHTML = `
@@ -271,7 +310,6 @@
                 }
             });
 
-            // Actualizar el contador general dinámicamente según la orden elegida
             let fPallets = (seleccion === "ALL") ? pallets : pallets.filter(p => p.orden === seleccion);
             countDisplay.innerText = fPallets.reduce((acc, p) => acc + p.total, 0);
 
