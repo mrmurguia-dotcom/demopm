@@ -9,7 +9,6 @@
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         
-        /* Modificaciones para el Drag & Drop */
         .box { border: 2px dashed #ccc; padding: 30px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; transition: all 0.3s ease; position: relative; background: #fafafa; }
         .box.dragover { background-color: #e8f4f8; border-color: #2980b9; box-shadow: inset 0 0 10px rgba(41, 128, 185, 0.2); }
         .drop-text { color: #7f8c8d; font-size: 0.95em; margin: 10px 0; display: block; }
@@ -69,19 +68,14 @@
 <script>
     let maestro = JSON.parse(localStorage.getItem('m_v31_1')) || {};
 
-    // Configuración de Drag & Drop
+    // --- Drag & Drop ---
     function setupDragAndDrop(zoneId, inputId, isMaster = false) {
         const dropZone = document.getElementById(zoneId);
         const fileInput = document.getElementById(inputId);
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
+            dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
         });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
 
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
@@ -92,25 +86,20 @@
         });
 
         dropZone.addEventListener('drop', (e) => {
-            let dt = e.dataTransfer;
-            let files = dt.files;
+            let files = e.dataTransfer.files;
             if (files.length > 0) {
-                fileInput.files = files; // Asignar el archivo arrastrado al input
-                
-                // Si es el maestro, disparamos el evento onchange para que lo cargue automáticamente
+                fileInput.files = files;
                 if (isMaster) {
-                    const event = new Event('change');
-                    fileInput.dispatchEvent(event);
+                    fileInput.dispatchEvent(new Event('change'));
                 }
             }
         }, false);
     }
 
-    // Inicializar Drag & Drop
     setupDragAndDrop('dropZoneMaster', 'masterFile', true);
     setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
 
-    // Lógica original de lectura de archivos
+    // --- Lectura de Archivos ---
     document.getElementById('masterFile').onchange = (e) => {
         if (!e.target.files.length) return;
         const reader = new FileReader();
@@ -167,7 +156,7 @@
                 }
             });
 
-            // PRIORIDAD DE ARMADO: Depósito > Orden > Ubicación DE MAYOR A MENOR
+            // PRIORIDAD: Depósito > Orden > Ubicación
             itemsRaw.sort((a,b) => 
                 a.dep.localeCompare(b.dep) || 
                 a.orden.localeCompare(b.orden) || 
@@ -179,6 +168,7 @@
         reader.readAsText(file, "ISO-8859-1");
     }
 
+    // --- Lógica del Algoritmo ---
     function obtenerCapacidadPallet(items) {
         let maxCap = 84; 
         for (let x of items) {
@@ -189,27 +179,52 @@
         return maxCap;
     }
 
+    // REGLA 3 ACTUALIZADA: Latas exclusivas SOLO si superan/igualan una camada
+    function puedenMezclarse(itemsA, itemsB) {
+        let todos = [...itemsA, ...itemsB];
+        let cantLatas = 0;
+        let cantNoLatas = 0;
+        let baseLatas = 9999; // Base por defecto
+
+        for (let x of todos) {
+            if (x.fam === "9") { // Familia Latas
+                cantLatas += x.cant;
+                baseLatas = Math.min(baseLatas, x.base); // Tomamos la base más conservadora de las latas
+            } else {
+                cantNoLatas += x.cant;
+            }
+        }
+
+        // Si en el hipotético pallet mezclado hay latas y otros productos...
+        if (cantLatas > 0 && cantNoLatas > 0) {
+            // Rechazamos la mezcla SOLAMENTE si la cantidad de latas iguala o supera una camada (base)
+            if (cantLatas >= baseLatas) {
+                return false; 
+            }
+        }
+        
+        return true; 
+    }
+
     function armarLogica(items) {
         let pallets = [];
         let cont = 1;
 
+        // FASE 1: Armado Estricto
         items.forEach(it => {
             let placed = false;
-            
             for (let p of pallets) {
-                if (p.dep !== it.dep || p.orden !== it.orden) continue;
+                // REGLA 1 y 2: Jamás mezclar orden ni sector
+                if (p.orden !== it.orden) continue;
+                if (p.dep !== it.dep) continue;
                 
-                let isItStrict = (it.cant >= it.base && it.fam !== "0"); 
-                let pHasStrict = p.items.some(x => x.cant >= x.base && x.fam !== "0");
-                let pStrictFam = pHasStrict ? p.items.find(x => x.cant >= x.base && x.fam !== "0").fam : null;
-                
-                if (isItStrict && p.items.some(x => x.fam !== it.fam)) continue;
-                if (pHasStrict && it.fam !== pStrictFam) continue;
+                // REGLA 3: Verificar latas con su nueva excepción
+                if (!puedenMezclarse(p.items, [it])) continue;
                 
                 let mockItems = [...p.items, it];
                 let newMaxCap = obtenerCapacidadPallet(mockItems);
                 
-                if (p.total + it.cant > newMaxCap) continue;
+                if (p.total + it.cant > newMaxCap) continue; 
                 
                 p.items.push(it);
                 p.total += it.cant;
@@ -227,9 +242,39 @@
             }
         });
 
+        // FASE 2: Consolidación (SOLO dentro del MISMO sector)
+        for (let i = pallets.length - 1; i >= 0; i--) {
+            let pOrigen = pallets[i];
+            if (!pOrigen) continue;
+
+            for (let j = 0; j < i; j++) {
+                let pDestino = pallets[j];
+                if (!pDestino) continue;
+
+                if (pOrigen.orden !== pDestino.orden) continue;
+                if (pOrigen.dep !== pDestino.dep) continue; // Solo mismo sector
+                if (!puedenMezclarse(pDestino.items, pOrigen.items)) continue; // Respeta regla latas
+
+                let mockItems = [...pDestino.items, ...pOrigen.items];
+                let newMaxCap = obtenerCapacidadPallet(mockItems);
+
+                if (pDestino.total + pOrigen.total <= newMaxCap) {
+                    pDestino.items.push(...pOrigen.items);
+                    pDestino.total += pOrigen.total;
+                    pDestino.capMaxVisual = newMaxCap;
+                    pallets[i] = null; 
+                    break;
+                }
+            }
+        }
+
+        pallets = pallets.filter(p => p !== null);
+        pallets.forEach((p, idx) => p.id = idx + 1);
+
         render(pallets);
     }
 
+    // --- Renderizado ---
     function render(pallets) {
         document.getElementById('resArea').style.display = "block";
         const tabs = document.getElementById('tabs');
