@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Picking & Armado de PM v.PRO - M2 Consultora</title>
+    <title>Picking & Armado de Pallets Mixtos v.PRO - M2 Consultora</title>
     
     <!-- Librerías Externas -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -311,7 +311,7 @@
         reader.onload = (ev) => {
             const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
             
-            // 1. CARGA DE MAESTRO FLEXIBLE
+            // 1. CARGA DE MAESTRO
             const wsMaestroName = wb.SheetNames.find(n => n.toLowerCase().includes("mst") || n.toLowerCase().includes("producto")) || wb.SheetNames[0];
             const wsMaestro = wb.Sheets[wsMaestroName];
             if (wsMaestro) {
@@ -324,8 +324,8 @@
                 localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
             }
             
-            // 2. CARGA DE STOCK LEGACY (BÚSQUEDA FLEXIBLE + LIMPIEZA DE ESPACIOS DE JDE)
-            const wsStockName = wb.SheetNames.find(n => n.toLowerCase().replace(/[\s_]+/g, '').includes("stock")) || wb.SheetNames.find(n => n.toLowerCase().includes("legacy")) || wb.SheetNames[1] || wb.SheetNames[0];
+            // 2. CARGA DE STOCK LEGACY (BÚSQUEDA EXACTA O FLEXIBLE DE 'legacy vStockPT')
+            const wsStockName = wb.SheetNames.find(n => n.trim() === "legacy vStockPT") || wb.SheetNames.find(n => n.toLowerCase().includes("stock") || n.toLowerCase().includes("legacy")) || wb.SheetNames[1] || wb.SheetNames[0];
             const wsStock = wb.Sheets[wsStockName];
             
             if (wsStock) {
@@ -353,7 +353,7 @@
                         return;
                     }
                     
-                    // Limpieza total con .trim() para evitar problemas con espacios en blanco de JDE
+                    // Limpieza total con .trim() para evitar espacios sobrantes de JDE
                     let mcu = headMap.mcu > -1 ? String(r[headMap.mcu] || "").trim() : "";
                     if(mcu.includes("503") || mcu === "503" || mcu === "") { 
                         stockLegacy.push({
@@ -387,7 +387,7 @@
                 }
 
                 localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
-                alert(`✅ Base Actualizada con Éxito.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock Registros: ${totalStockRegistros} cargados correctamente.`);
+                alert(`✅ Base Actualizada con Éxito.\n\nPestaña detectada: ${wsStockName}\nMaestro: ${Object.keys(maestro).length} productos.\nStock Registros: ${totalStockRegistros} cargados correctamente.`);
             } else {
                 alert("❌ No se pudo identificar la pestaña de stock en el archivo.");
             }
