@@ -324,12 +324,31 @@
                 });
                 localStorage.setItem('m_v31_4_maestro', JSON.stringify(maestro));
             }
+            
             const wsStock = wb.Sheets["legacy vStockPT"];
             if (wsStock) {
-                stockLegacy = XLSX.utils.sheet_to_json(wsStock);
+                // Leemos el Excel especificando que use las letras de columna (A, B, C, etc.)
+                const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: "A"});
+                stockLegacy = [];
+                
+                rawStock.forEach(r => {
+                    let mcu = String(r.A || "").trim();
+                    // Solo guardamos si el depósito en la Columna A es o incluye "503"
+                    if(mcu.includes("503")) { 
+                        stockLegacy.push({
+                            MCU: mcu,
+                            Ubicacion: String(r.B || "").trim(),
+                            Lote: String(r.C || "").trim(),
+                            Status: String(r.D || "").trim(),
+                            Cantidad: parseFloat(r.F) || 0,
+                            SKU: String(r.L || "").trim(),
+                            Desc: String(r.M || "").trim()
+                        });
+                    }
+                });
                 localStorage.setItem('m_v31_4_stock', JSON.stringify(stockLegacy));
             }
-            alert(`✅ Archivo cargado. Maestro: ${Object.keys(maestro).length} productos.`);
+            alert(`✅ Archivo cargado. Maestro: ${Object.keys(maestro).length} productos.\nStock Legacy (Solo Depósito 503): ${stockLegacy.length} registros.`);
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
@@ -350,10 +369,7 @@
                 if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
                     let sku = c[1], info = maestro[sku] || { base: 21, cap: 84, fam: "0", ean: "", desc: c[4] };
                     
-                    // Asumimos que el Lote Sugerido de JDE viene en la columna 6 (índice 5 en programación)
-                    // Si en tu reporte está en otra columna, cambiá el c[5] por el índice correcto.
                     let loteSug = c[5] ? c[5].trim() : ""; 
-
                     itemsRaw.push({ ubi: c[0], sku: sku, desc: c[4], loteSugerido: loteSug, orden: c[6], linea: parseFloat(c[7])||0, cant: parseInt(c[8]), pickeado: 0, dep: "P0" + (c[0].split('.')[1]||"01"), carga: cargaNro, base: info.base, capFull: info.cap, fam: info.fam, ean: info.ean });
                 }
             });
@@ -579,7 +595,7 @@
         return sufijo;
     }
 
-    // --- Búsqueda de Stock Y ALERTA DE LOTE SUGERIDO ---
+    // --- Búsqueda de Stock, FEFO/FIFO Y ALERTA DE CALIDAD ---
     function validarYBuscarStock() {
         if(!selectedSkuForPick) return alert("⚠️ Seleccioná un producto.");
         let sufijo = calcularSufijoLote();
@@ -587,9 +603,8 @@
 
         let itemEnPallet = globalPallets[currentPalletIdx].items.find(i => i.sku === selectedSkuForPick);
         
-        // ========= NUEVA LÓGICA DE VALIDACIÓN FEFO/FIFO =========
+        // Validación FEFO/FIFO (Lote Sugerido JDE)
         if (itemEnPallet && itemEnPallet.loteSugerido) {
-            // Evaluamos si el Lote de JDE NO termina y NO incluye el sufijo ingresado por el operario
             if (!itemEnPallet.loteSugerido.endsWith(sufijo) && !itemEnPallet.loteSugerido.includes(sufijo)) {
                 let advertenciaMsg = `⚠️ ATENCIÓN: DISCREPANCIA DE LOTE (FEFO / FIFO)\n\n` +
                                      `El sistema sugiere priorizar el Lote: ${itemEnPallet.loteSugerido}\n` +
@@ -597,7 +612,6 @@
                                      `¿Desea omitir la sugerencia de sistema y continuar con el lote físico escaneado?`;
                 let confirmarDesvio = confirm(advertenciaMsg);
                 
-                // Si el operario aprieta "Cancelar", abortamos la búsqueda
                 if (!confirmarDesvio) {
                     document.getElementById('julianInput').value = '';
                     document.getElementById('timeInput').value = '';
@@ -606,24 +620,44 @@
                 }
             }
         }
-        // ==========================================================
 
-        const regs = stockLegacy.filter(r => String(r.SKU||r.Artículo||"").trim() === selectedSkuForPick && String(r.Lote||"").endsWith(sufijo));
+        const regs = stockLegacy.filter(r => r.SKU === selectedSkuForPick && r.Lote.endsWith(sufijo));
         const targetBox = document.getElementById('pickingTargetBox');
+        const noTargetBox = document.getElementById('noTargetNotice');
         
         if(regs.length) {
             let m = regs[0];
-            document.getElementById('targetLocationDisplay').innerText = m.Ubicacion || m.Ubi || "ZONA PICKING";
+
+            // NUEVO: Validación de Lote Observado (Columna D - LOTSTATUS)
+            if(m.Status !== "" && m.Status.toLowerCase() !== "null" && m.Status !== "0") {
+                alert(`🛑 ALERTA DE CALIDAD\n\nEl lote ${m.Lote} está OBSERVADO (Estado: ${m.Status}).\nNo se permite realizar el pickeo de esta mercadería.`);
+                
+                noTargetBox.style.display = "block";
+                noTargetBox.innerHTML = `<div style="font-size:2.5em; margin-bottom:10px;">🛑</div><p style="color:var(--danger); font-weight:bold; font-size:1.1em;">LOTE BLOQUEADO / OBSERVADO<br>(Estado: ${m.Status})</p><p style="font-size:0.9em; color:#555;">Por favor, busque e ingrese un lote habilitado para el despacho.</p>`;
+                
+                targetBox.style.display = "none";
+                targetBox.classList.remove('active');
+                return; // Corta la ejecución, impidiendo el picking
+            }
+
+            // Si está OK, mostramos los datos
+            document.getElementById('targetLocationDisplay').innerText = m.Ubicacion || "ZONA PICKING";
             document.getElementById('targetStockLot').innerText = m.Lote || sufijo;
-            document.getElementById('targetStockQty').innerText = m.Cantidad || m.Stock || "N/D";
+            document.getElementById('targetStockQty').innerText = m.Cantidad || "N/D";
         } else {
-            const fb = stockLegacy.find(r => String(r.SKU||r.Artículo||"").trim() === selectedSkuForPick);
+            // Busca algún registro del producto aunque no coincida el lote
+            const fb = stockLegacy.find(r => r.SKU === selectedSkuForPick);
             document.getElementById('targetLocationDisplay').innerText = fb ? fb.Ubicacion+" (Lote no hallado)" : "UBICACIÓN GENERAL";
             document.getElementById('targetStockLot').innerText = "Sufijo " + sufijo + " sin stock";
             document.getElementById('targetStockQty').innerText = fb ? fb.Cantidad : "N/D";
         }
-        document.getElementById('noTargetNotice').style.display = "none";
-        targetBox.classList.add('active'); targetBox.style.display = "block";
+
+        // Si llegó hasta acá (lote no bloqueado), mostramos la caja amarilla de picking
+        noTargetBox.style.display = "none";
+        noTargetBox.innerHTML = `<div style="font-size:2.5em;">📦</div><p>Seleccione un producto y complete el lote para ver la ubicación.</p>`; // Restaura el mensaje por defecto por las dudas
+        
+        targetBox.classList.add('active'); 
+        targetBox.style.display = "block";
     }
 
     function adjustQty(delta) {
