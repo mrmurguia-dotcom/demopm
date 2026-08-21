@@ -293,6 +293,17 @@
     let html5QrCode = null;
     let ocrStream = null;
 
+    // --- FUNCIÓN DE HABLA / TEXT-TO-SPEECH ---
+    function hablar(texto) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // Cancela cualquier locución previa
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-AR';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
     // --- Drag & Drop ---
     function setupDragAndDrop(zoneId, inputId, isMaster = false) {
         const dropZone = document.getElementById(zoneId);
@@ -314,6 +325,8 @@
         const reader = new FileReader();
         reader.onload = (ev) => {
             const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+            
+            // CARGA DE MAESTRO
             const wsMaestro = wb.Sheets["MST Producto"] || wb.Sheets[wb.SheetNames[0]];
             if (wsMaestro) {
                 const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, {header:1});
@@ -325,24 +338,28 @@
                 localStorage.setItem('m_v31_4_maestro', JSON.stringify(maestro));
             }
             
-            const wsStock = wb.Sheets["legacy vStockPT"];
+            // CARGA DE STOCK LEGACY
+            const wsStockName = wb.SheetNames.find(n => n.toLowerCase().replace(/\s+/g, '').includes("legacyvstock")) || wb.SheetNames.find(n => n.toLowerCase().includes("stock")) || "legacy vStockPT";
+            const wsStock = wb.Sheets[wsStockName];
+            
             if (wsStock) {
-                // Leemos el Excel especificando que use las letras de columna (A, B, C, etc.)
-                const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: "A"});
+                const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: 1});
                 stockLegacy = [];
                 
-                rawStock.forEach(r => {
-                    let mcu = String(r.A || "").trim();
-                    // Solo guardamos si el depósito en la Columna A es o incluye "503"
-                    if(mcu.includes("503")) { 
+                rawStock.forEach((r) => {
+                    if (!r || r.length === 0) return;
+                    let mcu = String(r[0] || "").trim();
+                    if (mcu.toLowerCase() === "mcu") return;
+                    
+                    if(mcu.includes("503") || mcu === "503") { 
                         stockLegacy.push({
                             MCU: mcu,
-                            Ubicacion: String(r.B || "").trim(),
-                            Lote: String(r.C || "").trim(),
-                            Status: String(r.D || "").trim(),
-                            Cantidad: parseFloat(r.F) || 0,
-                            SKU: String(r.L || "").trim(),
-                            Desc: String(r.M || "").trim()
+                            Ubicacion: String(r[1] || "").trim(),
+                            Lote: String(r[2] || "").trim(),
+                            Status: String(r[3] || "").trim(),
+                            Cantidad: parseFloat(r[5]) || 0,
+                            SKU: String(r[11] || "").trim(),
+                            Desc: String(r[12] || "").trim()
                         });
                     }
                 });
@@ -365,12 +382,29 @@
                 if(text.includes("CARGA:")) cargaNro = (text.match(/CARGA:\s*(\d+)/)||[])[1]||cargaNro;
                 if(text.includes("PALLET HOMOGENEO")) esMixto = false;
                 if(text.includes("PALLET MIXTO")) esMixto = true;
+                
                 const c = Array.from(tr.cells).map(td => td.innerText.trim());
                 if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
-                    let sku = c[1], info = maestro[sku] || { base: 21, cap: 84, fam: "0", ean: "", desc: c[4] };
+                    let sku = c[1];
+                    let info = maestro[sku] || { base: 21, cap: 84, fam: "0", ean: "", desc: c[4] };
+                    let loteSug = c[2] ? c[2].trim() : ""; 
                     
-                    let loteSug = c[5] ? c[5].trim() : ""; 
-                    itemsRaw.push({ ubi: c[0], sku: sku, desc: c[4], loteSugerido: loteSug, orden: c[6], linea: parseFloat(c[7])||0, cant: parseInt(c[8]), pickeado: 0, dep: "P0" + (c[0].split('.')[1]||"01"), carga: cargaNro, base: info.base, capFull: info.cap, fam: info.fam, ean: info.ean });
+                    itemsRaw.push({ 
+                        ubi: c[0], 
+                        sku: sku, 
+                        desc: c[4], 
+                        loteSugerido: loteSug, 
+                        orden: c[6], 
+                        linea: parseFloat(c[7])||0, 
+                        cant: parseInt(c[8]), 
+                        pickeado: 0, 
+                        dep: "P0" + (c[0].split('.')[1]||"01"), 
+                        carga: cargaNro, 
+                        base: info.base, 
+                        capFull: info.cap, 
+                        fam: info.fam, 
+                        ean: info.ean 
+                    });
                 }
             });
             itemsRaw.sort((a,b) => a.dep.localeCompare(b.dep) || a.orden.localeCompare(b.orden) || b.ubi.localeCompare(a.ubi));
@@ -489,10 +523,15 @@
         document.getElementById('selectedProductCard').style.display = "block";
         document.getElementById('selProdName').innerText = item.desc;
         document.getElementById('selProdMeta').innerHTML = `SKU: ${item.sku} | EAN: ${item.ean || 'N/A'}<br><span style="color:#d35400; font-weight:bold;">Lote Sugerido por JDE: ${item.loteSugerido || 'Sin sugerencia'}</span>`;
-        document.getElementById('suggestedQtyLine').innerText = item.cant - item.pickeado;
-        document.getElementById('confirmQtyInput').value = Math.max(1, item.cant - item.pickeado);
+        
+        let cantPendiente = item.cant - item.pickeado;
+        document.getElementById('suggestedQtyLine').innerText = cantPendiente;
+        document.getElementById('confirmQtyInput').value = Math.max(1, cantPendiente);
         document.getElementById('searchResults').style.display = "none";
         document.getElementById('productSearchInput').value = item.desc;
+
+        // HABLAR: Dicta el SKU, la descripción y la cantidad
+        hablar(`SKU ${item.sku}. ${item.desc}. Pedido: ${cantPendiente} cajas.`);
     }
 
     // --- ESCÁNER DE CÓDIGO DE BARRAS ---
@@ -603,9 +642,10 @@
 
         let itemEnPallet = globalPallets[currentPalletIdx].items.find(i => i.sku === selectedSkuForPick);
         
-        // Validación FEFO/FIFO (Lote Sugerido JDE)
+        // Validación FEFO/FIFO
         if (itemEnPallet && itemEnPallet.loteSugerido) {
             if (!itemEnPallet.loteSugerido.endsWith(sufijo) && !itemEnPallet.loteSugerido.includes(sufijo)) {
+                hablar("Atención. Discrepancia de lote.");
                 let advertenciaMsg = `⚠️ ATENCIÓN: DISCREPANCIA DE LOTE (FEFO / FIFO)\n\n` +
                                      `El sistema sugiere priorizar el Lote: ${itemEnPallet.loteSugerido}\n` +
                                      `Usted está escaneando el Sufijo: ${sufijo}\n\n` +
@@ -628,8 +668,8 @@
         if(regs.length) {
             let m = regs[0];
 
-            // NUEVO: Validación de Lote Observado (Columna D - LOTSTATUS)
             if(m.Status !== "" && m.Status.toLowerCase() !== "null" && m.Status !== "0") {
+                hablar("Atención. Lote bloqueado por calidad.");
                 alert(`🛑 ALERTA DE CALIDAD\n\nEl lote ${m.Lote} está OBSERVADO (Estado: ${m.Status}).\nNo se permite realizar el pickeo de esta mercadería.`);
                 
                 noTargetBox.style.display = "block";
@@ -637,24 +677,27 @@
                 
                 targetBox.style.display = "none";
                 targetBox.classList.remove('active');
-                return; // Corta la ejecución, impidiendo el picking
+                return;
             }
 
-            // Si está OK, mostramos los datos
             document.getElementById('targetLocationDisplay').innerText = m.Ubicacion || "ZONA PICKING";
             document.getElementById('targetStockLot').innerText = m.Lote || sufijo;
             document.getElementById('targetStockQty').innerText = m.Cantidad || "N/D";
+
+            // HABLAR: Dicta la ubicación encontrada y el lote
+            hablar(`Ubicación ${m.Ubicacion}. Lote ${m.Lote}.`);
         } else {
-            // Busca algún registro del producto aunque no coincida el lote
             const fb = stockLegacy.find(r => r.SKU === selectedSkuForPick);
+            let ubiText = fb ? fb.Ubicacion : "Ubicación general";
             document.getElementById('targetLocationDisplay').innerText = fb ? fb.Ubicacion+" (Lote no hallado)" : "UBICACIÓN GENERAL";
             document.getElementById('targetStockLot').innerText = "Sufijo " + sufijo + " sin stock";
             document.getElementById('targetStockQty').innerText = fb ? fb.Cantidad : "N/D";
+            
+            hablar(`${ubiText}. Sufijo sin stock directo.`);
         }
 
-        // Si llegó hasta acá (lote no bloqueado), mostramos la caja amarilla de picking
         noTargetBox.style.display = "none";
-        noTargetBox.innerHTML = `<div style="font-size:2.5em;">📦</div><p>Seleccione un producto y complete el lote para ver la ubicación.</p>`; // Restaura el mensaje por defecto por las dudas
+        noTargetBox.innerHTML = `<div style="font-size:2.5em;">📦</div><p>Seleccione un producto y complete el lote para ver la ubicación.</p>`;
         
         targetBox.classList.add('active'); 
         targetBox.style.display = "block";
@@ -672,6 +715,10 @@
         if(!item) return;
         
         item.pickeado += cant;
+
+        // HABLAR: Confirmación audible de la operación
+        hablar(`Confirmado: SKU ${item.sku}, ${cant} cajas.`);
+
         document.getElementById('pickingTargetBox').style.display = "none";
         document.getElementById('noTargetNotice').style.display = "block";
         document.getElementById('selectedProductCard').style.display = "none";
