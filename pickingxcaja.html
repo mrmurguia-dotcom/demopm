@@ -8,7 +8,6 @@
     <!-- Librerías Externas -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <!-- Librería OCR (Tesseract.js) para leer texto -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
@@ -55,8 +54,6 @@
         th { background: #f2f4f5; }
         
         .order-badge { border: 2px solid var(--primary); padding: 6px 12px; font-size: 1.2em; font-weight: bold; float: right; border-radius: 6px; background: #ebf5fb; }
-        .tag { color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 6px; font-weight: bold; }
-        .tag-4 { background: #2980b9; } .tag-9 { background: #e67e22; }
 
         /* MODO OPERARIO */
         #operatorView { display: none; background: #f8f9fa; border-top: 4px solid var(--accent); padding: 20px; border-radius: 10px; margin-top: 20px; }
@@ -181,7 +178,7 @@
             <div id="selectedProductCard" style="display:none; background:#e8f4f8; padding:12px; border-radius:6px; border-left:4px solid var(--accent); margin-bottom:15px;">
                 <strong>Producto Seleccionado:</strong>
                 <div id="selProdName" style="font-weight:bold; color:var(--primary); font-size:1.1em; margin-top:4px;">-</div>
-                <div id="selProdMeta" style="font-size:0.85em; color:#555;">SKU: - | EAN: -</div>
+                <div id="selProdMeta" style="font-size:0.9em; color:#555; margin-top:5px;">SKU: - | EAN: -</div>
             </div>
 
             <!-- Calculadora / Captura de Lote Juliano + Hora + OCR -->
@@ -273,9 +270,9 @@
                     <thead>
                         <tr>
                             <th>SKU</th>
+                            <th>Lote Sug.</th>
                             <th>Descripción</th>
-                            <th>Sug.</th>
-                            <th>Pick.</th>
+                            <th>Ped.</th>
                         </tr>
                     </thead>
                     <tbody id="opPalletItemsTable">
@@ -352,7 +349,12 @@
                 const c = Array.from(tr.cells).map(td => td.innerText.trim());
                 if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
                     let sku = c[1], info = maestro[sku] || { base: 21, cap: 84, fam: "0", ean: "", desc: c[4] };
-                    itemsRaw.push({ ubi: c[0], sku: sku, desc: c[4], orden: c[6], linea: parseFloat(c[7])||0, cant: parseInt(c[8]), pickeado: 0, dep: "P0" + (c[0].split('.')[1]||"01"), carga: cargaNro, base: info.base, capFull: info.cap, fam: info.fam, ean: info.ean });
+                    
+                    // Asumimos que el Lote Sugerido de JDE viene en la columna 6 (índice 5 en programación)
+                    // Si en tu reporte está en otra columna, cambiá el c[5] por el índice correcto.
+                    let loteSug = c[5] ? c[5].trim() : ""; 
+
+                    itemsRaw.push({ ubi: c[0], sku: sku, desc: c[4], loteSugerido: loteSug, orden: c[6], linea: parseFloat(c[7])||0, cant: parseInt(c[8]), pickeado: 0, dep: "P0" + (c[0].split('.')[1]||"01"), carga: cargaNro, base: info.base, capFull: info.cap, fam: info.fam, ean: info.ean });
                 }
             });
             itemsRaw.sort((a,b) => a.dep.localeCompare(b.dep) || a.orden.localeCompare(b.orden) || b.ubi.localeCompare(a.ubi));
@@ -370,7 +372,7 @@
                 if (p.orden === it.orden && p.dep === it.dep) {
                     let m = [...p.items, it], c = 0, no = 0, bl = 999;
                     m.forEach(x => { if(x.fam==="9"){c+=x.cant; bl=Math.min(bl,x.base);} else no+=x.cant; });
-                    if(c>0 && no>0 && c>=bl) continue; // mix rule
+                    if(c>0 && no>0 && c>=bl) continue; 
                     let maxCap = 84; m.forEach(x => { if(x.cant>=x.base) maxCap=Math.max(maxCap,x.capFull); });
                     if (p.total + it.cant <= maxCap) {
                         p.items.push(it); p.total += it.cant; p.capMaxVisual = maxCap; placed = true; break;
@@ -407,8 +409,8 @@
             card.id = 'pc-'+p.id; card.className = `pallet-card ${i===0?'active':''}`;
             card.innerHTML = `<div class="order-badge">ORDEN: ${p.orden}</div><h2>Carga: ${p.carga}</h2>
                 <p><b>Sector:</b> ${p.dep} | <b>Pallet:</b> #${p.id} | <span style="background:yellow; padding:2px;">Ocupación: ${p.total}/${p.capMaxVisual}</span></p>
-                <table><thead><tr><th>Ubi</th><th>SKU</th><th>Desc</th><th>Cant</th></tr></thead>
-                <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td><b>${it.cant}</b></td></tr>`).join('')}</tbody></table>`;
+                <table><thead><tr><th>Ubi</th><th>SKU</th><th>Desc</th><th>Lote Sugerido</th><th>Cant</th></tr></thead>
+                <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td><b style="color:#d35400;">${it.loteSugerido || '-'}</b></td><td><b>${it.cant}</b></td></tr>`).join('')}</tbody></table>`;
             document.getElementById('pallets').appendChild(card);
         });
     }
@@ -436,8 +438,10 @@
         document.getElementById('opPalletTitle').innerText = `Pallet Mixto #${pallet.id} - Orden ${pallet.orden}`;
         document.getElementById('opPalletItemsTable').innerHTML = pallet.items.map(it => `
             <tr style="cursor:pointer;" onclick="seleccionarProductoDirecto('${it.sku}')">
-                <td><b>${it.sku}</b></td><td>${it.desc}</td><td>${it.cant}</td>
-                <td>${it.pickeado >= it.cant ? '✅' : it.pickeado}</td>
+                <td><b>${it.sku}</b></td>
+                <td><span style="font-size:0.85em; color:#d35400; font-weight:bold;">${it.loteSugerido || '-'}</span></td>
+                <td>${it.desc}</td>
+                <td>${it.pickeado >= it.cant ? '✅' : it.cant}</td>
             </tr>`).join('');
         
         let pick = pallet.items.reduce((a, i) => a + i.pickeado, 0);
@@ -456,7 +460,7 @@
         if(matches.length) {
             document.getElementById('searchResults').innerHTML = matches.map(m => `
                 <div class="search-item" onclick="seleccionarProductoDirecto('${m.sku}')">
-                    <strong>${m.desc}</strong><br><small>SKU: ${m.sku} | EAN: ${m.ean} | Pedido: ${m.cant} CA</small>
+                    <strong>${m.desc}</strong><br><small>SKU: ${m.sku} | Lote Sug: <b style="color:#d35400;">${m.loteSugerido||'-'}</b> | Pedido: ${m.cant} CA</small>
                 </div>`).join('');
             document.getElementById('searchResults').style.display = "block";
         } else document.getElementById('searchResults').style.display = "none";
@@ -468,7 +472,7 @@
         selectedSkuForPick = sku;
         document.getElementById('selectedProductCard').style.display = "block";
         document.getElementById('selProdName').innerText = item.desc;
-        document.getElementById('selProdMeta').innerText = `SKU: ${item.sku} | EAN: ${item.ean || 'N/A'}`;
+        document.getElementById('selProdMeta').innerHTML = `SKU: ${item.sku} | EAN: ${item.ean || 'N/A'}<br><span style="color:#d35400; font-weight:bold;">Lote Sugerido por JDE: ${item.loteSugerido || 'Sin sugerencia'}</span>`;
         document.getElementById('suggestedQtyLine').innerText = item.cant - item.pickeado;
         document.getElementById('confirmQtyInput').value = Math.max(1, item.cant - item.pickeado);
         document.getElementById('searchResults').style.display = "none";
@@ -477,7 +481,7 @@
 
     // --- ESCÁNER DE CÓDIGO DE BARRAS ---
     function toggleCameraScanner() {
-        detenerOCR(); // Si está abierto OCR, lo cierro
+        detenerOCR(); 
         const rd = document.getElementById('reader');
         if(html5QrCode && html5QrCode.isScanning) {
             html5QrCode.stop().then(() => { rd.style.display="none"; document.getElementById('camBtnText').innerText="Escanear Código de Barras";});
@@ -496,7 +500,7 @@
 
     // --- RECONOCIMIENTO OCR DE LOTE CON TESSERACT.JS ---
     async function toggleOCR() {
-        if(html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); // Cierro barras si está abierto
+        if(html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); 
         
         const box = document.getElementById('ocrBox');
         if(box.style.display === 'block') { detenerOCR(); return; }
@@ -527,12 +531,9 @@
         document.getElementById('btnCapturarOCR').disabled = true;
 
         try {
-            // Tesseract lee la imagen
             const result = await Tesseract.recognize(c, 'eng');
             const texto = result.data.text;
-            console.log("OCR Texto:", texto);
 
-            // Buscamos Patrón: Ej "L 26 099 0546" -> L, numeros, 3 digitos (Juliano), 4 digitos (Hora)
             const regex = /L\s*\d{2}\s*(\d{3})\s*(\d{4})/i;
             const match = texto.match(regex);
 
@@ -544,7 +545,6 @@
                 calcularSufijoLote();
                 setTimeout(detenerOCR, 3000);
             } else {
-                // Si la 'L' no salió bien, buscamos grupo de 3 y grupo de 4 juntos
                 const match2 = texto.match(/(\d{3})\s+(\d{4})\s+\d{4}/);
                 if(match2) {
                     document.getElementById('julianInput').value = match2[1];
@@ -579,11 +579,34 @@
         return sufijo;
     }
 
-    // --- Búsqueda de Stock ---
+    // --- Búsqueda de Stock Y ALERTA DE LOTE SUGERIDO ---
     function validarYBuscarStock() {
         if(!selectedSkuForPick) return alert("⚠️ Seleccioná un producto.");
         let sufijo = calcularSufijoLote();
         if(!sufijo || sufijo === "---") return alert("⚠️ Completá Lote y Hora.");
+
+        let itemEnPallet = globalPallets[currentPalletIdx].items.find(i => i.sku === selectedSkuForPick);
+        
+        // ========= NUEVA LÓGICA DE VALIDACIÓN FEFO/FIFO =========
+        if (itemEnPallet && itemEnPallet.loteSugerido) {
+            // Evaluamos si el Lote de JDE NO termina y NO incluye el sufijo ingresado por el operario
+            if (!itemEnPallet.loteSugerido.endsWith(sufijo) && !itemEnPallet.loteSugerido.includes(sufijo)) {
+                let advertenciaMsg = `⚠️ ATENCIÓN: DISCREPANCIA DE LOTE (FEFO / FIFO)\n\n` +
+                                     `El sistema sugiere priorizar el Lote: ${itemEnPallet.loteSugerido}\n` +
+                                     `Usted está escaneando el Sufijo: ${sufijo}\n\n` +
+                                     `¿Desea omitir la sugerencia de sistema y continuar con el lote físico escaneado?`;
+                let confirmarDesvio = confirm(advertenciaMsg);
+                
+                // Si el operario aprieta "Cancelar", abortamos la búsqueda
+                if (!confirmarDesvio) {
+                    document.getElementById('julianInput').value = '';
+                    document.getElementById('timeInput').value = '';
+                    document.getElementById('calcLotBadge').innerText = '---';
+                    return; 
+                }
+            }
+        }
+        // ==========================================================
 
         const regs = stockLegacy.filter(r => String(r.SKU||r.Artículo||"").trim() === selectedSkuForPick && String(r.Lote||"").endsWith(sufijo));
         const targetBox = document.getElementById('pickingTargetBox');
