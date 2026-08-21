@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Picking & Armado de PM v.PRO - M2 Consultora</title>
+    <title>Picking & Armado de Pallets Mixtos v.PRO - M2 Consultora</title>
     
     <!-- Librerías Externas -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -285,8 +285,8 @@
 </div>
 
 <script>
-    let maestro = JSON.parse(localStorage.getItem('m_v31_4_maestro')) || {};
-    let stockLegacy = JSON.parse(localStorage.getItem('m_v31_4_stock')) || [];
+    let maestro = JSON.parse(localStorage.getItem('m_v31_5_maestro')) || {};
+    let stockLegacy = JSON.parse(localStorage.getItem('m_v31_5_stock')) || [];
     let globalPallets = [];
     let currentPalletIdx = 0;
     let selectedSkuForPick = null;
@@ -296,7 +296,7 @@
     // --- FUNCIÓN DE HABLA / TEXT-TO-SPEECH ---
     function hablar(texto) {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // Cancela cualquier locución previa
+            window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(texto);
             utterance.lang = 'es-AR';
             utterance.rate = 1.0;
@@ -335,37 +335,59 @@
                     let sku = String(r[1] || "").trim();
                     if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"0"), ean: String(r[9]||"").trim(), desc: String(r[2]||r[3]||"").trim() };
                 });
-                localStorage.setItem('m_v31_4_maestro', JSON.stringify(maestro));
+                localStorage.setItem('m_v31_5_maestro', JSON.stringify(maestro));
             }
             
-            // CARGA DE STOCK LEGACY
+            // CARGA DE STOCK LEGACY (NUEVA LÓGICA DE MAPEO DINÁMICO)
             const wsStockName = wb.SheetNames.find(n => n.toLowerCase().replace(/\s+/g, '').includes("legacyvstock")) || wb.SheetNames.find(n => n.toLowerCase().includes("stock")) || "legacy vStockPT";
             const wsStock = wb.Sheets[wsStockName];
             
             if (wsStock) {
                 const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: 1});
                 stockLegacy = [];
-                
+                let headMap = null; // Guardará las posiciones exactas de las columnas
+                let totalStockRegistros = 0;
+
                 rawStock.forEach((r) => {
                     if (!r || r.length === 0) return;
-                    let mcu = String(r[0] || "").trim();
-                    if (mcu.toLowerCase() === "mcu") return;
                     
+                    // 1. Detección Inteligente de Columnas (Inmune a cambios de formato)
+                    if (!headMap) {
+                        let textRow = r.map(c => String(c || "").toLowerCase().trim());
+                        if (textRow.includes("mcu") && textRow.includes("lote")) {
+                            headMap = {
+                                mcu: textRow.indexOf("mcu"),
+                                ubi: textRow.indexOf("ubicacion") > -1 ? textRow.indexOf("ubicacion") : textRow.findIndex(x=>x.includes("ubicaci")),
+                                lote: textRow.indexOf("lote"),
+                                status: textRow.indexOf("lotstatus") > -1 ? textRow.indexOf("lotstatus") : textRow.indexOf("status"),
+                                cant: textRow.indexOf("cantenmano") > -1 ? textRow.indexOf("cantenmano") : textRow.findIndex(x=>x.includes("cant")),
+                                sku: textRow.indexOf("articulo") > -1 ? textRow.indexOf("articulo") : textRow.findIndex(x=>x.includes("art") && !x.includes("desc")),
+                                desc: textRow.indexOf("articulodescripcion") > -1 ? textRow.indexOf("articulodescripcion") : textRow.findIndex(x=>x.includes("descrip"))
+                            };
+                        }
+                        return;
+                    }
+                    
+                    // 2. Extracción de Datos basada en el mapa
+                    let mcu = String(r[headMap.mcu] || "").trim();
                     if(mcu.includes("503") || mcu === "503") { 
                         stockLegacy.push({
                             MCU: mcu,
-                            Ubicacion: String(r[1] || "").trim(),
-                            Lote: String(r[2] || "").trim(),
-                            Status: String(r[3] || "").trim(),
-                            Cantidad: parseFloat(r[5]) || 0,
-                            SKU: String(r[11] || "").trim(),
-                            Desc: String(r[12] || "").trim()
+                            Ubicacion: headMap.ubi > -1 ? String(r[headMap.ubi] || "").trim() : "",
+                            Lote: headMap.lote > -1 ? String(r[headMap.lote] || "").trim() : "",
+                            Status: headMap.status > -1 ? String(r[headMap.status] || "").trim() : "",
+                            Cantidad: headMap.cant > -1 ? parseFloat(r[headMap.cant]) || 0 : 0,
+                            SKU: headMap.sku > -1 ? String(r[headMap.sku] || "").trim() : "",
+                            Desc: headMap.desc > -1 ? String(r[headMap.desc] || "").trim() : ""
                         });
+                        totalStockRegistros++;
                     }
                 });
-                localStorage.setItem('m_v31_4_stock', JSON.stringify(stockLegacy));
+                localStorage.setItem('m_v31_5_stock', JSON.stringify(stockLegacy));
+                alert(`✅ Base Actualizada.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock Deposit. 503: ${totalStockRegistros} registros cargados correctamente.`);
+            } else {
+                alert("❌ No se encontró la pestaña 'legacy vStockPT' en el archivo.");
             }
-            alert(`✅ Archivo cargado. Maestro: ${Object.keys(maestro).length} productos.\nStock Legacy (Solo Depósito 503): ${stockLegacy.length} registros.`);
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
@@ -530,7 +552,6 @@
         document.getElementById('searchResults').style.display = "none";
         document.getElementById('productSearchInput').value = item.desc;
 
-        // HABLAR: Dicta el SKU, la descripción y la cantidad
         hablar(`SKU ${item.sku}. ${item.desc}. Pedido: ${cantPendiente} cajas.`);
     }
 
@@ -553,20 +574,18 @@
             }, () => {}).catch(err => alert("Error cámara: " + err));
     }
 
-    // --- RECONOCIMIENTO OCR DE LOTE CON TESSERACT.JS ---
+    // --- RECONOCIMIENTO OCR ---
     async function toggleOCR() {
         if(html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); 
-        
         const box = document.getElementById('ocrBox');
         if(box.style.display === 'block') { detenerOCR(); return; }
         
         box.style.display = 'block';
-        document.getElementById('ocrStatus').innerText = "Apunte al lote (Ej: L 26 099 0546) y capture.";
-        document.getElementById('ocrStatus').style.color = "var(--primary)";
+        document.getElementById('ocrStatus').innerText = "Apunte al lote y capture.";
         try {
             ocrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             document.getElementById('ocrVideo').srcObject = ocrStream;
-        } catch(e) { alert("Error accediendo a la cámara para OCR."); box.style.display = 'none'; }
+        } catch(e) { alert("Error accediendo a la cámara."); box.style.display = 'none'; }
     }
 
     function detenerOCR() {
@@ -581,45 +600,27 @@
         c.width = v.videoWidth; c.height = v.videoHeight;
         ctx.drawImage(v, 0, 0, c.width, c.height);
 
-        document.getElementById('ocrStatus').innerText = "⏳ Analizando con IA (OCR)... Espere.";
-        document.getElementById('ocrStatus').style.color = "var(--warning)";
+        document.getElementById('ocrStatus').innerText = "⏳ Analizando OCR...";
         document.getElementById('btnCapturarOCR').disabled = true;
 
         try {
             const result = await Tesseract.recognize(c, 'eng');
             const texto = result.data.text;
-
-            const regex = /L\s*\d{2}\s*(\d{3})\s*(\d{4})/i;
-            const match = texto.match(regex);
+            const match = texto.match(/L\s*\d{2}\s*(\d{3})\s*(\d{4})/i) || texto.match(/(\d{3})\s+(\d{4})\s+\d{4}/);
 
             if(match) {
                 document.getElementById('julianInput').value = match[1];
                 document.getElementById('timeInput').value = match[2];
-                document.getElementById('ocrStatus').innerText = "✅ Lote Extraído: Juliano "+match[1]+" | Hora "+match[2];
-                document.getElementById('ocrStatus').style.color = "var(--success)";
+                document.getElementById('ocrStatus').innerText = "✅ Lote Extraído";
                 calcularSufijoLote();
                 setTimeout(detenerOCR, 3000);
             } else {
-                const match2 = texto.match(/(\d{3})\s+(\d{4})\s+\d{4}/);
-                if(match2) {
-                    document.getElementById('julianInput').value = match2[1];
-                    document.getElementById('timeInput').value = match2[2];
-                    document.getElementById('ocrStatus').innerText = "✅ Lote detectado (Patrón alternativo)";
-                    document.getElementById('ocrStatus').style.color = "var(--success)";
-                    calcularSufijoLote();
-                    setTimeout(detenerOCR, 3000);
-                } else {
-                    document.getElementById('ocrStatus').innerText = "❌ No se reconoció el formato. Texto leído: " + texto.substring(0, 15) + "...";
-                    document.getElementById('ocrStatus').style.color = "var(--danger)";
-                }
+                document.getElementById('ocrStatus').innerText = "❌ No se reconoció formato.";
             }
-        } catch(e) {
-            document.getElementById('ocrStatus').innerText = "❌ Error procesando imagen OCR.";
-        }
+        } catch(e) { document.getElementById('ocrStatus').innerText = "❌ Error OCR."; }
         document.getElementById('btnCapturarOCR').disabled = false;
     }
 
-    // --- Lógica Lote y Hora ---
     document.getElementById('julianInput').addEventListener('input', calcularSufijoLote);
     document.getElementById('timeInput').addEventListener('input', calcularSufijoLote);
 
@@ -634,7 +635,7 @@
         return sufijo;
     }
 
-    // --- Búsqueda de Stock, FEFO/FIFO Y ALERTA DE CALIDAD ---
+    // --- Búsqueda de Stock (CORREGIDA Y OPTIMIZADA) ---
     function validarYBuscarStock() {
         if(!selectedSkuForPick) return alert("⚠️ Seleccioná un producto.");
         let sufijo = calcularSufijoLote();
@@ -646,12 +647,7 @@
         if (itemEnPallet && itemEnPallet.loteSugerido) {
             if (!itemEnPallet.loteSugerido.endsWith(sufijo) && !itemEnPallet.loteSugerido.includes(sufijo)) {
                 hablar("Atención. Discrepancia de lote.");
-                let advertenciaMsg = `⚠️ ATENCIÓN: DISCREPANCIA DE LOTE (FEFO / FIFO)\n\n` +
-                                     `El sistema sugiere priorizar el Lote: ${itemEnPallet.loteSugerido}\n` +
-                                     `Usted está escaneando el Sufijo: ${sufijo}\n\n` +
-                                     `¿Desea omitir la sugerencia de sistema y continuar con el lote físico escaneado?`;
-                let confirmarDesvio = confirm(advertenciaMsg);
-                
+                let confirmarDesvio = confirm(`⚠️ ATENCIÓN: DISCREPANCIA DE LOTE (FEFO / FIFO)\n\nEl sistema sugiere: ${itemEnPallet.loteSugerido}\nUsted escanea: ${sufijo}\n\n¿Desea continuar de todos modos?`);
                 if (!confirmarDesvio) {
                     document.getElementById('julianInput').value = '';
                     document.getElementById('timeInput').value = '';
@@ -661,44 +657,47 @@
             }
         }
 
-        const regs = stockLegacy.filter(r => r.SKU === selectedSkuForPick && r.Lote.endsWith(sufijo));
+        // NUEVA BÚSQUEDA: Usa .includes para agarrar lotes con "AJU", y ordena para descartar ubicaciones vacías
+        const regs = stockLegacy.filter(r => r.SKU === selectedSkuForPick && r.Lote.includes(sufijo));
         const targetBox = document.getElementById('pickingTargetBox');
         const noTargetBox = document.getElementById('noTargetNotice');
         
-        if(regs.length) {
-            let m = regs[0];
-
-            if(m.Status !== "" && m.Status.toLowerCase() !== "null" && m.Status !== "0") {
+        if(regs.length > 0) {
+            // Separa los bloqueados de los disponibles
+            const availableRegs = regs.filter(r => r.Status === "" || r.Status.toLowerCase() === "null" || r.Status === "0");
+            
+            if (availableRegs.length === 0) {
+                // Si todos los que coincidieron están bloqueados
+                let mb = regs[0];
                 hablar("Atención. Lote bloqueado por calidad.");
-                alert(`🛑 ALERTA DE CALIDAD\n\nEl lote ${m.Lote} está OBSERVADO (Estado: ${m.Status}).\nNo se permite realizar el pickeo de esta mercadería.`);
-                
                 noTargetBox.style.display = "block";
-                noTargetBox.innerHTML = `<div style="font-size:2.5em; margin-bottom:10px;">🛑</div><p style="color:var(--danger); font-weight:bold; font-size:1.1em;">LOTE BLOQUEADO / OBSERVADO<br>(Estado: ${m.Status})</p><p style="font-size:0.9em; color:#555;">Por favor, busque e ingrese un lote habilitado para el despacho.</p>`;
-                
+                noTargetBox.innerHTML = `<div style="font-size:2.5em; margin-bottom:10px;">🛑</div><p style="color:var(--danger); font-weight:bold; font-size:1.1em;">LOTE BLOQUEADO / OBSERVADO<br>(Estado: ${mb.Status})</p><p style="font-size:0.9em; color:#555;">Por favor, busque un lote habilitado para despacho.</p>`;
                 targetBox.style.display = "none";
                 targetBox.classList.remove('active');
                 return;
             }
 
+            // Ordena de mayor a menor cantidad para ignorar las líneas que tengan "0" si hay otra con stock real
+            availableRegs.sort((a, b) => b.Cantidad - a.Cantidad);
+            let m = availableRegs[0];
+
             document.getElementById('targetLocationDisplay').innerText = m.Ubicacion || "ZONA PICKING";
             document.getElementById('targetStockLot').innerText = m.Lote || sufijo;
-            document.getElementById('targetStockQty').innerText = m.Cantidad || "N/D";
+            document.getElementById('targetStockQty').innerText = m.Cantidad || "0";
 
-            // HABLAR: Dicta la ubicación encontrada y el lote
             hablar(`Ubicación ${m.Ubicacion}. Lote ${m.Lote}.`);
         } else {
-            const fb = stockLegacy.find(r => r.SKU === selectedSkuForPick);
+            // Si el sufijo exacto no se encuentra, busca dónde suele estar el producto
+            const fb = stockLegacy.find(r => r.SKU === selectedSkuForPick && r.Cantidad > 0); // Busca la primera con stock real
             let ubiText = fb ? fb.Ubicacion : "Ubicación general";
-            document.getElementById('targetLocationDisplay').innerText = fb ? fb.Ubicacion+" (Lote no hallado)" : "UBICACIÓN GENERAL";
-            document.getElementById('targetStockLot').innerText = "Sufijo " + sufijo + " sin stock";
+            document.getElementById('targetLocationDisplay').innerText = fb ? fb.Ubicacion+" (Lote físico no en sistema)" : "UBICACIÓN GENERAL";
+            document.getElementById('targetStockLot').innerText = "Sufijo " + sufijo + " sin stock asignado";
             document.getElementById('targetStockQty').innerText = fb ? fb.Cantidad : "N/D";
             
-            hablar(`${ubiText}. Sufijo sin stock directo.`);
+            hablar(`${ubiText}. Sufijo sin stock en sistema.`);
         }
 
         noTargetBox.style.display = "none";
-        noTargetBox.innerHTML = `<div style="font-size:2.5em;">📦</div><p>Seleccione un producto y complete el lote para ver la ubicación.</p>`;
-        
         targetBox.classList.add('active'); 
         targetBox.style.display = "block";
     }
@@ -715,12 +714,11 @@
         if(!item) return;
         
         item.pickeado += cant;
-
-        // HABLAR: Confirmación audible de la operación
         hablar(`Confirmado: SKU ${item.sku}, ${cant} cajas.`);
 
         document.getElementById('pickingTargetBox').style.display = "none";
         document.getElementById('noTargetNotice').style.display = "block";
+        document.getElementById('noTargetNotice').innerHTML = `<div style="font-size:2.5em;">📦</div><p>Seleccione un producto y complete el lote para ver la ubicación.</p>`;
         document.getElementById('selectedProductCard').style.display = "none";
         document.getElementById('productSearchInput').value = '';
         selectedSkuForPick = null;
