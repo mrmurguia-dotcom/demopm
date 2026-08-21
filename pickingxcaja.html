@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Picking & Armado de Pallets Mixtos v.PRO - M2 Consultora</title>
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Librería OCR (Tesseract.js) para leer texto -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --primary-dark: #1a252f;
+            --accent: #2980b9;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --bg-light: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg-light); margin: 0; padding: 15px; color: #333; }
+        
+        .container { max-width: 1000px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        
+        /* Dropzones */
+        .box { border: 2px dashed #bdc3c7; padding: 25px 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; transition: all 0.3s ease; background: #fafafa; }
+        .box.dragover { background-color: #e8f4f8; border-color: var(--accent); box-shadow: inset 0 0 10px rgba(41, 128, 185, 0.2); }
+        .drop-text { color: #7f8c8d; font-size: 0.95em; margin: 10px 0; display: block; }
+        
+        /* Buttons */
+        .btn-gen { background: var(--success); color: white; border: none; padding: 14px 20px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-gen:hover { background: #219653; transform: translateY(-1px); }
+        .btn-mode { background: var(--accent); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; width: 100%; margin-top: 15px; text-align: center; box-shadow: 0 4px 6px rgba(41, 128, 185, 0.3); }
+        .btn-mode:hover { background: #1f638e; }
+        .btn-secondary { background: #7f8c8d; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-speech { background: #9b59b6; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-ocr { background: #34495e; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        
+        /* Pallet Nav & Cards */
+        .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding-bottom: 8px; }
+        .pm-tab { background: #e0e0e0; padding: 10px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap; border: 1px solid #ccc; font-weight: bold; }
+        .pm-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        .pallet-card { display: none; border: 2px solid var(--primary); padding: 20px; background: white; border-radius: 8px; }
+        .pallet-card.active { display: block; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.95em; }
+        th { background: #f2f4f5; }
+        
+        .order-badge { border: 2px solid var(--primary); padding: 6px 12px; font-size: 1.2em; font-weight: bold; float: right; border-radius: 6px; background: #ebf5fb; }
+        .tag { color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 6px; font-weight: bold; }
+        .tag-4 { background: #2980b9; } .tag-9 { background: #e67e22; }
+
+        /* MODO OPERARIO */
+        #operatorView { display: none; background: #f8f9fa; border-top: 4px solid var(--accent); padding: 20px; border-radius: 10px; margin-top: 20px; }
+        .op-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: var(--primary); color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .op-title { font-size: 1.3em; font-weight: bold; margin: 0; }
+        
+        .op-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media(min-width: 768px) { .op-grid { grid-template-columns: 1fr 1fr; } }
+        
+        .panel-box { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e1e8ed; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        .panel-title { font-size: 1.1em; font-weight: bold; color: var(--primary); margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* Scanners */
+        #reader { width: 100%; max-width: 450px; margin: 10px auto; display: none; border: 2px solid var(--accent); border-radius: 8px; overflow: hidden; }
+        
+        #ocrBox { display: none; text-align: center; padding: 15px; background: #ecf0f1; border: 2px dashed #95a5a6; border-radius: 8px; margin-bottom: 15px; }
+        #ocrVideo { width: 100%; max-width: 400px; border-radius: 6px; border: 1px solid #bdc3c7; background: #000; }
+
+        /* Inputs */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #34495e; font-size: 0.9em; }
+        .input-control { width: 100%; padding: 12px; font-size: 1em; border: 2px solid #bdc3c7; border-radius: 6px; transition: border 0.2s; }
+        .input-control:focus { outline: none; border-color: var(--accent); }
+        
+        .search-results { max-height: 180px; overflow-y: auto; border: 1px solid #ccc; border-radius: 6px; background: white; display: none; margin-top: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .search-item { padding: 10px 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.95em; }
+        .search-item:hover { background: #e8f4f8; }
+
+        /* Julian Lot Calculated Box */
+        .lot-calculator { background: #eef9f6; border: 2px solid #1abc9c; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .lot-badge { background: #1abc9c; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 1.1em; }
+        
+        /* Found Picking Target Banner */
+        .picking-target { background: #fff8e1; border: 2px solid var(--warning); padding: 15px; border-radius: 8px; margin-top: 15px; display: none; }
+        .picking-target.active { display: block; animation: pulse 1.5s infinite alternate; }
+        @keyframes pulse { from { box-shadow: 0 0 4px rgba(243, 156, 18, 0.4); } to { box-shadow: 0 0 12px rgba(243, 156, 18, 0.8); } }
+
+        .location-highlight { font-size: 1.6em; font-weight: bold; color: #d35400; background: #fef5e7; padding: 5px 12px; border-radius: 6px; display: inline-block; border: 1px solid #f5b041; margin: 5px 0; }
+        
+        .qty-picker { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
+        .qty-btn { width: 45px; height: 45px; font-size: 1.5em; font-weight: bold; background: #e0e0e0; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; }
+        .qty-input { width: 80px; text-align: center; font-size: 1.3em; font-weight: bold; padding: 8px; border: 2px solid var(--accent); border-radius: 6px; }
+
+        .progress-bar-bg { background: #e0e0e0; border-radius: 10px; height: 16px; overflow: hidden; margin-top: 8px; }
+        .progress-bar-fill { background: var(--success); height: 100%; width: 0%; transition: width 0.3s; }
+
+        @media print { .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
+    </style>
+</head>
+<body>
+
+<div class="container no-print" id="setupView">
+    <h2 style="text-align:center; color: var(--primary); margin-top:0;">📦 Optimizador de Picking & Armado - M2 Consultora</h2>
+    
+    <div class="box" id="dropZoneMaster">
+        <strong style="font-size: 1.1em; color: var(--primary);">1. Maestro de Capacidades & Stock Legacy</strong><br>
+        <span class="drop-text">Arrastrá y soltá el archivo Excel (.xlsx) con pestañas "MST Producto" y "legacy vStockPT"</span>
+        <input type="file" id="masterFile" accept=".xlsx">
+    </div>
+    
+    <div class="box" id="dropZoneSurtido">
+        <strong style="font-size: 1.1em; color: var(--primary);">2. Reporte de Surtido JDE</strong><br>
+        <span class="drop-text">Arrastrá y soltá el reporte HTML/XLS de Surtido JDE</span>
+        <input type="file" id="surtidoFile">
+        <br><br>
+        <button class="btn-gen" onclick="procesar()">⚡ CALCULAR PALLETS SUGERIDOS</button>
+    </div>
+</div>
+
+<div id="resArea" class="container" style="display:none; margin-top:20px;">
+    
+    <div id="filterContainer" class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #ecf0f1; padding: 12px 18px; border-radius: 8px; border: 1px solid #bdc3c7;">
+        <div>
+            <label for="orderFilter" style="font-weight:bold; margin-right: 10px; color: #2c3e50;">🔍 Filtrar por Orden:</label>
+            <select id="orderFilter" style="padding: 6px 12px; font-size: 1em; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; cursor: pointer;"></select>
+        </div>
+        <div style="font-size: 1.1em; font-weight: bold; color: #c0392b;">
+            📦 Total Carga: <span id="totalCargaCount">0</span> CA
+        </div>
+    </div>
+
+    <!-- Botón Prominente para pasar al MODO OPERARIO -->
+    <button class="btn-mode no-print" onclick="activarModoOperario()">🚀 INICIAR ARMADO INTERACTIVO (ESCÁNER / PICKING)</button>
+
+    <div id="tabs" class="pm-nav no-print"></div>
+    <div id="pallets"></div>
+</div>
+
+<!-- ================= MODO OPERARIO / INTERFAZ DE ARMADO EN TIEMPO REAL ================= -->
+<div class="container no-print" id="operatorView">
+    <div class="op-header">
+        <div>
+            <span style="font-size: 0.9em; opacity: 0.9;">MODO PICKING Y ARMADO</span>
+            <div class="op-title" id="opPalletTitle">Pallet Mixto #1 - Orden ...</div>
+        </div>
+        <div>
+            <button class="btn-secondary" onclick="volverASugerencias()">⬅ Volver a Vista General</button>
+        </div>
+    </div>
+
+    <div class="op-grid">
+        <!-- COLUMNA IZQUIERDA: Lector / Búsqueda / Lote -->
+        <div class="panel-box">
+            <div class="panel-title">
+                <span>1. Identificación de Producto</span>
+                <button class="btn-speech" onclick="iniciarReconocimientoVoz()" title="Dictar por voz">🎤 Voz</button>
+            </div>
+
+            <!-- Botón Escáner Código de Barras -->
+            <button class="btn-gen" style="background: var(--accent); margin-bottom: 15px;" onclick="toggleCameraScanner()">
+                📷 <span id="camBtnText">Escanear Código de Barras</span>
+            </button>
+            <div id="reader"></div>
+
+            <!-- Búsqueda Manual / Texto / Voz -->
+            <div class="form-group">
+                <label for="productSearchInput">Buscar por SKU, EAN o Nombre:</label>
+                <input type="text" id="productSearchInput" class="input-control" placeholder="Escriba o dicte el producto..." autocomplete="off">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <div id="selectedProductCard" style="display:none; background:#e8f4f8; padding:12px; border-radius:6px; border-left:4px solid var(--accent); margin-bottom:15px;">
+                <strong>Producto Seleccionado:</strong>
+                <div id="selProdName" style="font-weight:bold; color:var(--primary); font-size:1.1em; margin-top:4px;">-</div>
+                <div id="selProdMeta" style="font-size:0.85em; color:#555;">SKU: - | EAN: -</div>
+            </div>
+
+            <!-- Calculadora / Captura de Lote Juliano + Hora + OCR -->
+            <div class="lot-calculator">
+                <div style="font-weight:bold; color:#16a085; margin-bottom:10px;">2. Lectura de Lote y Hora</div>
+                
+                <!-- BOTÓN OCR -->
+                <button class="btn-ocr" id="btnAbrirOCR" onclick="toggleOCR()">
+                    👁️ Escanear Lote con Cámara (OCR Texto)
+                </button>
+
+                <!-- CAJA OCR -->
+                <div id="ocrBox">
+                    <video id="ocrVideo" autoplay playsinline></video>
+                    <canvas id="ocrCanvas" style="display:none;"></canvas>
+                    <br>
+                    <button class="btn-gen" id="btnCapturarOCR" onclick="capturarYLeerOCR()" style="margin-top:10px; width:auto; padding:10px 15px;">
+                        📸 Capturar Texto
+                    </button>
+                    <div id="ocrStatus" style="margin-top:10px; font-weight:bold; color:var(--primary);">Apunte al texto impreso y capture.</div>
+                </div>
+                
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.8em; font-weight:bold;">Lote Juliano (ej: 099):</label>
+                        <input type="text" id="julianInput" class="input-control" maxlength="3" placeholder="099" style="font-family:monospace; text-align:center;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:0.8em; font-weight:bold;">Hora (ej: 0546):</label>
+                        <input type="text" id="timeInput" class="input-control" maxlength="5" placeholder="0546" style="font-family:monospace; text-align:center;">
+                    </div>
+                </div>
+
+                <div style="margin-top:12px; font-size:0.9em;">
+                    Sufijo Calculado en Sistema: <span id="calcLotBadge" class="lot-badge">---</span>
+                </div>
+            </div>
+
+            <button class="btn-gen" style="margin-top:15px;" onclick="validarYBuscarStock()">🔍 CONSULTAR UBICACIÓN Y STOCK</button>
+        </div>
+
+        <!-- COLUMNA DERECHA: Resultado de Ubicación en Picking + Validación de Cantidad -->
+        <div class="panel-box">
+            <div class="panel-title">
+                <span>3. Ubicación & Confirmación</span>
+            </div>
+
+            <div id="pickingTargetBox" class="picking-target">
+                <div style="font-weight:bold; color:#b7950b;">📍 UBICACIÓN EN ZONA DE PICKING:</div>
+                <div class="location-highlight" id="targetLocationDisplay">Cargando...</div>
+                
+                <div style="margin-top:10px; font-size:0.9em;">
+                    <b>Lote Coincidente en Stock:</b> <span id="targetStockLot" style="font-family:monospace; font-weight:bold;">-</span><br>
+                    <b>Stock Disponible:</b> <span id="targetStockQty" style="font-weight:bold;">-</span> CA
+                </div>
+
+                <div style="border-top:1px solid #f39c12; margin-top:12px; padding-top:12px;">
+                    <label style="font-weight:bold; color:#2c3e50;">Cantidad a Colocar en Pallet:</label>
+                    <div style="font-size:0.85em; color:#666;">Faltan colocar: <span id="suggestedQtyLine" style="font-weight:bold; color:#d35400;">0</span> CA</div>
+                    
+                    <div class="qty-picker">
+                        <button class="qty-btn" onclick="adjustQty(-1)">-</button>
+                        <input type="number" id="confirmQtyInput" class="qty-input" value="1" min="1">
+                        <button class="qty-btn" onclick="adjustQty(1)">+</button>
+                        <button class="btn-gen" style="flex:1; margin:0;" onclick="confirmarPickeo()">✅ CONFIRMAR</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="noTargetNotice" style="text-align:center; padding:30px; color:#95a5a6;">
+                <div style="font-size:2.5em;">📦</div>
+                <p>Seleccione un producto y complete el lote para ver la ubicación.</p>
+            </div>
+
+            <!-- Progreso del Pallet Actual -->
+            <div style="margin-top:25px;">
+                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.9em;">
+                    <span>Avance Pallet Actual:</span>
+                    <span id="palletProgressText">0 / 0 CA</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="palletProgressBar" class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Lista Simplificada de Ítems del Pallet -->
+            <div style="margin-top:15px; max-height:220px; overflow-y:auto;">
+                <table style="font-size:0.85em; margin-top:5px;">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Descripción</th>
+                            <th>Sug.</th>
+                            <th>Pick.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="opPalletItemsTable">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let maestro = JSON.parse(localStorage.getItem('m_v31_4_maestro')) || {};
+    let stockLegacy = JSON.parse(localStorage.getItem('m_v31_4_stock')) || [];
+    let globalPallets = [];
+    let currentPalletIdx = 0;
+    let selectedSkuForPick = null;
+    let html5QrCode = null;
+    let ocrStream = null;
+
+    // --- Drag & Drop ---
+    function setupDragAndDrop(zoneId, inputId, isMaster = false) {
+        const dropZone = document.getElementById(zoneId);
+        const fileInput = document.getElementById(inputId);
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }, false));
+        ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover'), false));
+        ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'), false));
+        dropZone.addEventListener('drop', (e) => {
+            let files = e.dataTransfer.files;
+            if (files.length > 0) { fileInput.files = files; if (isMaster) fileInput.dispatchEvent(new Event('change')); }
+        }, false);
+    }
+    setupDragAndDrop('dropZoneMaster', 'masterFile', true);
+    setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
+
+    // --- Archivos ---
+    document.getElementById('masterFile').onchange = (e) => {
+        if (!e.target.files.length) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+            const wsMaestro = wb.Sheets["MST Producto"] || wb.Sheets[wb.SheetNames[0]];
+            if (wsMaestro) {
+                const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, {header:1});
+                maestro = {};
+                dataMaestro.slice(1).forEach(r => {
+                    let sku = String(r[1] || "").trim();
+                    if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"0"), ean: String(r[9]||"").trim(), desc: String(r[2]||r[3]||"").trim() };
+                });
+                localStorage.setItem('m_v31_4_maestro', JSON.stringify(maestro));
+            }
+            const wsStock = wb.Sheets["legacy vStockPT"];
+            if (wsStock) {
+                stockLegacy = XLSX.utils.sheet_to_json(wsStock);
+                localStorage.setItem('m_v31_4_stock', JSON.stringify(stockLegacy));
+            }
+            alert(`✅ Archivo cargado. Maestro: ${Object.keys(maestro).length} productos.`);
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    };
+
+    function procesar() {
+        const file = document.getElementById('surtidoFile').files[0];
+        if(!file) return alert("⚠️ Seleccioná el reporte JDE.");
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const doc = new DOMParser().parseFromString(e.target.result, "text/html");
+            let itemsRaw = [], cargaNro = "S/C", esMixto = false;
+            Array.from(doc.querySelectorAll('tr')).forEach(tr => {
+                const text = tr.innerText.toUpperCase();
+                if(text.includes("CARGA:")) cargaNro = (text.match(/CARGA:\s*(\d+)/)||[])[1]||cargaNro;
+                if(text.includes("PALLET HOMOGENEO")) esMixto = false;
+                if(text.includes("PALLET MIXTO")) esMixto = true;
+                const c = Array.from(tr.cells).map(td => td.innerText.trim());
+                if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
+                    let sku = c[1], info = maestro[sku] || { base: 21, cap: 84, fam: "0", ean: "", desc: c[4] };
+                    itemsRaw.push({ ubi: c[0], sku: sku, desc: c[4], orden: c[6], linea: parseFloat(c[7])||0, cant: parseInt(c[8]), pickeado: 0, dep: "P0" + (c[0].split('.')[1]||"01"), carga: cargaNro, base: info.base, capFull: info.cap, fam: info.fam, ean: info.ean });
+                }
+            });
+            itemsRaw.sort((a,b) => a.dep.localeCompare(b.dep) || a.orden.localeCompare(b.orden) || b.ubi.localeCompare(a.ubi));
+            armarLogica(itemsRaw);
+        };
+        reader.readAsText(file, "ISO-8859-1");
+    }
+
+    // --- Lógica Pallets ---
+    function armarLogica(items) {
+        let pallets = [], cont = 1;
+        items.forEach(it => {
+            let placed = false;
+            for (let p of pallets) {
+                if (p.orden === it.orden && p.dep === it.dep) {
+                    let m = [...p.items, it], c = 0, no = 0, bl = 999;
+                    m.forEach(x => { if(x.fam==="9"){c+=x.cant; bl=Math.min(bl,x.base);} else no+=x.cant; });
+                    if(c>0 && no>0 && c>=bl) continue; // mix rule
+                    let maxCap = 84; m.forEach(x => { if(x.cant>=x.base) maxCap=Math.max(maxCap,x.capFull); });
+                    if (p.total + it.cant <= maxCap) {
+                        p.items.push(it); p.total += it.cant; p.capMaxVisual = maxCap; placed = true; break;
+                    }
+                }
+            }
+            if (!placed) {
+                let maxCap = 84; if(it.cant>=it.base) maxCap = it.capFull;
+                pallets.push({ id: cont++, dep: it.dep, carga: it.carga, orden: it.orden, total: it.cant, items: [it], capMaxVisual: maxCap });
+            }
+        });
+        globalPallets = pallets;
+        renderSugerencias(pallets);
+    }
+
+    function renderSugerencias(pallets) {
+        document.getElementById('resArea').style.display = "block";
+        document.getElementById('pallets').innerHTML = ""; document.getElementById('tabs').innerHTML = "";
+        document.getElementById('totalCargaCount').innerText = pallets.reduce((s, p) => s + p.total, 0);
+        
+        let sel = document.getElementById('orderFilter');
+        sel.innerHTML = '<option value="ALL">Mostrar Todas</option>';
+        [...new Set(pallets.map(p => p.orden))].forEach(o => sel.innerHTML += `<option value="${o}">Orden ${o}</option>`);
+
+        pallets.forEach((p, i) => {
+            const btn = document.createElement('div');
+            btn.className = `pm-tab ${i===0?'active':''}`; btn.innerText = `PM #${p.id}`; btn.onclick = () => {
+                document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active'); document.getElementById('pc-'+p.id).classList.add('active');
+            };
+            document.getElementById('tabs').appendChild(btn);
+
+            const card = document.createElement('div');
+            card.id = 'pc-'+p.id; card.className = `pallet-card ${i===0?'active':''}`;
+            card.innerHTML = `<div class="order-badge">ORDEN: ${p.orden}</div><h2>Carga: ${p.carga}</h2>
+                <p><b>Sector:</b> ${p.dep} | <b>Pallet:</b> #${p.id} | <span style="background:yellow; padding:2px;">Ocupación: ${p.total}/${p.capMaxVisual}</span></p>
+                <table><thead><tr><th>Ubi</th><th>SKU</th><th>Desc</th><th>Cant</th></tr></thead>
+                <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td><b>${it.cant}</b></td></tr>`).join('')}</tbody></table>`;
+            document.getElementById('pallets').appendChild(card);
+        });
+    }
+
+    // --- MODO OPERARIO ---
+    function activarModoOperario() {
+        if(!globalPallets.length) return alert("No hay pallets.");
+        document.getElementById('resArea').style.display = "none";
+        document.getElementById('setupView').style.display = "none";
+        document.getElementById('operatorView').style.display = "block";
+        cargarPalletEnOperario(0);
+    }
+
+    function volverASugerencias() {
+        document.getElementById('operatorView').style.display = "none";
+        document.getElementById('setupView').style.display = "block";
+        document.getElementById('resArea').style.display = "block";
+        if(html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
+        detenerOCR();
+        renderSugerencias(globalPallets);
+    }
+
+    function cargarPalletEnOperario(idx) {
+        currentPalletIdx = idx; const pallet = globalPallets[idx]; if(!pallet) return;
+        document.getElementById('opPalletTitle').innerText = `Pallet Mixto #${pallet.id} - Orden ${pallet.orden}`;
+        document.getElementById('opPalletItemsTable').innerHTML = pallet.items.map(it => `
+            <tr style="cursor:pointer;" onclick="seleccionarProductoDirecto('${it.sku}')">
+                <td><b>${it.sku}</b></td><td>${it.desc}</td><td>${it.cant}</td>
+                <td>${it.pickeado >= it.cant ? '✅' : it.pickeado}</td>
+            </tr>`).join('');
+        
+        let pick = pallet.items.reduce((a, i) => a + i.pickeado, 0);
+        let pct = Math.min(100, Math.round((pick / pallet.total) * 100));
+        document.getElementById('palletProgressText').innerText = `${pick} / ${pallet.total} CA (${pct}%)`;
+        document.getElementById('palletProgressBar').style.width = pct + '%';
+    }
+
+    // Búsqueda Manual
+    document.getElementById('productSearchInput').addEventListener('input', function() {
+        const q = this.value.trim().toLowerCase();
+        const p = globalPallets[currentPalletIdx];
+        if(q.length < 2 || !p) return document.getElementById('searchResults').style.display = "none";
+        
+        const matches = p.items.filter(it => it.sku.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q) || (it.ean && it.ean.includes(q)));
+        if(matches.length) {
+            document.getElementById('searchResults').innerHTML = matches.map(m => `
+                <div class="search-item" onclick="seleccionarProductoDirecto('${m.sku}')">
+                    <strong>${m.desc}</strong><br><small>SKU: ${m.sku} | EAN: ${m.ean} | Pedido: ${m.cant} CA</small>
+                </div>`).join('');
+            document.getElementById('searchResults').style.display = "block";
+        } else document.getElementById('searchResults').style.display = "none";
+    });
+
+    function seleccionarProductoDirecto(sku) {
+        const item = globalPallets[currentPalletIdx].items.find(i => i.sku === sku);
+        if(!item) return;
+        selectedSkuForPick = sku;
+        document.getElementById('selectedProductCard').style.display = "block";
+        document.getElementById('selProdName').innerText = item.desc;
+        document.getElementById('selProdMeta').innerText = `SKU: ${item.sku} | EAN: ${item.ean || 'N/A'}`;
+        document.getElementById('suggestedQtyLine').innerText = item.cant - item.pickeado;
+        document.getElementById('confirmQtyInput').value = Math.max(1, item.cant - item.pickeado);
+        document.getElementById('searchResults').style.display = "none";
+        document.getElementById('productSearchInput').value = item.desc;
+    }
+
+    // --- ESCÁNER DE CÓDIGO DE BARRAS ---
+    function toggleCameraScanner() {
+        detenerOCR(); // Si está abierto OCR, lo cierro
+        const rd = document.getElementById('reader');
+        if(html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => { rd.style.display="none"; document.getElementById('camBtnText').innerText="Escanear Código de Barras";});
+            return;
+        }
+        rd.style.display = "block"; document.getElementById('camBtnText').innerText = "Cerrar Escáner";
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } },
+            (text) => {
+                document.getElementById('productSearchInput').value = text;
+                document.getElementById('productSearchInput').dispatchEvent(new Event('input'));
+                const match = globalPallets[currentPalletIdx].items.find(i => i.ean === text || i.sku === text);
+                if(match) seleccionarProductoDirecto(match.sku);
+            }, () => {}).catch(err => alert("Error cámara: " + err));
+    }
+
+    // --- RECONOCIMIENTO OCR DE LOTE CON TESSERACT.JS ---
+    async function toggleOCR() {
+        if(html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); // Cierro barras si está abierto
+        
+        const box = document.getElementById('ocrBox');
+        if(box.style.display === 'block') { detenerOCR(); return; }
+        
+        box.style.display = 'block';
+        document.getElementById('ocrStatus').innerText = "Apunte al lote (Ej: L 26 099 0546) y capture.";
+        document.getElementById('ocrStatus').style.color = "var(--primary)";
+        try {
+            ocrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            document.getElementById('ocrVideo').srcObject = ocrStream;
+        } catch(e) { alert("Error accediendo a la cámara para OCR."); box.style.display = 'none'; }
+    }
+
+    function detenerOCR() {
+        if(ocrStream) { ocrStream.getTracks().forEach(t => t.stop()); ocrStream = null; }
+        document.getElementById('ocrBox').style.display = 'none';
+    }
+
+    async function capturarYLeerOCR() {
+        const v = document.getElementById('ocrVideo');
+        const c = document.getElementById('ocrCanvas');
+        const ctx = c.getContext('2d');
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        ctx.drawImage(v, 0, 0, c.width, c.height);
+
+        document.getElementById('ocrStatus').innerText = "⏳ Analizando con IA (OCR)... Espere.";
+        document.getElementById('ocrStatus').style.color = "var(--warning)";
+        document.getElementById('btnCapturarOCR').disabled = true;
+
+        try {
+            // Tesseract lee la imagen
+            const result = await Tesseract.recognize(c, 'eng');
+            const texto = result.data.text;
+            console.log("OCR Texto:", texto);
+
+            // Buscamos Patrón: Ej "L 26 099 0546" -> L, numeros, 3 digitos (Juliano), 4 digitos (Hora)
+            const regex = /L\s*\d{2}\s*(\d{3})\s*(\d{4})/i;
+            const match = texto.match(regex);
+
+            if(match) {
+                document.getElementById('julianInput').value = match[1];
+                document.getElementById('timeInput').value = match[2];
+                document.getElementById('ocrStatus').innerText = "✅ Lote Extraído: Juliano "+match[1]+" | Hora "+match[2];
+                document.getElementById('ocrStatus').style.color = "var(--success)";
+                calcularSufijoLote();
+                setTimeout(detenerOCR, 3000);
+            } else {
+                // Si la 'L' no salió bien, buscamos grupo de 3 y grupo de 4 juntos
+                const match2 = texto.match(/(\d{3})\s+(\d{4})\s+\d{4}/);
+                if(match2) {
+                    document.getElementById('julianInput').value = match2[1];
+                    document.getElementById('timeInput').value = match2[2];
+                    document.getElementById('ocrStatus').innerText = "✅ Lote detectado (Patrón alternativo)";
+                    document.getElementById('ocrStatus').style.color = "var(--success)";
+                    calcularSufijoLote();
+                    setTimeout(detenerOCR, 3000);
+                } else {
+                    document.getElementById('ocrStatus').innerText = "❌ No se reconoció el formato. Texto leído: " + texto.substring(0, 15) + "...";
+                    document.getElementById('ocrStatus').style.color = "var(--danger)";
+                }
+            }
+        } catch(e) {
+            document.getElementById('ocrStatus').innerText = "❌ Error procesando imagen OCR.";
+        }
+        document.getElementById('btnCapturarOCR').disabled = false;
+    }
+
+    // --- Lógica Lote y Hora ---
+    document.getElementById('julianInput').addEventListener('input', calcularSufijoLote);
+    document.getElementById('timeInput').addEventListener('input', calcularSufijoLote);
+
+    function calcularSufijoLote() {
+        let julian = document.getElementById('julianInput').value.trim().padStart(3, '0');
+        let time = document.getElementById('timeInput').value.trim().replace(':', '');
+        if(julian.length < 3 || time.length < 2) return document.getElementById('calcLotBadge').innerText = "---";
+        let hh = parseInt(time.substring(0, 2)) || 0;
+        let letra = (hh >= 16) ? 'C' : (hh >= 8) ? 'B' : 'A';
+        let sufijo = `${julian}${letra}`;
+        document.getElementById('calcLotBadge').innerText = sufijo;
+        return sufijo;
+    }
+
+    // --- Búsqueda de Stock ---
+    function validarYBuscarStock() {
+        if(!selectedSkuForPick) return alert("⚠️ Seleccioná un producto.");
+        let sufijo = calcularSufijoLote();
+        if(!sufijo || sufijo === "---") return alert("⚠️ Completá Lote y Hora.");
+
+        const regs = stockLegacy.filter(r => String(r.SKU||r.Artículo||"").trim() === selectedSkuForPick && String(r.Lote||"").endsWith(sufijo));
+        const targetBox = document.getElementById('pickingTargetBox');
+        
+        if(regs.length) {
+            let m = regs[0];
+            document.getElementById('targetLocationDisplay').innerText = m.Ubicacion || m.Ubi || "ZONA PICKING";
+            document.getElementById('targetStockLot').innerText = m.Lote || sufijo;
+            document.getElementById('targetStockQty').innerText = m.Cantidad || m.Stock || "N/D";
+        } else {
+            const fb = stockLegacy.find(r => String(r.SKU||r.Artículo||"").trim() === selectedSkuForPick);
+            document.getElementById('targetLocationDisplay').innerText = fb ? fb.Ubicacion+" (Lote no hallado)" : "UBICACIÓN GENERAL";
+            document.getElementById('targetStockLot').innerText = "Sufijo " + sufijo + " sin stock";
+            document.getElementById('targetStockQty').innerText = fb ? fb.Cantidad : "N/D";
+        }
+        document.getElementById('noTargetNotice').style.display = "none";
+        targetBox.classList.add('active'); targetBox.style.display = "block";
+    }
+
+    function adjustQty(delta) {
+        const i = document.getElementById('confirmQtyInput');
+        i.value = Math.max(1, (parseInt(i.value)||1) + delta);
+    }
+
+    function confirmarPickeo() {
+        if(!selectedSkuForPick) return;
+        let cant = parseInt(document.getElementById('confirmQtyInput').value) || 1;
+        let item = globalPallets[currentPalletIdx].items.find(i => i.sku === selectedSkuForPick);
+        if(!item) return;
+        
+        item.pickeado += cant;
+        document.getElementById('pickingTargetBox').style.display = "none";
+        document.getElementById('noTargetNotice').style.display = "block";
+        document.getElementById('selectedProductCard').style.display = "none";
+        document.getElementById('productSearchInput').value = '';
+        selectedSkuForPick = null;
+        cargarPalletEnOperario(currentPalletIdx);
+    }
+
+    function iniciarReconocimientoVoz() {
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if(!Speech) return alert("Voz no soportada. Usá Chrome.");
+        const r = new Speech(); r.lang = 'es-AR';
+        r.onstart = () => document.getElementById('productSearchInput').placeholder = "Escuchando...";
+        r.onresult = (e) => {
+            document.getElementById('productSearchInput').value = e.results[0][0].transcript;
+            document.getElementById('productSearchInput').dispatchEvent(new Event('input'));
+        };
+        r.start();
+    }
+</script>
+</body>
+</html>
