@@ -2,273 +2,261 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Picking & Armado de PMixto v.PRO - M2 Consultora</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Picking y Palletizado</title>
     
     <!-- Librerías Externas -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
         :root {
             --primary: #2c3e50;
-            --primary-dark: #1a252f;
-            --accent: #2980b9;
-            --success: #27ae60;
+            --accent: #3498db;
+            --success: #2ecc71;
             --warning: #f39c12;
             --danger: #e74c3c;
-            --bg-light: #f4f7f6;
-            --card-bg: #ffffff;
+            --bg: #f4f6f7;
         }
 
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg-light); margin: 0; padding: 15px; color: #333; }
-        
-        .container { max-width: 1000px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        
-        /* Dropzones */
-        .box { border: 2px dashed #bdc3c7; padding: 25px 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; transition: all 0.3s ease; background: #fafafa; }
-        .box.dragover { background-color: #e8f4f8; border-color: var(--accent); box-shadow: inset 0 0 10px rgba(41, 128, 185, 0.2); }
-        .drop-text { color: #7f8c8d; font-size: 0.95em; margin: 10px 0; display: block; }
-        
-        /* Buttons */
-        .btn-gen { background: var(--success); color: white; border: none; padding: 14px 20px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-gen:hover { background: #219653; transform: translateY(-1px); }
-        .btn-mode { background: var(--accent); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; width: 100%; margin-top: 15px; text-align: center; box-shadow: 0 4px 6px rgba(41, 128, 185, 0.3); }
-        .btn-mode:hover { background: #1f638e; }
-        .btn-secondary { background: #7f8c8d; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-speech { background: #9b59b6; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
-        .btn-ocr { background: #34495e; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
-        
-        /* Pallet Nav & Cards */
-        .pm-nav { display: flex; gap: 8px; margin: 20px 0; overflow-x: auto; padding-bottom: 8px; }
-        .pm-tab { background: #e0e0e0; padding: 10px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap; border: 1px solid #ccc; font-weight: bold; }
-        .pm-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
-        .pallet-card { display: none; border: 2px solid var(--primary); padding: 20px; background: white; border-radius: 8px; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--bg);
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .drop-zone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background: #fafafa;
+            cursor: pointer;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--accent);
+            background: #eaf2f8;
+        }
+
+        .btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px 0;
+            width: 100%;
+        }
+
+        .btn-success { background-color: var(--success); }
+        .btn-danger { background-color: var(--danger); }
+        .btn-warning { background-color: var(--warning); }
+
+        .pm-tab {
+            display: inline-block;
+            padding: 8px 12px;
+            background: #eee;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+        }
+
+        .pm-tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .pallet-card {
+            display: none;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 0 4px 4px 4px;
+        }
+
         .pallet-card.active { display: block; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.95em; }
-        th { background: #f2f4f5; }
-        
-        .order-badge { border: 2px solid var(--primary); padding: 6px 12px; font-size: 1.2em; font-weight: bold; float: right; border-radius: 6px; background: #ebf5fb; }
 
-        /* MODO OPERARIO */
-        #operatorView { display: none; background: #f8f9fa; border-top: 4px solid var(--accent); padding: 20px; border-radius: 10px; margin-top: 20px; }
-        .op-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: var(--primary); color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
-        .op-title { font-size: 1.3em; font-weight: bold; margin: 0; }
-        
-        .op-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        @media(min-width: 768px) { .op-grid { grid-template-columns: 1fr 1fr; } }
-        
-        .panel-box { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e1e8ed; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
-        .panel-title { font-size: 1.1em; font-weight: bold; color: var(--primary); margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
 
-        /* Scanners */
-        #reader { width: 100%; max-width: 450px; margin: 10px auto; display: none; border: 2px solid var(--accent); border-radius: 8px; overflow: hidden; }
-        
-        #ocrBox { display: none; text-align: center; padding: 15px; background: #ecf0f1; border: 2px dashed #95a5a6; border-radius: 8px; margin-bottom: 15px; }
-        #ocrVideo { width: 100%; max-width: 400px; border-radius: 6px; border: 1px solid #bdc3c7; background: #000; }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
 
-        /* Inputs */
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #34495e; font-size: 0.9em; }
-        .input-control { width: 100%; padding: 12px; font-size: 1em; border: 2px solid #bdc3c7; border-radius: 6px; transition: border 0.2s; }
-        .input-control:focus { outline: none; border-color: var(--accent); }
-        
-        .search-results { max-height: 180px; overflow-y: auto; border: 1px solid #ccc; border-radius: 6px; background: white; display: none; margin-top: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .search-item { padding: 10px 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.95em; }
-        .search-item:hover { background: #e8f4f8; }
+        th { background: #f2f2f2; }
 
-        /* Julian Lot Calculated Box */
-        .lot-calculator { background: #eef9f6; border: 2px solid #1abc9c; padding: 15px; border-radius: 8px; margin-top: 15px; }
-        .lot-badge { background: #1abc9c; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 1.1em; }
-        
-        /* Found Picking Target Banner */
-        .picking-target { background: #fff8e1; border: 2px solid var(--warning); padding: 15px; border-radius: 8px; margin-top: 15px; display: none; }
-        .picking-target.active { display: block; animation: pulse 1.5s infinite alternate; }
-        @keyframes pulse { from { box-shadow: 0 0 4px rgba(243, 156, 18, 0.4); } to { box-shadow: 0 0 12px rgba(243, 156, 18, 0.8); } }
+        .progress-bar-container {
+            width: 100%;
+            background: #eee;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
 
-        .location-highlight { font-size: 1.6em; font-weight: bold; color: #d35400; background: #fef5e7; padding: 5px 12px; border-radius: 6px; display: inline-block; border: 1px solid #f5b041; margin: 5px 0; }
-        
-        .qty-picker { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
-        .qty-btn { width: 45px; height: 45px; font-size: 1.5em; font-weight: bold; background: #e0e0e0; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; }
-        .qty-input { width: 80px; text-align: center; font-size: 1.3em; font-weight: bold; padding: 8px; border: 2px solid var(--accent); border-radius: 6px; }
+        .progress-bar {
+            height: 100%;
+            background: var(--success);
+            width: 0%;
+            transition: width 0.3s;
+        }
 
-        .progress-bar-bg { background: #e0e0e0; border-radius: 10px; height: 16px; overflow: hidden; margin-top: 8px; }
-        .progress-bar-fill { background: var(--success); height: 100%; width: 0%; transition: width 0.3s; }
+        .search-results {
+            border: 1px solid #ccc;
+            max-height: 150px;
+            overflow-y: auto;
+            background: white;
+            position: absolute;
+            z-index: 100;
+            width: calc(100% - 40px);
+        }
 
-        @media print { .no-print { display: none !important; } .pallet-card { display: block !important; page-break-after: always; border: none; } }
+        .search-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .search-item:hover { background: #f0f0f0; }
+
+        #reader { width: 100%; display: none; margin-top: 10px; }
+        #ocrBox { display: none; text-align: center; margin-top: 10px; }
+        #ocrVideo { width: 100%; max-height: 200px; background: #000; }
+        .target-box { display: none; background: #e8f8f5; border: 1px solid var(--success); padding: 15px; border-radius: 5px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container no-print" id="setupView">
-    <h2 style="text-align:center; color: var(--primary); margin-top:0;">📦 Optimizador de Picking & Armado - M2 Consultora</h2>
-    
-    <div class="box" id="dropZoneMaster">
-        <strong style="font-size: 1.1em; color: var(--primary);">1. Maestro de Capacidades & Stock Legacy</strong><br>
-        <span class="drop-text">Arrastrá y soltá el archivo Excel (.xlsx) con pestañas "MST Producto" y "legacy vStockPT"</span>
-        <input type="file" id="masterFile" accept=".xlsx">
-    </div>
-    
-    <div class="box" id="dropZoneSurtido">
-        <strong style="font-size: 1.1em; color: var(--primary);">2. Reporte de Surtido JDE</strong><br>
-        <span class="drop-text">Arrastrá y soltá el reporte HTML/XLS de Surtido JDE</span>
-        <input type="file" id="surtidoFile">
-        <br><br>
-        <button class="btn-gen" onclick="procesar()">⚡ CALCULAR PALLETS SUGERIDOS</button>
-    </div>
-</div>
-
-<div id="resArea" class="container" style="display:none; margin-top:20px;">
-    
-    <div id="filterContainer" class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #ecf0f1; padding: 12px 18px; border-radius: 8px; border: 1px solid #bdc3c7;">
-        <div>
-            <label for="orderFilter" style="font-weight:bold; margin-right: 10px; color: #2c3e50;">🔍 Filtrar por Orden:</label>
-            <select id="orderFilter" style="padding: 6px 12px; font-size: 1em; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; cursor: pointer;"></select>
+<div class="container">
+    <!-- VISTA CONFIGURACIÓN -->
+    <div id="setupView">
+        <h2>1. Carga de Archivos</h2>
+        
+        <div id="dropZoneMaster" class="drop-zone">
+            <p>Arrastrá o seleccioná el **Maestro / Stock PT**</p>
+            <input type="file" id="masterFile" accept=".xlsx, .xls" style="display:none;">
         </div>
-        <div style="font-size: 1.1em; font-weight: bold; color: #c0392b;">
-            📦 Total Carga: <span id="totalCargaCount">0</span> CA
+
+        <div id="dropZoneSurtido" class="drop-zone">
+            <p>Arrastrá o seleccioná el **Reporte de Surtido JDE (.html)**</p>
+            <input type="file" id="surtidoFile" accept=".html, .htm" style="display:none;">
         </div>
-    </div>
 
-    <button class="btn-mode no-print" onclick="activarModoOperario()">🚀 INICIAR ARMADO INTERACTIVO (ESCÁNER / PICKING)</button>
+        <button class="btn" onclick="procesar()">Procesar Surtido</button>
 
-    <div id="tabs" class="pm-nav no-print"></div>
-    <div id="pallets"></div>
-</div>
+        <!-- AREA DE RESULTADOS Y SUGERENCIAS -->
+        <div id="resArea" style="display:none; margin-top: 20px;">
+            <h3>Sugerencia de Pallets Mixtos (Total Cajas: <span id="totalCargaCount">0</span>)</h3>
+            
+            <label>Filtrar Orden: </label>
+            <select id="orderFilter" style="padding: 5px; margin-bottom: 10px;"></select>
 
-<!-- MODO OPERARIO -->
-<div class="container no-print" id="operatorView">
-    <div class="op-header">
-        <div>
-            <span style="font-size: 0.9em; opacity: 0.9;">MODO PICKING Y ARMADO</span>
-            <div class="op-title" id="opPalletTitle">Pallet Mixto #1 - Orden ...</div>
-        </div>
-        <div>
-            <button class="btn-secondary" onclick="volverASugerencias()">⬅ Volver a Vista General</button>
+            <div id="tabs"></div>
+            <div id="pallets"></div>
+
+            <button class="btn btn-success" style="margin-top: 15px;" onclick="activarModoOperario()">Iniciar Modo Operario</button>
         </div>
     </div>
 
-    <div class="op-grid">
-        <div class="panel-box">
-            <div class="panel-title">
-                <span>1. Identificación de Producto</span>
-                <button class="btn-speech" onclick="iniciarReconocimientoVoz()" title="Dictar por voz">🎤 Voz</button>
-            </div>
+    <!-- VISTA OPERARIO / PICKING -->
+    <div id="operatorView" style="display:none;">
+        <button class="btn btn-danger" onclick="volverASugerencias()">← Volver a Configuración</button>
+        
+        <h2 id="opPalletTitle">Pallet Mixto</h2>
+        
+        <div class="progress-bar-container">
+            <div id="palletProgressBar" class="progress-bar"></div>
+        </div>
+        <p id="palletProgressText" style="text-align:center; font-weight:bold;">0 / 0 CA (0%)</p>
 
-            <button class="btn-gen" style="background: var(--accent); margin-bottom: 15px;" onclick="toggleCameraScanner()">
-                📷 <span id="camBtnText">Escanear Código de Barras</span>
-            </button>
-            <div id="reader"></div>
-
-            <div class="form-group">
-                <label for="productSearchInput">Buscar por SKU, EAN o Nombre:</label>
-                <input type="text" id="productSearchInput" class="input-control" placeholder="Escriba o dicte el producto..." autocomplete="off">
-                <div id="searchResults" class="search-results"></div>
-            </div>
-
-            <div id="selectedProductCard" style="display:none; background:#e8f4f8; padding:12px; border-radius:6px; border-left:4px solid var(--accent); margin-bottom:15px;">
-                <strong>Producto Seleccionado:</strong>
-                <div id="selProdName" style="font-weight:bold; color:var(--primary); font-size:1.1em; margin-top:4px;">-</div>
-                <div id="selProdMeta" style="font-size:0.9em; color:#555; margin-top:5px;">SKU: - | EAN: -</div>
-            </div>
-
-            <div class="lot-calculator">
-                <div style="font-weight:bold; color:#16a085; margin-bottom:10px;">2. Lectura de Lote y Hora</div>
-                
-                <button class="btn-ocr" id="btnAbrirOCR" onclick="toggleOCR()">
-                    👁️ Escanear Lote con Cámara (OCR Texto)
-                </button>
-
-                <div id="ocrBox">
-                    <video id="ocrVideo" autoplay playsinline></video>
-                    <canvas id="ocrCanvas" style="display:none;"></canvas>
-                    <br>
-                    <button class="btn-gen" id="btnCapturarOCR" onclick="capturarYLeerOCR()" style="margin-top:10px; width:auto; padding:10px 15px;">
-                        📸 Capturar Texto
-                    </button>
-                    <div id="ocrStatus" style="margin-top:10px; font-weight:bold; color:var(--primary);">Apunte al texto impreso y capture.</div>
-                </div>
-                
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;">
-                        <label style="font-size:0.8em; font-weight:bold;">Lote Juliano (ej: 099):</label>
-                        <input type="text" id="julianInput" class="input-control" maxlength="3" placeholder="099" style="font-family:monospace; text-align:center;">
-                    </div>
-                    <div style="flex:1;">
-                        <label style="font-size:0.8em; font-weight:bold;">Hora (ej: 0546):</label>
-                        <input type="text" id="timeInput" class="input-control" maxlength="5" placeholder="0546" style="font-family:monospace; text-align:center;">
-                    </div>
-                </div>
-
-                <div style="margin-top:12px; font-size:0.9em;">
-                    Sufijo Calculado en Sistema: <span id="calcLotBadge" class="lot-badge">---</span>
-                </div>
-            </div>
-
-            <button class="btn-gen" style="margin-top:15px;" onclick="validarYBuscarStock()">🔍 CONSULTAR UBICACIÓN Y STOCK</button>
+        <!-- BUSCADOR -->
+        <div style="position:relative;">
+            <input type="text" id="productSearchInput" placeholder="Buscar SKU, Descripción o EAN..." style="width: 100%; padding: 10px; box-sizing: border-box;">
+            <div id="searchResults" class="search-results" style="display:none;"></div>
         </div>
 
-        <div class="panel-box">
-            <div class="panel-title">
-                <span>3. Ubicación & Confirmación</span>
-            </div>
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button class="btn" onclick="iniciarReconocimientoVoz()">🎤 Voz</button>
+            <button class="btn" onclick="toggleCameraScanner()"><span id="camBtnText">Escanear Cód. Barras</span></button>
+            <button class="btn btn-warning" onclick="toggleOCR()">📷 Lector OCR</button>
+        </div>
 
-            <div id="pickingTargetBox" class="picking-target">
-                <div style="font-weight:bold; color:#b7950b;">📍 UBICACIÓN EN ZONA DE PICKING:</div>
-                <div class="location-highlight" id="targetLocationDisplay">Cargando...</div>
-                
-                <div style="margin-top:10px; font-size:0.9em;">
-                    <b>Lote Coincidente en Stock:</b> <span id="targetStockLot" style="font-family:monospace; font-weight:bold;">-</span><br>
-                    <b>Stock Disponible:</b> <span id="targetStockQty" style="font-weight:bold;">-</span> CA
-                </div>
+        <!-- ESCÁNER CÁMARA Y OCR -->
+        <div id="reader"></div>
+        
+        <div id="ocrBox">
+            <video id="ocrVideo" autoplay playsinline></video>
+            <canvas id="ocrCanvas" style="display:none;"></canvas>
+            <p id="ocrStatus">Apunte al lote y capture.</p>
+            <button id="btnCapturarOCR" class="btn btn-warning" onclick="capturarYLeerOCR()">Capturar Imagen Lote</button>
+        </div>
 
-                <div style="border-top:1px solid #f39c12; margin-top:12px; padding-top:12px;">
-                    <label style="font-weight:bold; color:#2c3e50;">Cantidad a Colocar en Pallet:</label>
-                    <div style="font-size:0.85em; color:#666;">Faltan colocar: <span id="suggestedQtyLine" style="font-weight:bold; color:#d35400;">0</span> CA</div>
-                    
-                    <div class="qty-picker">
-                        <button class="qty-btn" onclick="adjustQty(-1)">-</button>
-                        <input type="number" id="confirmQtyInput" class="qty-input" value="1" min="1">
-                        <button class="qty-btn" onclick="adjustQty(1)">+</button>
-                        <button class="btn-gen" style="flex:1; margin:0;" onclick="confirmarPickeo()">✅ CONFIRMAR</button>
-                    </div>
-                </div>
-            </div>
+        <!-- DETALLE DEL PRODUCTO SELECCIONADO -->
+        <div id="selectedProductCard" style="display:none; border: 1px solid var(--accent); padding: 10px; margin-top: 10px; border-radius: 5px;">
+            <h4 id="selProdName" style="margin: 0 0 5px 0;"></h4>
+            <p id="selProdMeta" style="margin: 0; font-size: 0.9em;"></p>
+            <p>Pendiente: <b id="suggestedQtyLine">0</b> CA</p>
 
-            <div id="noTargetNotice" style="text-align:center; padding:30px; color:#95a5a6;">
-                <div style="font-size:2.5em;">📦</div>
-                <p>Seleccione un producto y complete el lote para ver la ubicación.</p>
-            </div>
-
-            <div style="margin-top:25px;">
-                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.9em;">
-                    <span>Avance Pallet Actual:</span>
-                    <span id="palletProgressText">0 / 0 CA</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div id="palletProgressBar" class="progress-bar-fill"></div>
-                </div>
-            </div>
-
-            <div style="margin-top:15px; max-height:220px; overflow-y:auto;">
-                <table style="font-size:0.85em; margin-top:5px;">
-                    <thead>
-                        <tr>
-                            <th>SKU</th>
-                            <th>Lote Sug.</th>
-                            <th>Descripción</th>
-                            <th>Ped.</th>
-                        </tr>
-                    </thead>
-                    <tbody id="opPalletItemsTable"></tbody>
-                </table>
+            <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin-top: 5px;">
+                <label><b>Lote (Juliano + Hora):</b></label><br>
+                <input type="text" id="julianInput" placeholder="Ej: 045" style="width: 60px; padding: 5px;">
+                <input type="text" id="timeInput" placeholder="Ej: 1430" style="width: 60px; padding: 5px;">
+                <span>Sufijo: <b id="calcLotBadge">---</b></span>
+                <button class="btn" style="width: auto; padding: 5px 10px; margin-left: 10px;" onclick="validarYBuscarStock()">Buscar Ubicación</button>
             </div>
         </div>
+
+        <!-- UBICACIÓN OBJETIVO O ADVERTENCIA -->
+        <div id="noTargetNotice" style="margin-top:10px; text-align:center;">
+            <div style="font-size:2.5em;">📦</div>
+            <p>Seleccione un producto y complete el lote para ver la ubicación.</p>
+        </div>
+
+        <div id="pickingTargetBox" class="target-box">
+            <h3>Ubicación Sugerida: <span id="targetLocationDisplay" style="color:var(--accent);">---</span></h3>
+            <p><b>Lote Asignado:</b> <span id="targetStockLot">---</span> | <b>Stock Dip.:</b> <span id="targetStockQty">0</span> CA</p>
+            
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                <button class="btn" style="width:40px;" onclick="adjustQty(-1)">-</button>
+                <input type="number" id="confirmQtyInput" value="1" style="width: 60px; text-align: center; padding: 5px;">
+                <button class="btn" style="width:40px;" onclick="adjustQty(1)">+</button>
+                <button class="btn btn-success" onclick="confirmarPickeo()">Confirmar Pickeo</button>
+            </div>
+        </div>
+
+        <!-- TABLA DE ITEMS EN EL PALLET -->
+        <h3>Detalle del Pallet</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Lote Sugerido</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="opPalletItemsTable"></tbody>
+        </table>
     </div>
 </div>
 
@@ -294,6 +282,10 @@
     function setupDragAndDrop(zoneId, inputId, isMaster = false) {
         const dropZone = document.getElementById(zoneId);
         const fileInput = document.getElementById(inputId);
+        if (!dropZone || !fileInput) return;
+        
+        dropZone.onclick = () => fileInput.click();
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }, false));
         ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover'), false));
         ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'), false));
@@ -302,211 +294,139 @@
             if (files.length > 0) { fileInput.files = files; if (isMaster) fileInput.dispatchEvent(new Event('change')); }
         }, false);
     }
-    setupDragAndDrop('dropZoneMaster', 'masterFile', true);
-    setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
+    
+    window.addEventListener('DOMContentLoaded', () => {
+        setupDragAndDrop('dropZoneMaster', 'masterFile', true);
+        setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
 
-   document.getElementById('masterFile').onchange = (e) => {
-        if (!e.target.files.length) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            try {
-                const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-                
-                // 1. VALIDACIÓN DE ARCHIVO
-                if (!wb.SheetNames || wb.SheetNames.length === 0) {
-                    alert("❌ El archivo parece estar vacío o tiene un formato no válido. Verifica que sea un Excel real y no un CSV/HTML renombrado a .xlsx");
-                    return;
-                }
-
-                // 2. CARGA DE MAESTRO
-                let wsMaestroName = wb.SheetNames.find(n => n.toLowerCase().includes("mst") || n.toLowerCase().includes("producto"));
-                if (!wsMaestroName) wsMaestroName = wb.SheetNames[0]; // Fallback a la primera hoja
-                const wsMaestro = wb.Sheets[wsMaestroName];
-                
-                if (wsMaestro) {
-                    const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, {header:1});
-                    maestro = {};
-                    dataMaestro.slice(1).forEach(r => {
-                        let sku = String(r[1] || "").trim();
-                        if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"").trim(), ean: String(r[9]||"").trim(), desc: String(r[2]||r[3]||"").trim() };
-                    });
-                    localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
-                }
-                
-                // 3. CARGA DE STOCK LEGACY (Lógica Reforzada)
-                let wsStockName = wb.SheetNames.find(n => n.trim().toLowerCase() === "legacy vstockpt" || n.toLowerCase().includes("stock") || n.toLowerCase().includes("legacy"));
-                
-                // Si no lo encuentra por nombre, agarra la hoja que NO sea el maestro. Si no hay otra, usa la primera.
-                if (!wsStockName) {
-                    wsStockName = wb.SheetNames.find(n => n !== wsMaestroName) || (wb.SheetNames.length > 1 ? wb.SheetNames[1] : wb.SheetNames[0]);
-                }
-
-                const wsStock = wb.Sheets[wsStockName];
-                
-                if (wsStock) {
-                    const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: 1});
-                    stockLegacy = [];
-                    let headMap = null;
-                    let totalStockRegistros = 0;
-
-                    rawStock.forEach((r) => {
-                        if (!r || r.length === 0) return;
+        const masterEl = document.getElementById('masterFile');
+        if (masterEl) {
+            masterEl.onchange = (e) => {
+                if (!e.target.files.length) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
                         
-                        if (!headMap) {
-                            let textRow = r.map(c => String(c || "").toLowerCase().trim());
-                            if (textRow.some(x => x.includes("mcu") || x.includes("lote") || x.includes("articulo"))) {
-                                headMap = {
-                                    mcu: textRow.findIndex(x => x.includes("mcu")),
-                                    ubi: textRow.findIndex(x => x.includes("ubicaci") || x === "ubi"),
-                                    lote: textRow.findIndex(x => x.includes("lote")),
-                                    status: textRow.findIndex(x => x.includes("status") || x.includes("lotstatus")),
-                                    cant: textRow.findIndex(x => x.includes("cant") || x.includes("mano")),
-                                    sku: textRow.findIndex(x => x.includes("art") && !x.includes("desc")),
-                                    desc: textRow.findIndex(x => x.includes("descrip"))
-                                };
-                            }
+                        if (!wb.SheetNames || wb.SheetNames.length === 0) {
+                            alert("❌ El archivo parece estar vacío o tiene un formato no válido.");
                             return;
                         }
+
+                        let wsMaestroName = wb.SheetNames.find(n => n.toLowerCase().includes("mst") || n.toLowerCase().includes("producto")) || wb.SheetNames[0];
+                        const wsMaestro = wb.Sheets[wsMaestroName];
                         
-                        let mcu = headMap.mcu > -1 ? String(r[headMap.mcu] || "").trim() : "";
-                        
-                        if (mcu === "503" || mcu.includes("503")) { 
-                            stockLegacy.push({
-                                MCU: mcu,
-                                Ubicacion: headMap.ubi > -1 ? String(r[headMap.ubi] || "").trim() : "",
-                                Lote: headMap.lote > -1 ? String(r[headMap.lote] || "").trim() : "",
-                                Status: headMap.status > -1 ? String(r[headMap.status] || "").trim() : "",
-                                Cantidad: headMap.cant > -1 ? parseFloat(r[headMap.cant]) || 0 : 0,
-                                SKU: headMap.sku > -1 ? String(r[headMap.sku] || "").trim() : "",
-                                Desc: headMap.desc > -1 ? String(r[headMap.desc] || "").trim() : ""
+                        if (wsMaestro) {
+                            const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, {header:1});
+                            maestro = {};
+                            dataMaestro.slice(1).forEach(r => {
+                                let sku = String(r[1] || "").trim();
+                                if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"").trim(), ean: String(r[9]||"").trim(), desc: String(r[2]||r[3]||"").trim() };
                             });
-                            totalStockRegistros++;
+                            localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
                         }
-                    });
-                    
-                    if (totalStockRegistros === 0 && rawStock.length > 1) {
-                        rawStock.slice(1).forEach(r => {
-                            let mcu = String(r[0] || "").trim();
-                            if (mcu === "503" || mcu.includes("503")) {
-                                stockLegacy.push({
-                                    MCU: mcu,
-                                    Ubicacion: String(r[1] || "").trim(),
-                                    Lote: String(r[2] || "").trim(),
-                                    Status: String(r[3] || "").trim(),
-                                    Cantidad: parseFloat(r[5]) || 0,
-                                    SKU: String(r[11] || r[10] || "").trim(),
-                                    Desc: String(r[12] || "").trim()
+                        
+                        let wsStockName = wb.SheetNames.find(n => n.trim().toLowerCase() === "legacy vstockpt" || n.toLowerCase().includes("stock") || n.toLowerCase().includes("legacy")) 
+                                       || (wb.SheetNames.length > 1 ? wb.SheetNames[1] : wb.SheetNames[0]);
+
+                        const wsStock = wb.Sheets[wsStockName];
+                        
+                        if (wsStock) {
+                            const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: 1});
+                            stockLegacy = [];
+                            let headMap = null;
+                            let totalStockRegistros = 0;
+
+                            rawStock.forEach((r) => {
+                                if (!r || r.length === 0) return;
+                                
+                                if (!headMap) {
+                                    let textRow = r.map(c => String(c || "").toLowerCase().trim());
+                                    if (textRow.some(x => x.includes("mcu") || x.includes("lote") || x.includes("articulo"))) {
+                                        headMap = {
+                                            mcu: textRow.findIndex(x => x.includes("mcu")),
+                                            ubi: textRow.findIndex(x => x.includes("ubicaci") || x === "ubi"),
+                                            lote: textRow.findIndex(x => x.includes("lote")),
+                                            status: textRow.findIndex(x => x.includes("status") || x.includes("lotstatus")),
+                                            cant: textRow.findIndex(x => x.includes("cant") || x.includes("mano")),
+                                            sku: textRow.findIndex(x => x.includes("art") && !x.includes("desc")),
+                                            desc: textRow.findIndex(x => x.includes("descrip"))
+                                        };
+                                    }
+                                    return;
+                                }
+                                
+                                let mcu = headMap.mcu > -1 ? String(r[headMap.mcu] || "").trim() : "";
+                                
+                                if (mcu === "503" || mcu.includes("503")) { 
+                                    stockLegacy.push({
+                                        MCU: mcu,
+                                        Ubicacion: headMap.ubi > -1 ? String(r[headMap.ubi] || "").trim() : "",
+                                        Lote: headMap.lote > -1 ? String(r[headMap.lote] || "").trim() : "",
+                                        Status: headMap.status > -1 ? String(r[headMap.status] || "").trim() : "",
+                                        Cantidad: headMap.cant > -1 ? parseFloat(r[headMap.cant]) || 0 : 0,
+                                        SKU: headMap.sku > -1 ? String(r[headMap.sku] || "").trim() : "",
+                                        Desc: headMap.desc > -1 ? String(r[headMap.desc] || "").trim() : ""
+                                    });
+                                    totalStockRegistros++;
+                                }
+                            });
+                            
+                            if (totalStockRegistros === 0 && rawStock.length > 1) {
+                                rawStock.slice(1).forEach(r => {
+                                    let mcu = String(r[0] || "").trim();
+                                    if (mcu === "503" || mcu.includes("503")) {
+                                        stockLegacy.push({
+                                            MCU: mcu,
+                                            Ubicacion: String(r[1] || "").trim(),
+                                            Lote: String(r[2] || "").trim(),
+                                            Status: String(r[3] || "").trim(),
+                                            Cantidad: parseFloat(r[5]) || 0,
+                                            SKU: String(r[11] || r[10] || "").trim(),
+                                            Desc: String(r[12] || "").trim()
+                                        });
+                                    }
                                 });
+                                totalStockRegistros = stockLegacy.length;
                             }
-                        });
-                        totalStockRegistros = stockLegacy.length;
-                    }
 
-                    localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
-                    
-                    // Alerta de éxito con más información
-                    alert(`✅ Base Actualizada con Éxito.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock (Dep. 503): ${totalStockRegistros} registros.\nPestaña analizada para Stock: "${wsStockName}"`);
-                } else {
-                    // Alerta de error detallada
-                    alert(`❌ No se pudo identificar la pestaña de stock.\nPestañas detectadas en el archivo: [ ${wb.SheetNames.join(", ")} ]`);
-                }
-            } catch (err) {
-                alert("❌ Error crítico al intentar leer el Excel. Asegúrate de que el archivo no esté corrupto. Detalle: " + err.message);
-            }
-        };
-        reader.readAsArrayBuffer(e.target.files[0]);
-    };
-        if (!e.target.files.length) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-            
-            // 1. CARGA DE MAESTRO
-            const wsMaestroName = wb.SheetNames.find(n => n.toLowerCase().includes("mst") || n.toLowerCase().includes("producto")) || wb.SheetNames[0];
-            const wsMaestro = wb.Sheets[wsMaestroName];
-            if (wsMaestro) {
-                const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, {header:1});
-                maestro = {};
-                dataMaestro.slice(1).forEach(r => {
-                    let sku = String(r[1] || "").trim();
-                    if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"").trim(), ean: String(r[9]||"").trim(), desc: String(r[2]||r[3]||"").trim() };
-                });
-                localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
-            }
-            
-            // 2. CARGA DE STOCK LEGACY ("legacy vStockPT")
-            const wsStockName = wb.SheetNames.find(n => n.trim() === "legacy vStockPT") || wb.SheetNames.find(n => n.toLowerCase().includes("stock") || n.toLowerCase().includes("legacy")) || wb.SheetNames[1] || wb.SheetNames[0];
-            const wsStock = wb.Sheets[wsStockName];
-            
-            if (wsStock) {
-                const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: 1});
-                stockLegacy = [];
-                let headMap = null;
-                let totalStockRegistros = 0;
-
-                rawStock.forEach((r) => {
-                    if (!r || r.length === 0) return;
-                    
-                    if (!headMap) {
-                        let textRow = r.map(c => String(c || "").toLowerCase().trim());
-                        if (textRow.some(x => x.includes("mcu") || x.includes("lote") || x.includes("articulo"))) {
-                            headMap = {
-                                mcu: textRow.findIndex(x => x.includes("mcu")),
-                                ubi: textRow.findIndex(x => x.includes("ubicaci") || x === "ubi"),
-                                lote: textRow.findIndex(x => x.includes("lote")),
-                                status: textRow.findIndex(x => x.includes("status") || x.includes("lotstatus")),
-                                cant: textRow.findIndex(x => x.includes("cant") || x.includes("mano")),
-                                sku: textRow.findIndex(x => x.includes("art") && !x.includes("desc")),
-                                desc: textRow.findIndex(x => x.includes("descrip"))
-                            };
+                            localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
+                            alert(`✅ Base Actualizada con Éxito.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock (Dep. 503): ${totalStockRegistros} registros.\nPestaña analizada para Stock: "${wsStockName}"`);
+                        } else {
+                            alert(`❌ No se pudo identificar la pestaña de stock.\nPestañas detectadas: [ ${wb.SheetNames.join(", ")} ]`);
                         }
-                        return;
+                    } catch (err) {
+                        alert("❌ Error crítico al intentar leer el Excel. Detalle: " + err.message);
                     }
-                    
-                    let mcu = headMap.mcu > -1 ? String(r[headMap.mcu] || "").trim() : "";
-                    
-                    // FILTRO OBLIGATORIO: Solo depósito 503
-                    if (mcu === "503" || mcu.includes("503")) { 
-                        stockLegacy.push({
-                            MCU: mcu,
-                            Ubicacion: headMap.ubi > -1 ? String(r[headMap.ubi] || "").trim() : "",
-                            Lote: headMap.lote > -1 ? String(r[headMap.lote] || "").trim() : "",
-                            Status: headMap.status > -1 ? String(r[headMap.status] || "").trim() : "",
-                            Cantidad: headMap.cant > -1 ? parseFloat(r[headMap.cant]) || 0 : 0,
-                            SKU: headMap.sku > -1 ? String(r[headMap.sku] || "").trim() : "",
-                            Desc: headMap.desc > -1 ? String(r[headMap.desc] || "").trim() : ""
-                        });
-                        totalStockRegistros++;
-                    }
-                });
+                };
+                reader.readAsArrayBuffer(e.target.files[0]);
+            };
+        }
+
+        const pSearch = document.getElementById('productSearchInput');
+        if (pSearch) {
+            pSearch.addEventListener('input', function() {
+                const q = this.value.trim().toLowerCase();
+                const p = globalPallets[currentPalletIdx];
+                if(q.length < 2 || !p) return document.getElementById('searchResults').style.display = "none";
                 
-                // Si la cabecera no se detectó por nombres, lee por letras/posiciones fijas (A=0, B=1, C=2, D=3, F=5, L=11, M=12)
-                if (totalStockRegistros === 0 && rawStock.length > 1) {
-                    rawStock.slice(1).forEach(r => {
-                        let mcu = String(r[0] || "").trim(); // Columna A
-                        if (mcu === "503" || mcu.includes("503")) {
-                            stockLegacy.push({
-                                MCU: mcu,
-                                Ubicacion: String(r[1] || "").trim(),     // Columna B
-                                Lote: String(r[2] || "").trim(),          // Columna C
-                                Status: String(r[3] || "").trim(),        // Columna D (LotStatus)
-                                Cantidad: parseFloat(r[5]) || 0,          // Columna F (CantEnMano)
-                                SKU: String(r[11] || r[10] || "").trim(), // Columna L (articulo)
-                                Desc: String(r[12] || "").trim()          // Columna M (articulodescripcion)
-                            });
-                        }
-                    });
-                    totalStockRegistros = stockLegacy.length;
-                }
+                const matches = p.items.filter(it => it.sku.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q) || (it.ean && it.ean.includes(q)));
+                if(matches.length) {
+                    document.getElementById('searchResults').innerHTML = matches.map(m => `
+                        <div class="search-item" onclick="seleccionarProductoDirecto('${m.sku}')">
+                            <strong>${m.desc}</strong><br><small>SKU: ${m.sku} | Lote Sug: <b style="color:#d35400;">${m.loteSugerido||'-'}</b> | Pedido: ${m.cant} CA</small>
+                        </div>`).join('');
+                    document.getElementById('searchResults').style.display = "block";
+                } else document.getElementById('searchResults').style.display = "none";
+            });
+        }
 
-                localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
-                alert(`✅ Base Actualizada con Éxito.\n\nPestaña detectada: ${wsStockName}\nMaestro: ${Object.keys(maestro).length} productos.\nStock Registros (Depósito 503): ${totalStockRegistros} cargados correctamente.`);
-            } else {
-                alert("❌ No se pudo identificar la pestaña de stock en el archivo.");
-            }
-        };
-        reader.readAsArrayBuffer(e.target.files[0]);
-    };
+        const jInput = document.getElementById('julianInput');
+        if (jInput) jInput.addEventListener('input', calcularSufijoLote);
+
+        const tInput = document.getElementById('timeInput');
+        if (tInput) tInput.addEventListener('input', calcularSufijoLote);
+    });
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
@@ -526,7 +446,6 @@
                     let sku = c[1].trim();
                     let info = maestro[sku] || { base: 21, cap: 84, fam: "0", ean: "", desc: c[4] };
                     let loteSug = c[2] ? c[2].trim() : ""; 
-                    
                     itemsRaw.push({ 
                         ubi: c[0].trim(), 
                         sku: sku, 
@@ -636,21 +555,6 @@
         document.getElementById('palletProgressBar').style.width = pct + '%';
     }
 
-    document.getElementById('productSearchInput').addEventListener('input', function() {
-        const q = this.value.trim().toLowerCase();
-        const p = globalPallets[currentPalletIdx];
-        if(q.length < 2 || !p) return document.getElementById('searchResults').style.display = "none";
-        
-        const matches = p.items.filter(it => it.sku.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q) || (it.ean && it.ean.includes(q)));
-        if(matches.length) {
-            document.getElementById('searchResults').innerHTML = matches.map(m => `
-                <div class="search-item" onclick="seleccionarProductoDirecto('${m.sku}')">
-                    <strong>${m.desc}</strong><br><small>SKU: ${m.sku} | Lote Sug: <b style="color:#d35400;">${m.loteSugerido||'-'}</b> | Pedido: ${m.cant} CA</small>
-                </div>`).join('');
-            document.getElementById('searchResults').style.display = "block";
-        } else document.getElementById('searchResults').style.display = "none";
-    });
-
     function seleccionarProductoDirecto(sku) {
         const item = globalPallets[currentPalletIdx].items.find(i => i.sku === sku);
         if(!item) return;
@@ -732,9 +636,6 @@
         document.getElementById('btnCapturarOCR').disabled = false;
     }
 
-    document.getElementById('julianInput').addEventListener('input', calcularSufijoLote);
-    document.getElementById('timeInput').addEventListener('input', calcularSufijoLote);
-
     function calcularSufijoLote() {
         let julian = document.getElementById('julianInput').value.trim().padStart(3, '0');
         let time = document.getElementById('timeInput').value.trim().replace(':', '');
@@ -771,7 +672,6 @@
         const noTargetBox = document.getElementById('noTargetNotice');
         
         if(regs.length > 0) {
-            // REGLA LOTSTATUS: Si la columna LotStatus tiene letras, está OBSERVADO/BLOQUEADO
             const availableRegs = regs.filter(r => {
                 let st = String(r.Status || "").trim();
                 return !/[a-zA-Z]/.test(st); 
