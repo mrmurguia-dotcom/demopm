@@ -324,7 +324,7 @@
                 localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
             }
             
-            // 2. CARGA DE STOCK LEGACY (BÚSQUEDA EXACTA O FLEXIBLE DE 'legacy vStockPT')
+            // 2. CARGA DE STOCK LEGACY ("legacy vStockPT")
             const wsStockName = wb.SheetNames.find(n => n.trim() === "legacy vStockPT") || wb.SheetNames.find(n => n.toLowerCase().includes("stock") || n.toLowerCase().includes("legacy")) || wb.SheetNames[1] || wb.SheetNames[0];
             const wsStock = wb.Sheets[wsStockName];
             
@@ -353,9 +353,10 @@
                         return;
                     }
                     
-                    // Limpieza total con .trim() para evitar espacios sobrantes de JDE
                     let mcu = headMap.mcu > -1 ? String(r[headMap.mcu] || "").trim() : "";
-                    if(mcu.includes("503") || mcu === "503" || mcu === "") { 
+                    
+                    // FILTRO OBLIGATORIO: Solo depósito 503
+                    if (mcu === "503" || mcu.includes("503")) { 
                         stockLegacy.push({
                             MCU: mcu,
                             Ubicacion: headMap.ubi > -1 ? String(r[headMap.ubi] || "").trim() : "",
@@ -369,25 +370,27 @@
                     }
                 });
                 
-                // Si la cabecera no se detectó por nombres, lee por posiciones fijas habituales
-                if(totalStockRegistros === 0 && rawStock.length > 1) {
+                // Si la cabecera no se detectó por nombres, lee por letras/posiciones fijas (A=0, B=1, C=2, D=3, F=5, L=11, M=12)
+                if (totalStockRegistros === 0 && rawStock.length > 1) {
                     rawStock.slice(1).forEach(r => {
-                        let mcu = String(r[0] || "").trim();
-                        stockLegacy.push({
-                            MCU: mcu,
-                            Ubicacion: String(r[1] || "").trim(),
-                            Lote: String(r[2] || "").trim(),
-                            Status: String(r[3] || "").trim(),
-                            Cantidad: parseFloat(r[5]) || 0,
-                            SKU: String(r[11] || r[10] || "").trim(),
-                            Desc: String(r[12] || "").trim()
-                        });
+                        let mcu = String(r[0] || "").trim(); // Columna A
+                        if (mcu === "503" || mcu.includes("503")) {
+                            stockLegacy.push({
+                                MCU: mcu,
+                                Ubicacion: String(r[1] || "").trim(),     // Columna B
+                                Lote: String(r[2] || "").trim(),          // Columna C
+                                Status: String(r[3] || "").trim(),        // Columna D (LotStatus)
+                                Cantidad: parseFloat(r[5]) || 0,          // Columna F (CantEnMano)
+                                SKU: String(r[11] || r[10] || "").trim(), // Columna L (articulo)
+                                Desc: String(r[12] || "").trim()          // Columna M (articulodescripcion)
+                            });
+                        }
                     });
                     totalStockRegistros = stockLegacy.length;
                 }
 
                 localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
-                alert(`✅ Base Actualizada con Éxito.\n\nPestaña detectada: ${wsStockName}\nMaestro: ${Object.keys(maestro).length} productos.\nStock Registros: ${totalStockRegistros} cargados correctamente.`);
+                alert(`✅ Base Actualizada con Éxito.\n\nPestaña detectada: ${wsStockName}\nMaestro: ${Object.keys(maestro).length} productos.\nStock Registros (Depósito 503): ${totalStockRegistros} cargados correctamente.`);
             } else {
                 alert("❌ No se pudo identificar la pestaña de stock en el archivo.");
             }
@@ -658,13 +661,17 @@
         const noTargetBox = document.getElementById('noTargetNotice');
         
         if(regs.length > 0) {
-            const availableRegs = regs.filter(r => r.Status === "" || r.Status.toLowerCase() === "null" || r.Status === "0");
+            // REGLA LOTSTATUS: Si la columna LotStatus tiene letras, está OBSERVADO/BLOQUEADO
+            const availableRegs = regs.filter(r => {
+                let st = String(r.Status || "").trim();
+                return !/[a-zA-Z]/.test(st); 
+            });
             
             if (availableRegs.length === 0) {
                 let mb = regs[0];
                 hablar("Atención. Lote bloqueado por calidad.");
                 noTargetBox.style.display = "block";
-                noTargetBox.innerHTML = `<div style="font-size:2.5em; margin-bottom:10px;">🛑</div><p style="color:var(--danger); font-weight:bold; font-size:1.1em;">LOTE BLOQUEADO / OBSERVADO<br>(Estado: ${mb.Status})</p><p style="font-size:0.9em; color:#555;">Por favor, busque un lote habilitado para despacho.</p>`;
+                noTargetBox.innerHTML = `<div style="font-size:2.5em; margin-bottom:10px;">🛑</div><p style="color:var(--danger); font-weight:bold; font-size:1.1em;">LOTE BLOQUEADO / OBSERVADO<br>(Estado LotStatus: ${mb.Status || 'Observado'})</p><p style="font-size:0.9em; color:#555;">Por favor, busque un lote habilitado para despacho.</p>`;
                 targetBox.style.display = "none";
                 targetBox.classList.remove('active');
                 return;
