@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Picking & Armado de PM v.PRO - M2 Consultora</title>
+    <title>Picking & Armado de PMixto v.PRO - M2 Consultora</title>
     
     <!-- Librerías Externas -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -305,7 +305,117 @@
     setupDragAndDrop('dropZoneMaster', 'masterFile', true);
     setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
 
-    document.getElementById('masterFile').onchange = (e) => {
+   document.getElementById('masterFile').onchange = (e) => {
+        if (!e.target.files.length) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+                
+                // 1. VALIDACIÓN DE ARCHIVO
+                if (!wb.SheetNames || wb.SheetNames.length === 0) {
+                    alert("❌ El archivo parece estar vacío o tiene un formato no válido. Verifica que sea un Excel real y no un CSV/HTML renombrado a .xlsx");
+                    return;
+                }
+
+                // 2. CARGA DE MAESTRO
+                let wsMaestroName = wb.SheetNames.find(n => n.toLowerCase().includes("mst") || n.toLowerCase().includes("producto"));
+                if (!wsMaestroName) wsMaestroName = wb.SheetNames[0]; // Fallback a la primera hoja
+                const wsMaestro = wb.Sheets[wsMaestroName];
+                
+                if (wsMaestro) {
+                    const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, {header:1});
+                    maestro = {};
+                    dataMaestro.slice(1).forEach(r => {
+                        let sku = String(r[1] || "").trim();
+                        if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"").trim(), ean: String(r[9]||"").trim(), desc: String(r[2]||r[3]||"").trim() };
+                    });
+                    localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
+                }
+                
+                // 3. CARGA DE STOCK LEGACY (Lógica Reforzada)
+                let wsStockName = wb.SheetNames.find(n => n.trim().toLowerCase() === "legacy vstockpt" || n.toLowerCase().includes("stock") || n.toLowerCase().includes("legacy"));
+                
+                // Si no lo encuentra por nombre, agarra la hoja que NO sea el maestro. Si no hay otra, usa la primera.
+                if (!wsStockName) {
+                    wsStockName = wb.SheetNames.find(n => n !== wsMaestroName) || (wb.SheetNames.length > 1 ? wb.SheetNames[1] : wb.SheetNames[0]);
+                }
+
+                const wsStock = wb.Sheets[wsStockName];
+                
+                if (wsStock) {
+                    const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: 1});
+                    stockLegacy = [];
+                    let headMap = null;
+                    let totalStockRegistros = 0;
+
+                    rawStock.forEach((r) => {
+                        if (!r || r.length === 0) return;
+                        
+                        if (!headMap) {
+                            let textRow = r.map(c => String(c || "").toLowerCase().trim());
+                            if (textRow.some(x => x.includes("mcu") || x.includes("lote") || x.includes("articulo"))) {
+                                headMap = {
+                                    mcu: textRow.findIndex(x => x.includes("mcu")),
+                                    ubi: textRow.findIndex(x => x.includes("ubicaci") || x === "ubi"),
+                                    lote: textRow.findIndex(x => x.includes("lote")),
+                                    status: textRow.findIndex(x => x.includes("status") || x.includes("lotstatus")),
+                                    cant: textRow.findIndex(x => x.includes("cant") || x.includes("mano")),
+                                    sku: textRow.findIndex(x => x.includes("art") && !x.includes("desc")),
+                                    desc: textRow.findIndex(x => x.includes("descrip"))
+                                };
+                            }
+                            return;
+                        }
+                        
+                        let mcu = headMap.mcu > -1 ? String(r[headMap.mcu] || "").trim() : "";
+                        
+                        if (mcu === "503" || mcu.includes("503")) { 
+                            stockLegacy.push({
+                                MCU: mcu,
+                                Ubicacion: headMap.ubi > -1 ? String(r[headMap.ubi] || "").trim() : "",
+                                Lote: headMap.lote > -1 ? String(r[headMap.lote] || "").trim() : "",
+                                Status: headMap.status > -1 ? String(r[headMap.status] || "").trim() : "",
+                                Cantidad: headMap.cant > -1 ? parseFloat(r[headMap.cant]) || 0 : 0,
+                                SKU: headMap.sku > -1 ? String(r[headMap.sku] || "").trim() : "",
+                                Desc: headMap.desc > -1 ? String(r[headMap.desc] || "").trim() : ""
+                            });
+                            totalStockRegistros++;
+                        }
+                    });
+                    
+                    if (totalStockRegistros === 0 && rawStock.length > 1) {
+                        rawStock.slice(1).forEach(r => {
+                            let mcu = String(r[0] || "").trim();
+                            if (mcu === "503" || mcu.includes("503")) {
+                                stockLegacy.push({
+                                    MCU: mcu,
+                                    Ubicacion: String(r[1] || "").trim(),
+                                    Lote: String(r[2] || "").trim(),
+                                    Status: String(r[3] || "").trim(),
+                                    Cantidad: parseFloat(r[5]) || 0,
+                                    SKU: String(r[11] || r[10] || "").trim(),
+                                    Desc: String(r[12] || "").trim()
+                                });
+                            }
+                        });
+                        totalStockRegistros = stockLegacy.length;
+                    }
+
+                    localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
+                    
+                    // Alerta de éxito con más información
+                    alert(`✅ Base Actualizada con Éxito.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock (Dep. 503): ${totalStockRegistros} registros.\nPestaña analizada para Stock: "${wsStockName}"`);
+                } else {
+                    // Alerta de error detallada
+                    alert(`❌ No se pudo identificar la pestaña de stock.\nPestañas detectadas en el archivo: [ ${wb.SheetNames.join(", ")} ]`);
+                }
+            } catch (err) {
+                alert("❌ Error crítico al intentar leer el Excel. Asegúrate de que el archivo no esté corrupto. Detalle: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    };
         if (!e.target.files.length) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
