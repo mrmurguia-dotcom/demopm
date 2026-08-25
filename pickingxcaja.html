@@ -306,92 +306,84 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     try {
-                        const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-                        
+                        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+
                         if (!wb.SheetNames || wb.SheetNames.length === 0) {
                             alert("❌ El archivo parece estar vacío o tiene un formato no válido.");
                             return;
                         }
 
-                        let wsMaestroName = wb.SheetNames.find(n => n.toLowerCase().includes("mst") || n.toLowerCase().includes("producto")) || wb.SheetNames[0];
+                        // 1. Identificar Pestaña Maestro
+                        let wsMaestroName = wb.SheetNames.find(n => {
+                            let norm = String(n).toLowerCase().trim();
+                            return norm.includes("mst") || norm.includes("producto");
+                        }) || wb.SheetNames[0];
+
                         const wsMaestro = wb.Sheets[wsMaestroName];
-                        
                         if (wsMaestro) {
-                            const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, {header:1});
+                            const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, { header: 1 });
                             maestro = {};
                             dataMaestro.slice(1).forEach(r => {
                                 let sku = String(r[1] || "").trim();
-                                if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"").trim(), ean: String(r[9]||"").trim(), desc: String(r[2]||r[3]||"").trim() };
+                                if (sku) {
+                                    maestro[sku] = {
+                                        base: parseInt(r[5]) || 21,
+                                        cap: (parseInt(r[5]) || 21) * (parseInt(r[6]) || 4),
+                                        fam: String(r[8] || "").trim(),
+                                        ean: String(r[9] || "").trim(),
+                                        desc: String(r[2] || r[3] || "").trim()
+                                    };
+                                }
                             });
                             localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
                         }
-                        
-                        let wsStockName = wb.SheetNames.find(n => n.trim().toLowerCase() === "legacy vstockpt" || n.toLowerCase().includes("stock") || n.toLowerCase().includes("legacy")) 
-                                       || (wb.SheetNames.length > 1 ? wb.SheetNames[1] : wb.SheetNames[0]);
 
-                        const wsStock = wb.Sheets[wsStockName];
-                        
+                        // 2. Identificar Pestaña Stock con nombre flexible ("legacy vStockPT" / "Stock")
+                        let wsStockName = wb.SheetNames.find(n => {
+                            let norm = String(n).toLowerCase().replace(/\s+/g, ' ').trim();
+                            return norm.includes("vstock") || norm.includes("legacy") || norm.includes("stock");
+                        }) || (wb.SheetNames.length > 1 ? wb.SheetNames[1] : null);
+
+                        const wsStock = wsStockName ? wb.Sheets[wsStockName] : null;
+
                         if (wsStock) {
-                            const rawStock = XLSX.utils.sheet_to_json(wsStock, {header: 1});
+                            const rawStock = XLSX.utils.sheet_to_json(wsStock, { header: 1 });
                             stockLegacy = [];
-                            let headMap = null;
                             let totalStockRegistros = 0;
+                            let lotesObservadosContador = 0;
 
+                            // Leer estrictamente A, B, C, D, F, L, M
                             rawStock.forEach((r) => {
                                 if (!r || r.length === 0) return;
-                                
-                                if (!headMap) {
-                                    let textRow = r.map(c => String(c || "").toLowerCase().trim());
-                                    if (textRow.some(x => x.includes("mcu") || x.includes("lote") || x.includes("articulo"))) {
-                                        headMap = {
-                                            mcu: textRow.findIndex(x => x.includes("mcu")),
-                                            ubi: textRow.findIndex(x => x.includes("ubicaci") || x === "ubi"),
-                                            lote: textRow.findIndex(x => x.includes("lote")),
-                                            status: textRow.findIndex(x => x.includes("status") || x.includes("lotstatus")),
-                                            cant: textRow.findIndex(x => x.includes("cant") || x.includes("mano")),
-                                            sku: textRow.findIndex(x => x.includes("art") && !x.includes("desc")),
-                                            desc: textRow.findIndex(x => x.includes("descrip"))
-                                        };
-                                    }
-                                    return;
-                                }
-                                
-                                let mcu = headMap.mcu > -1 ? String(r[headMap.mcu] || "").trim() : "";
-                                
-                                if (mcu === "503" || mcu.includes("503")) { 
+
+                                let mcu = String(r[0] || "").trim(); // Col A: MCU
+
+                                // Solo procesar depósito 503
+                                if (mcu === "503" || mcu.includes("503")) {
+                                    let status = String(r[3] || "").trim(); // Col D: LotStatus
+                                    
+                                    // Validar si LotStatus contiene letras u observacion
+                                    let esObservado = /[a-zA-Z]/.test(status) && status.toUpperCase() !== "OK";
+                                    if(esObservado) lotesObservadosContador++;
+
                                     stockLegacy.push({
                                         MCU: mcu,
-                                        Ubicacion: headMap.ubi > -1 ? String(r[headMap.ubi] || "").trim() : "",
-                                        Lote: headMap.lote > -1 ? String(r[headMap.lote] || "").trim() : "",
-                                        Status: headMap.status > -1 ? String(r[headMap.status] || "").trim() : "",
-                                        Cantidad: headMap.cant > -1 ? parseFloat(r[headMap.cant]) || 0 : 0,
-                                        SKU: headMap.sku > -1 ? String(r[headMap.sku] || "").trim() : "",
-                                        Desc: headMap.desc > -1 ? String(r[headMap.desc] || "").trim() : ""
+                                        Ubicacion: String(r[1] || "").trim(),      // Col B
+                                        Lote: String(r[2] || "").trim(),           // Col C
+                                        Status: status,                            // Col D
+                                        Observado: esObservado,                    // Booleano interno
+                                        Cantidad: parseFloat(r[5]) || 0,           // Col F
+                                        SKU: String(r[11] || r[10] || "").trim(),  // Col L
+                                        Desc: String(r[12] || "").trim()           // Col M
                                     });
                                     totalStockRegistros++;
                                 }
                             });
-                            
-                            if (totalStockRegistros === 0 && rawStock.length > 1) {
-                                rawStock.slice(1).forEach(r => {
-                                    let mcu = String(r[0] || "").trim();
-                                    if (mcu === "503" || mcu.includes("503")) {
-                                        stockLegacy.push({
-                                            MCU: mcu,
-                                            Ubicacion: String(r[1] || "").trim(),
-                                            Lote: String(r[2] || "").trim(),
-                                            Status: String(r[3] || "").trim(),
-                                            Cantidad: parseFloat(r[5]) || 0,
-                                            SKU: String(r[11] || r[10] || "").trim(),
-                                            Desc: String(r[12] || "").trim()
-                                        });
-                                    }
-                                });
-                                totalStockRegistros = stockLegacy.length;
-                            }
 
                             localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
-                            alert(`✅ Base Actualizada con Éxito.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock (Dep. 503): ${totalStockRegistros} registros.\nPestaña analizada para Stock: "${wsStockName}"`);
+                            
+                            let obsAlert = lotesObservadosContador > 0 ? `\n⚠️ Lotes observados detectados: ${lotesObservadosContador}` : "";
+                            alert(`✅ Base Actualizada con Éxito.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock (Dep. 503): ${totalStockRegistros} registros.${obsAlert}\n\nPestaña analizada para Stock: "${wsStockName}"`);
                         } else {
                             alert(`❌ No se pudo identificar la pestaña de stock.\nPestañas detectadas: [ ${wb.SheetNames.join(", ")} ]`);
                         }
@@ -516,147 +508,129 @@
             card.innerHTML = `<div class="order-badge">ORDEN: ${p.orden}</div><h2>Carga: ${p.carga}</h2>
                 <p><b>Sector:</b> ${p.dep} | <b>Pallet:</b> #${p.id} | <span style="background:yellow; padding:2px;">Ocupación: ${p.total}/${p.capMaxVisual}</span></p>
                 <table><thead><tr><th>Ubi</th><th>SKU</th><th>Desc</th><th>Lote Sugerido</th><th>Cant</th></tr></thead>
-                <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td><b style="color:#d35400;">${it.loteSugerido || '-'}</b></td><td><b>${it.cant}</b></td></tr>`).join('')}</tbody></table>`;
+                <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td><b style="color:#d35400;">${it.loteSugerido||'-'}</b></td><td><b>${it.cant}</b></td></tr>`).join('')}</tbody></table>`;
             document.getElementById('pallets').appendChild(card);
         });
     }
 
-    function activarModoOperario() {
-        if(!globalPallets.length) return alert("No hay pallets.");
-        document.getElementById('resArea').style.display = "none";
-        document.getElementById('setupView').style.display = "none";
-        document.getElementById('operatorView').style.display = "block";
-        cargarPalletEnOperario(0);
-    }
-
-    function volverASugerencias() {
-        document.getElementById('operatorView').style.display = "none";
-        document.getElementById('setupView').style.display = "block";
-        document.getElementById('resArea').style.display = "block";
-        if(html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
-        detenerOCR();
-        renderSugerencias(globalPallets);
-    }
+    function activarModoOperario() { document.getElementById('setupView').style.display = "none"; document.getElementById('operatorView').style.display = "block"; cargarPalletEnOperario(0); }
+    function volverASugerencias() { document.getElementById('operatorView').style.display = "none"; document.getElementById('setupView').style.display = "block"; }
 
     function cargarPalletEnOperario(idx) {
-        currentPalletIdx = idx; const pallet = globalPallets[idx]; if(!pallet) return;
-        document.getElementById('opPalletTitle').innerText = `Pallet Mixto #${pallet.id} - Orden ${pallet.orden}`;
-        document.getElementById('opPalletItemsTable').innerHTML = pallet.items.map(it => `
-            <tr style="cursor:pointer;" onclick="seleccionarProductoDirecto('${it.sku}')">
-                <td><b>${it.sku}</b></td>
-                <td><span style="font-size:0.85em; color:#d35400; font-weight:bold;">${it.loteSugerido || '-'}</span></td>
-                <td>${it.desc}</td>
-                <td>${it.pickeado >= it.cant ? '✅' : it.cant}</td>
-            </tr>`).join('');
+        currentPalletIdx = idx;
+        const p = globalPallets[idx];
+        if(!p) return;
+        document.getElementById('opPalletTitle').innerText = `Pallet Mixto #${p.id} (Carga ${p.carga})`;
         
-        let pick = pallet.items.reduce((a, i) => a + i.pickeado, 0);
-        let pct = Math.min(100, Math.round((pick / pallet.total) * 100));
-        document.getElementById('palletProgressText').innerText = `${pick} / ${pallet.total} CA (${pct}%)`;
-        document.getElementById('palletProgressBar').style.width = pct + '%';
+        let pickeado = p.items.reduce((sum, i) => sum + i.pickeado, 0);
+        let pct = (pickeado / p.total) * 100;
+        document.getElementById('palletProgressBar').style.width = pct + "%";
+        document.getElementById('palletProgressText').innerText = `${pickeado} / ${p.total} CA (${Math.round(pct)}%)`;
+
+        let tb = p.items.map(it => {
+            let st = it.pickeado >= it.cant ? "✅" : (it.pickeado > 0 ? "⏳" : "❌");
+            return `<tr style="${it.pickeado>=it.cant?'opacity:0.6;':''}" onclick="seleccionarProductoDirecto('${it.sku}')">
+                <td>${it.sku}</td><td><b style="color:#d35400;">${it.loteSugerido||'-'}</b></td><td>${it.desc}</td><td>${st}</td>
+            </tr>`;
+        }).join('');
+        document.getElementById('opPalletItemsTable').innerHTML = tb;
     }
 
     function seleccionarProductoDirecto(sku) {
-        const item = globalPallets[currentPalletIdx].items.find(i => i.sku === sku);
-        if(!item) return;
-        selectedSkuForPick = sku;
-        document.getElementById('selectedProductCard').style.display = "block";
-        document.getElementById('selProdName').innerText = item.desc;
-        document.getElementById('selProdMeta').innerHTML = `SKU: ${item.sku} | EAN: ${item.ean || 'N/A'}<br><span style="color:#d35400; font-weight:bold;">Lote Sugerido por JDE: ${item.loteSugerido || 'Sin sugerencia'}</span>`;
-        
-        let cantPendiente = item.cant - item.pickeado;
-        document.getElementById('suggestedQtyLine').innerText = cantPendiente;
-        document.getElementById('confirmQtyInput').value = Math.max(1, cantPendiente);
         document.getElementById('searchResults').style.display = "none";
-        document.getElementById('productSearchInput').value = item.desc;
+        document.getElementById('productSearchInput').value = "";
+        
+        const it = globalPallets[currentPalletIdx].items.find(x => x.sku === sku);
+        if(!it) return;
+        selectedSkuForPick = sku;
+        
+        document.getElementById('selProdName').innerText = `${it.sku} - ${it.desc}`;
+        document.getElementById('selProdMeta').innerHTML = `EAN: ${it.ean} | Lote Sugerido JDE: <b id="sugLotLabel" style="color:red; font-size:1.1em;">${it.loteSugerido}</b>`;
+        document.getElementById('suggestedQtyLine').innerText = it.cant - it.pickeado;
+        document.getElementById('julianInput').value = '';
+        document.getElementById('timeInput').value = '';
+        document.getElementById('calcLotBadge').innerText = '---';
+        
+        document.getElementById('selectedProductCard').style.display = "block";
+        document.getElementById('noTargetNotice').style.display = "block";
+        document.getElementById('pickingTargetBox').style.display = "none";
 
-        hablar(`SKU ${item.sku}. ${item.desc}. Pedido: ${cantPendiente} cajas.`);
+        document.getElementById('julianInput').focus();
     }
 
     function toggleCameraScanner() {
-        detenerOCR(); 
-        const rd = document.getElementById('reader');
-        if(html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => { rd.style.display="none"; document.getElementById('camBtnText').innerText="Escanear Código de Barras";});
-            return;
-        }
-        rd.style.display = "block"; document.getElementById('camBtnText').innerText = "Cerrar Escáner";
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } },
-            (text) => {
-                document.getElementById('productSearchInput').value = text;
+        const rc = document.getElementById('reader');
+        const bt = document.getElementById('camBtnText');
+        if(rc.style.display === "block") { rc.style.display = "none"; bt.innerText = "Escanear Cód. Barras"; if(html5QrCode) html5QrCode.stop(); } 
+        else {
+            rc.style.display = "block"; bt.innerText = "Detener Cámara";
+            if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 100 } }, (txt) => {
+                let s = txt.split(' ');
+                let cod = s[0]; // Ej EAN 
+                // match manual a producto (simplificado)
+                document.getElementById('productSearchInput').value = cod;
                 document.getElementById('productSearchInput').dispatchEvent(new Event('input'));
-                const match = globalPallets[currentPalletIdx].items.find(i => i.ean === text || i.sku === text);
-                if(match) seleccionarProductoDirecto(match.sku);
-            }, () => {}).catch(err => alert("Error cámara: " + err));
+                html5QrCode.stop(); rc.style.display = "none"; bt.innerText = "Escanear Cód. Barras";
+                hablar("Código " + cod);
+            }, (err) => {}).catch(err => alert("Error cámara: " + err));
+        }
     }
 
-    async function toggleOCR() {
-        if(html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); 
-        const box = document.getElementById('ocrBox');
-        if(box.style.display === 'block') { detenerOCR(); return; }
-        
-        box.style.display = 'block';
-        document.getElementById('ocrStatus').innerText = "Apunte al lote y capture.";
-        try {
-            ocrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            document.getElementById('ocrVideo').srcObject = ocrStream;
-        } catch(e) { alert("Error accediendo a la cámara."); box.style.display = 'none'; }
+    function toggleOCR() {
+        const bx = document.getElementById('ocrBox');
+        if(bx.style.display === "block") { 
+            bx.style.display = "none"; 
+            if(ocrStream) ocrStream.getTracks().forEach(t=>t.stop()); 
+        } else {
+            bx.style.display = "block";
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => {
+                ocrStream = stream;
+                document.getElementById('ocrVideo').srcObject = stream;
+            }).catch(e => alert("Error OCR: "+e));
+        }
     }
 
-    function detenerOCR() {
-        if(ocrStream) { ocrStream.getTracks().forEach(t => t.stop()); ocrStream = null; }
-        document.getElementById('ocrBox').style.display = 'none';
-    }
-
-    async function capturarYLeerOCR() {
-        const v = document.getElementById('ocrVideo');
-        const c = document.getElementById('ocrCanvas');
-        const ctx = c.getContext('2d');
+    function capturarYLeerOCR() {
+        const v = document.getElementById('ocrVideo'); const c = document.getElementById('ocrCanvas');
         c.width = v.videoWidth; c.height = v.videoHeight;
-        ctx.drawImage(v, 0, 0, c.width, c.height);
-
-        document.getElementById('ocrStatus').innerText = "⏳ Analizando OCR...";
-        document.getElementById('btnCapturarOCR').disabled = true;
-
-        try {
-            const result = await Tesseract.recognize(c, 'eng');
-            const texto = result.data.text;
-            const match = texto.match(/L\s*\d{2}\s*(\d{3})\s*(\d{4})/i) || texto.match(/(\d{3})\s+(\d{4})\s+\d{4}/);
-
-            if(match) {
-                document.getElementById('julianInput').value = match[1];
-                document.getElementById('timeInput').value = match[2];
-                document.getElementById('ocrStatus').innerText = "✅ Lote Extraído";
-                calcularSufijoLote();
-                setTimeout(detenerOCR, 3000);
-            } else {
-                document.getElementById('ocrStatus').innerText = "❌ No se reconoció formato.";
+        c.getContext('2d').drawImage(v, 0,0);
+        document.getElementById('ocrStatus').innerText = "Procesando...";
+        Tesseract.recognize(c, 'eng').then(({ data: { text } }) => {
+            let m = text.match(/\d{3}\s*:\s*\d{4}|\d{7}/);
+            if(m) {
+                let cln = m[0].replace(/\D/g,'');
+                if(cln.length===7) {
+                    document.getElementById('julianInput').value = cln.substring(0,3);
+                    document.getElementById('timeInput').value = cln.substring(3,7);
+                    calcularSufijoLote();
+                    document.getElementById('ocrStatus').innerText = "Lote detectado: "+cln;
+                    toggleOCR(); return;
+                }
             }
-        } catch(e) { document.getElementById('ocrStatus').innerText = "❌ Error OCR."; }
-        document.getElementById('btnCapturarOCR').disabled = false;
+            document.getElementById('ocrStatus').innerText = "No se detectó el lote. Intente de nuevo.";
+        });
     }
 
     function calcularSufijoLote() {
-        let julian = document.getElementById('julianInput').value.trim().padStart(3, '0');
-        let time = document.getElementById('timeInput').value.trim().replace(':', '');
-        if(julian.length < 3 || time.length < 2) return document.getElementById('calcLotBadge').innerText = "---";
-        let hh = parseInt(time.substring(0, 2)) || 0;
-        let letra = (hh >= 16) ? 'C' : (hh >= 8) ? 'B' : 'A';
-        let sufijo = `${julian}${letra}`;
-        document.getElementById('calcLotBadge').innerText = sufijo;
-        return sufijo;
+        let j = document.getElementById('julianInput').value;
+        let t = document.getElementById('timeInput').value;
+        if(j.length === 3 && t.length === 4) {
+            let s = j + t;
+            document.getElementById('calcLotBadge').innerText = s;
+        } else {
+            document.getElementById('calcLotBadge').innerText = "---";
+        }
     }
 
     function validarYBuscarStock() {
-        if(!selectedSkuForPick) return alert("⚠️ Seleccioná un producto.");
-        let sufijo = calcularSufijoLote();
-        if(!sufijo || sufijo === "---") return alert("⚠️ Completá Lote y Hora.");
-
+        const sufijo = document.getElementById('calcLotBadge').innerText;
+        if(sufijo === "---") return alert("Ingrese o escanee Juliano (3) y Hora (4) primero.");
+        
         let itemEnPallet = globalPallets[currentPalletIdx].items.find(i => i.sku === selectedSkuForPick);
         
         if (itemEnPallet && itemEnPallet.loteSugerido) {
             if (!itemEnPallet.loteSugerido.includes(sufijo)) {
-                hablar("Atención. Discrepancia de lote.");
                 let confirmarDesvio = confirm(`⚠️ ATENCIÓN: DISCREPANCIA DE LOTE (FEFO / FIFO)\n\nEl sistema sugiere: ${itemEnPallet.loteSugerido}\nUsted escanea: ${sufijo}\n\n¿Desea continuar de todos modos?`);
                 if (!confirmarDesvio) {
                     document.getElementById('julianInput').value = '';
@@ -672,10 +646,8 @@
         const noTargetBox = document.getElementById('noTargetNotice');
         
         if(regs.length > 0) {
-            const availableRegs = regs.filter(r => {
-                let st = String(r.Status || "").trim();
-                return !/[a-zA-Z]/.test(st); 
-            });
+            // Filtrar y ver si hay lotes bloqueados por calidad basados en nuestro flag "Observado"
+            const availableRegs = regs.filter(r => r.Observado === false);
             
             if (availableRegs.length === 0) {
                 let mb = regs[0];
