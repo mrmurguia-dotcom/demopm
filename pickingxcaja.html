@@ -172,39 +172,60 @@
                     if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
-if (wb.SheetNames.includes('legacy vStockPT')) {
+            if (wb.SheetNames.includes('legacy vStockPT')) {
                 const sheet = wb.Sheets['legacy vStockPT'];
                 const dataStock = XLSX.utils.sheet_to_json(sheet, {header:1});
                 stockInfo = [];
                 
-                // Empezamos desde la fila 1 (saltando cabecera)
-                dataStock.slice(1).forEach(r => {
-                    let mcu = cleanStr(r[0]);
-                    if (mcu.includes("503") || mcu === "503") {
-                        // Buscamos el SKU en cualquier columna desde la 6 hasta la 15 por si varía la posición
-                        let skuEncontrado = "";
-                        for (let c = 6; c < r.length; c++) {
-                            let valCol = cleanStr(r[c]);
-                            // Si parece un SKU (usualmente números o texto de producto)
-                            if (valCol.length > 0 && !isNaN(valCol)) {
-                                skuEncontrado = valCol;
-                                break;
+                if (dataStock.length > 0) {
+                    // Mapear nombres de columnas de la cabecera (fila 0) de forma inteligente
+                    let headers = dataStock[0].map(h => cleanStr(h).toLowerCase());
+                    
+                    let colMcu = headers.findIndex(h => h.includes('mcu'));
+                    let colUbi = headers.findIndex(h => h.includes('ubicacion') || h.includes('ubi'));
+                    let colLote = headers.findIndex(h => h.includes('lote'));
+                    let colQty = headers.findIndex(h => h.includes('cantenmano') || h.includes('qty') || h.includes('cant'));
+                    let colSku = headers.findIndex(h => h.includes('articulo') || h.includes('sku') || h.includes('item'));
+
+                    // Valores por defecto si no los encuentra por nombre
+                    if (colMcu === -1) colMcu = 0;
+                    if (colUbi === -1) colUbi = 1;
+                    if (colLote === -1) colLote = 2;
+                    if (colQty === -1) colQty = 5;
+                    if (colSku === -1) colSku = 11; // fallback habitual
+
+                    dataStock.slice(1).forEach(r => {
+                        let mcuVal = cleanStr(r[colMcu]);
+                        // Si la fila tiene datos de planta 503
+                        if (mcuVal.includes("503") || mcuVal === "503" || !mcuVal) { 
+                            let ubiVal = cleanUbi(r[colUbi]);
+                            let loteVal = cleanStr(r[colLote]).toUpperCase();
+                            let qtyVal = parseFloat(String(r[colQty] || "0").replace(',', '.')) || 0;
+                            let skuVal = cleanStr(r[colSku]);
+
+                            // Si el SKU viene vacío en la columna estándar, buscamos en la fila algún número de artículo válido
+                            if (!skuVal) {
+                                for (let c = 0; c < r.length; c++) {
+                                    let val = cleanStr(r[c]);
+                                    if (val.length >= 4 && !isNaN(val) && c !== colQty) {
+                                        skuVal = val;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (ubiVal && loteVal) {
+                                stockInfo.push({
+                                    ubi: ubiVal,
+                                    lote: loteVal,
+                                    qty: qtyVal,
+                                    sku: skuVal
+                                });
                             }
                         }
-                        // Si no lo halló por número puro, toma la columna 11 por defecto
-                        if (!skuEncontrado && r[11]) {
-                            skuEncontrado = cleanStr(r[11]);
-                        }
-
-                        stockInfo.push({
-                            ubi: cleanUbi(r[1]),
-                            lote: cleanStr(r[2]).toUpperCase(),
-                            qty: parseFloat(String(r[5]).replace(',', '.')) || 0,
-                            sku: skuEncontrado
-                        });
-                    }
-                });
-                console.log("Stock cargado exitosamente:", stockInfo.length, "registros.");
+                    });
+                }
+                console.log("Stock cargado exitosamente:", stockInfo.length, "registros.", stockInfo);
             }
             if (wb.SheetNames.includes('MST Producto')) {
                 const dataProd = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
