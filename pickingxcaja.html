@@ -2,719 +2,423 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Picking y Palletizado</title>
-    
-    <!-- Librerías Externas -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
+    <title>Picking JDE v.PRO - M2 Consultora</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root {
-            --primary: #2c3e50;
-            --accent: #3498db;
-            --success: #2ecc71;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --bg: #f4f6f7;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 15px;
-            background-color: var(--bg);
-            color: #333;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .drop-zone {
-            border: 2px dashed #ccc;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            background: #fafafa;
-            cursor: pointer;
-        }
-
-        .drop-zone.dragover {
-            border-color: var(--accent);
-            background: #eaf2f8;
-        }
-
-        .btn {
-            background-color: var(--accent);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            margin: 5px 0;
-            width: 100%;
-        }
-
-        .btn-success { background-color: var(--success); }
-        .btn-danger { background-color: var(--danger); }
-        .btn-warning { background-color: var(--warning); }
-
-        .pm-tab {
-            display: inline-block;
-            padding: 8px 12px;
-            background: #eee;
-            margin-right: 5px;
-            border-radius: 4px 4px 0 0;
-            cursor: pointer;
-        }
-
-        .pm-tab.active {
-            background: var(--accent);
-            color: white;
-        }
-
-        .pallet-card {
-            display: none;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 0 4px 4px 4px;
-        }
-
+        :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        .box { border: 2px dashed #ccc; padding: 30px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; transition: all 0.3s ease; position: relative; background: #fafafa; }
+        .box.dragover { background-color: #e8f4f8; border-color: #2980b9; box-shadow: inset 0 0 10px rgba(41, 128, 185, 0.2); }
+        .drop-text { color: #7f8c8d; font-size: 0.95em; margin: 10px 0; display: block; }
+        
+        .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: background 0.2s; }
+        .btn-gen:hover { background: #219653; }
+        .pm-nav { display: flex; gap: 5px; margin: 20px 0; overflow-x: auto; padding-bottom: 10px; }
+        .pm-tab { background: #eee; padding: 10px 15px; border-radius: 4px; cursor: pointer; white-space: nowrap; border: 1px solid #ddd; font-weight: bold; }
+        .pm-tab.active { background: var(--primary); color: white; }
+        .pallet-card { display: none; border: 2px solid #000; padding: 20px; background: white; min-height: auto; }
         .pallet-card.active { display: block; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #000; padding: 10px; text-align: left; }
         th { background: #f2f2f2; }
-
-        .progress-bar-container {
-            width: 100%;
-            background: #eee;
-            height: 20px;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
+        .order-badge { border: 3px solid #000; padding: 8px 15px; font-size: 1.5em; font-weight: bold; float: right; margin-top: -10px; }
+        .tag { color: #fff; padding: 2px 6px; font-size: 0.8em; border-radius: 3px; margin-left: 10px; font-weight: bold; display: inline-block; }
+        .tag-4 { background: #2980b9; } .tag-9 { background: #e67e22; }
+        
+        /* Aseguramos que los colores de bloqueo salgan en la impresora */
+        @media print { 
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .no-print { display: none !important; } 
+            .pallet-card { display: block !important; page-break-after: always; border: none; } 
         }
-
-        .progress-bar {
-            height: 100%;
-            background: var(--success);
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        .search-results {
-            border: 1px solid #ccc;
-            max-height: 150px;
-            overflow-y: auto;
-            background: white;
-            position: absolute;
-            z-index: 100;
-            width: calc(100% - 40px);
-        }
-
-        .search-item {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-
-        .search-item:hover { background: #f0f0f0; }
-
-        #reader { width: 100%; display: none; margin-top: 10px; }
-        #ocrBox { display: none; text-align: center; margin-top: 10px; }
-        #ocrVideo { width: 100%; max-height: 200px; background: #000; }
-        .target-box { display: none; background: #e8f8f5; border: 1px solid var(--success); padding: 15px; border-radius: 5px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <!-- VISTA CONFIGURACIÓN -->
-    <div id="setupView">
-        <h2>1. Carga de Archivos</h2>
-        
-        <div id="dropZoneMaster" class="drop-zone">
-            <p>Arrastrá o seleccioná el **Maestro / Stock PT**</p>
-            <input type="file" id="masterFile" accept=".xlsx, .xls" style="display:none;">
-        </div>
-
-        <div id="dropZoneSurtido" class="drop-zone">
-            <p>Arrastrá o seleccioná el **Reporte de Surtido JDE (.html)**</p>
-            <input type="file" id="surtidoFile" accept=".html, .htm" style="display:none;">
-        </div>
-
-        <button class="btn" onclick="procesar()">Procesar Surtido</button>
-
-        <!-- AREA DE RESULTADOS Y SUGERENCIAS -->
-        <div id="resArea" style="display:none; margin-top: 20px;">
-            <h3>Sugerencia de Pallets Mixtos (Total Cajas: <span id="totalCargaCount">0</span>)</h3>
-            
-            <label>Filtrar Orden: </label>
-            <select id="orderFilter" style="padding: 5px; margin-bottom: 10px;"></select>
-
-            <div id="tabs"></div>
-            <div id="pallets"></div>
-
-            <button class="btn btn-success" style="margin-top: 15px;" onclick="activarModoOperario()">Iniciar Modo Operario</button>
-        </div>
+<div class="container no-print">
+    <h2 style="text-align:center;">📦 Optimizador de Picking v.PRO - M2 Consultora Digital</h2>
+    
+    <div class="box" id="dropZoneMaster">
+        <strong style="font-size: 1.1em; color: var(--primary);">1. Maestro de Capacidades y Stock</strong><br>
+        <span class="drop-text">Arrastrá y soltá el archivo Excel (.xlsx) aquí o hacé clic en el botón</span>
+        <input type="file" id="masterFile" accept=".xlsx">
     </div>
-
-    <!-- VISTA OPERARIO / PICKING -->
-    <div id="operatorView" style="display:none;">
-        <button class="btn btn-danger" onclick="volverASugerencias()">← Volver a Configuración</button>
-        
-        <h2 id="opPalletTitle">Pallet Mixto</h2>
-        
-        <div class="progress-bar-container">
-            <div id="palletProgressBar" class="progress-bar"></div>
-        </div>
-        <p id="palletProgressText" style="text-align:center; font-weight:bold;">0 / 0 CA (0%)</p>
-
-        <!-- BUSCADOR -->
-        <div style="position:relative;">
-            <input type="text" id="productSearchInput" placeholder="Buscar SKU, Descripción o EAN..." style="width: 100%; padding: 10px; box-sizing: border-box;">
-            <div id="searchResults" class="search-results" style="display:none;"></div>
-        </div>
-
-        <div style="display: flex; gap: 5px; margin-top: 5px;">
-            <button class="btn" onclick="iniciarReconocimientoVoz()">🎤 Voz</button>
-            <button class="btn" onclick="toggleCameraScanner()"><span id="camBtnText">Escanear Cód. Barras</span></button>
-            <button class="btn btn-warning" onclick="toggleOCR()">📷 Lector OCR</button>
-        </div>
-
-        <!-- ESCÁNER CÁMARA Y OCR -->
-        <div id="reader"></div>
-        
-        <div id="ocrBox">
-            <video id="ocrVideo" autoplay playsinline></video>
-            <canvas id="ocrCanvas" style="display:none;"></canvas>
-            <p id="ocrStatus">Apunte al lote y capture.</p>
-            <button id="btnCapturarOCR" class="btn btn-warning" onclick="capturarYLeerOCR()">Capturar Imagen Lote</button>
-        </div>
-
-        <!-- DETALLE DEL PRODUCTO SELECCIONADO -->
-        <div id="selectedProductCard" style="display:none; border: 1px solid var(--accent); padding: 10px; margin-top: 10px; border-radius: 5px;">
-            <h4 id="selProdName" style="margin: 0 0 5px 0;"></h4>
-            <p id="selProdMeta" style="margin: 0; font-size: 0.9em;"></p>
-            <p>Pendiente: <b id="suggestedQtyLine">0</b> CA</p>
-
-            <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin-top: 5px;">
-                <label><b>Lote (Juliano + Hora):</b></label><br>
-                <input type="text" id="julianInput" placeholder="Ej: 045" style="width: 60px; padding: 5px;">
-                <input type="text" id="timeInput" placeholder="Ej: 1430" style="width: 60px; padding: 5px;">
-                <span>Sufijo: <b id="calcLotBadge">---</b></span>
-                <button class="btn" style="width: auto; padding: 5px 10px; margin-left: 10px;" onclick="validarYBuscarStock()">Buscar Ubicación</button>
-            </div>
-        </div>
-
-        <!-- UBICACIÓN OBJETIVO O ADVERTENCIA -->
-        <div id="noTargetNotice" style="margin-top:10px; text-align:center;">
-            <div style="font-size:2.5em;">📦</div>
-            <p>Seleccione un producto y complete el lote para ver la ubicación.</p>
-        </div>
-
-        <div id="pickingTargetBox" class="target-box">
-            <h3>Ubicación Sugerida: <span id="targetLocationDisplay" style="color:var(--accent);">---</span></h3>
-            <p><b>Lote Asignado:</b> <span id="targetStockLot">---</span> | <b>Stock Dip.:</b> <span id="targetStockQty">0</span> CA</p>
-            
-            <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                <button class="btn" style="width:40px;" onclick="adjustQty(-1)">-</button>
-                <input type="number" id="confirmQtyInput" value="1" style="width: 60px; text-align: center; padding: 5px;">
-                <button class="btn" style="width:40px;" onclick="adjustQty(1)">+</button>
-                <button class="btn btn-success" onclick="confirmarPickeo()">Confirmar Pickeo</button>
-            </div>
-        </div>
-
-        <!-- TABLA DE ITEMS EN EL PALLET -->
-        <h3>Detalle del Pallet</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>SKU</th>
-                    <th>Lote Sugerido</th>
-                    <th>Descripción</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody id="opPalletItemsTable"></tbody>
-        </table>
+    
+    <div class="box" id="dropZoneSurtido">
+        <strong style="font-size: 1.1em; color: var(--primary);">2. Reporte de Surtido JDE</strong><br>
+        <span class="drop-text">Arrastrá y soltá el reporte HTML/XLS aquí o hacé clic en el botón</span>
+        <input type="file" id="surtidoFile">
+        <br><br>
+        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS OPTIMIZADOS</button>
     </div>
 </div>
 
+<div id="resArea" class="container" style="display:none; margin-top:20px;">
+    <div id="filterContainer" class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: #ecf0f1; padding: 10px 15px; border-radius: 5px; border: 1px solid #bdc3c7;">
+        <div>
+            <label for="orderFilter" style="font-weight:bold; margin-right: 10px; color: #2c3e50;">🔍 Filtrar por Orden:</label>
+            <select id="orderFilter" style="padding: 5px 10px; font-size: 1em; border-radius: 3px; border: 1px solid #ccc; font-weight: bold; cursor: pointer;"></select>
+        </div>
+        <div style="font-size: 1.2em; font-weight: bold; color: #c0392b;">
+            📦 Total Carga: <span id="totalCargaCount">0</span> CA
+        </div>
+    </div>
+
+    <div id="tabs" class="pm-nav no-print"></div>
+    <div id="pallets"></div>
+    <button class="btn-gen no-print" style="background:#34495e; margin-top:20px;" onclick="window.print()">📄 IMPRIMIR / GUARDAR PDF</button>
+</div>
+
 <script>
-    let maestro = JSON.parse(localStorage.getItem('m_v31_6_maestro')) || {};
-    let stockLegacy = JSON.parse(localStorage.getItem('m_v31_6_stock')) || [];
-    let globalPallets = [];
-    let currentPalletIdx = 0;
-    let selectedSkuForPick = null;
-    let html5QrCode = null;
-    let ocrStream = null;
+    // Variables globales para la memoria
+    let maestro = JSON.parse(localStorage.getItem('m_v31_1')) || {};
+    let stockInfo = JSON.parse(localStorage.getItem('stock_v31_1')) || {};
 
-    function hablar(texto) {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); 
-            const utterance = new SpeechSynthesisUtterance(texto);
-            utterance.lang = 'es-AR';
-            utterance.rate = 1.0;
-            window.speechSynthesis.speak(utterance);
-        }
-    }
-
+    // --- Drag & Drop ---
     function setupDragAndDrop(zoneId, inputId, isMaster = false) {
         const dropZone = document.getElementById(zoneId);
         const fileInput = document.getElementById(inputId);
-        if (!dropZone || !fileInput) return;
-        
-        dropZone.onclick = () => fileInput.click();
 
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }, false));
-        ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover'), false));
-        ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'), false));
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
         dropZone.addEventListener('drop', (e) => {
             let files = e.dataTransfer.files;
-            if (files.length > 0) { fileInput.files = files; if (isMaster) fileInput.dispatchEvent(new Event('change')); }
+            if (files.length > 0) {
+                fileInput.files = files;
+                if (isMaster) fileInput.dispatchEvent(new Event('change'));
+            }
         }, false);
     }
-    
-    window.addEventListener('DOMContentLoaded', () => {
-        setupDragAndDrop('dropZoneMaster', 'masterFile', true);
-        setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
 
-        const masterEl = document.getElementById('masterFile');
-        if (masterEl) {
-            masterEl.onchange = (e) => {
-                if (!e.target.files.length) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+    setupDragAndDrop('dropZoneMaster', 'masterFile', true);
+    setupDragAndDrop('dropZoneSurtido', 'surtidoFile', false);
 
-                        if (!wb.SheetNames || wb.SheetNames.length === 0) {
-                            alert("❌ El archivo parece estar vacío o tiene un formato no válido.");
-                            return;
-                        }
-
-                        // 1. Identificar Pestaña Maestro
-                        let wsMaestroName = wb.SheetNames.find(n => {
-                            let norm = String(n).toLowerCase().trim();
-                            return norm.includes("mst") || norm.includes("producto");
-                        }) || wb.SheetNames[0];
-
-                        const wsMaestro = wb.Sheets[wsMaestroName];
-                        if (wsMaestro) {
-                            const dataMaestro = XLSX.utils.sheet_to_json(wsMaestro, { header: 1 });
-                            maestro = {};
-                            dataMaestro.slice(1).forEach(r => {
-                                let sku = String(r[1] || "").trim();
-                                if (sku) {
-                                    maestro[sku] = {
-                                        base: parseInt(r[5]) || 21,
-                                        cap: (parseInt(r[5]) || 21) * (parseInt(r[6]) || 4),
-                                        fam: String(r[8] || "").trim(),
-                                        ean: String(r[9] || "").trim(),
-                                        desc: String(r[2] || r[3] || "").trim()
-                                    };
-                                }
-                            });
-                            localStorage.setItem('m_v31_6_maestro', JSON.stringify(maestro));
-                        }
-
-                        // 2. Identificar Pestaña Stock con nombre flexible ("legacy vStockPT" / "Stock")
-                        let wsStockName = wb.SheetNames.find(n => {
-                            let norm = String(n).toLowerCase().replace(/\s+/g, ' ').trim();
-                            return norm.includes("vstock") || norm.includes("legacy") || norm.includes("stock");
-                        }) || (wb.SheetNames.length > 1 ? wb.SheetNames[1] : null);
-
-                        const wsStock = wsStockName ? wb.Sheets[wsStockName] : null;
-
-                        if (wsStock) {
-                            const rawStock = XLSX.utils.sheet_to_json(wsStock, { header: 1 });
-                            stockLegacy = [];
-                            let totalStockRegistros = 0;
-                            let lotesObservadosContador = 0;
-
-                            // Leer estrictamente A, B, C, D, F, L, M
-                            rawStock.forEach((r) => {
-                                if (!r || r.length === 0) return;
-
-                                let mcu = String(r[0] || "").trim(); // Col A: MCU
-
-                                // Solo procesar depósito 503
-                                if (mcu === "503" || mcu.includes("503")) {
-                                    let status = String(r[3] || "").trim(); // Col D: LotStatus
-                                    
-                                    // Validar si LotStatus contiene letras u observacion
-                                    let esObservado = /[a-zA-Z]/.test(status) && status.toUpperCase() !== "OK";
-                                    if(esObservado) lotesObservadosContador++;
-
-                                    stockLegacy.push({
-                                        MCU: mcu,
-                                        Ubicacion: String(r[1] || "").trim(),      // Col B
-                                        Lote: String(r[2] || "").trim(),           // Col C
-                                        Status: status,                            // Col D
-                                        Observado: esObservado,                    // Booleano interno
-                                        Cantidad: parseFloat(r[5]) || 0,           // Col F
-                                        SKU: String(r[11] || r[10] || "").trim(),  // Col L
-                                        Desc: String(r[12] || "").trim()           // Col M
-                                    });
-                                    totalStockRegistros++;
-                                }
-                            });
-
-                            localStorage.setItem('m_v31_6_stock', JSON.stringify(stockLegacy));
-                            
-                            let obsAlert = lotesObservadosContador > 0 ? `\n⚠️ Lotes observados detectados: ${lotesObservadosContador}` : "";
-                            alert(`✅ Base Actualizada con Éxito.\n\nMaestro: ${Object.keys(maestro).length} productos.\nStock (Dep. 503): ${totalStockRegistros} registros.${obsAlert}\n\nPestaña analizada para Stock: "${wsStockName}"`);
-                        } else {
-                            alert(`❌ No se pudo identificar la pestaña de stock.\nPestañas detectadas: [ ${wb.SheetNames.join(", ")} ]`);
-                        }
-                    } catch (err) {
-                        alert("❌ Error crítico al intentar leer el Excel. Detalle: " + err.message);
-                    }
-                };
-                reader.readAsArrayBuffer(e.target.files[0]);
-            };
-        }
-
-        const pSearch = document.getElementById('productSearchInput');
-        if (pSearch) {
-            pSearch.addEventListener('input', function() {
-                const q = this.value.trim().toLowerCase();
-                const p = globalPallets[currentPalletIdx];
-                if(q.length < 2 || !p) return document.getElementById('searchResults').style.display = "none";
-                
-                const matches = p.items.filter(it => it.sku.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q) || (it.ean && it.ean.includes(q)));
-                if(matches.length) {
-                    document.getElementById('searchResults').innerHTML = matches.map(m => `
-                        <div class="search-item" onclick="seleccionarProductoDirecto('${m.sku}')">
-                            <strong>${m.desc}</strong><br><small>SKU: ${m.sku} | Lote Sug: <b style="color:#d35400;">${m.loteSugerido||'-'}</b> | Pedido: ${m.cant} CA</small>
-                        </div>`).join('');
-                    document.getElementById('searchResults').style.display = "block";
-                } else document.getElementById('searchResults').style.display = "none";
+    // --- Lectura de Archivos ---
+    document.getElementById('masterFile').onchange = (e) => {
+        if (!e.target.files.length) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+            
+            // 1. Procesar Primera pestaña (Capacidades originales)
+            const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+            maestro = {};
+            dataCapacidades.slice(1).forEach(r => {
+                let sku = String(r[1] || "").trim();
+                if(sku) {
+                    let base = parseInt(r[5]) || 21;
+                    maestro[sku] = { base: base, cap: base * (parseInt(r[6]) || 4), fam: String(r[8] || "0") };
+                }
             });
-        }
+            localStorage.setItem('m_v31_1', JSON.stringify(maestro));
 
-        const jInput = document.getElementById('julianInput');
-        if (jInput) jInput.addEventListener('input', calcularSufijoLote);
+            // 2. Procesar Pestaña Nueva: "legacy vStockPT"
+            let msgStock = "\n⚠️ Pestaña 'legacy vStockPT' no encontrada. Solo se cargaron las capacidades.";
+            if (wb.SheetNames.includes('legacy vStockPT')) {
+                const dataStock = XLSX.utils.sheet_to_json(wb.Sheets['legacy vStockPT'], {header:1});
+                stockInfo = {};
+                
+                dataStock.slice(1).forEach(r => {
+                    let mcu = String(r[0] || "").trim();
+                    // Columna A: Solo considerar el deposito 503
+                    if (mcu.includes("503")) {
+                        let ubicacion = String(r[1] || "").trim(); // Col B
+                        let lote = String(r[2] || "").trim(); // Col C
+                        let lotStatus = String(r[3] || "").trim(); // Col D
+                        let sku = String(r[11] || "").trim(); // Col L
 
-        const tInput = document.getElementById('timeInput');
-        if (tInput) tInput.addEventListener('input', calcularSufijoLote);
-    });
+                        if (sku && ubicacion) {
+                            // Validar si LotStatus contiene alguna letra
+                            let isObservado = /[a-zA-Z]/.test(lotStatus);
+                            
+                            // Guardamos por SKU + Ubicación como clave única
+                            let clave = sku + "_" + ubicacion;
+                            stockInfo[clave] = {
+                                lote: lote,
+                                statusText: lotStatus,
+                                observado: isObservado
+                            };
+                        }
+                    }
+                });
+                localStorage.setItem('stock_v31_1', JSON.stringify(stockInfo));
+                msgStock = "\n✅ Pestaña 'legacy vStockPT' (Stock) procesada correctamente.";
+            }
+
+            alert("✅ Maestro de Capacidades actualizado." + msgStock);
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    };
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("⚠️ Seleccioná el reporte JDE.");
+        if(!file) return alert("⚠️ Por favor, seleccioná o arrastrá el reporte de surtido.");
+
         const reader = new FileReader();
         reader.onload = (e) => {
-            const doc = new DOMParser().parseFromString(e.target.result, "text/html");
-            let itemsRaw = [], cargaNro = "S/C", esMixto = false;
-            Array.from(doc.querySelectorAll('tr')).forEach(tr => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(e.target.result, "text/html");
+            const rows = Array.from(doc.querySelectorAll('tr'));
+            let itemsRaw = [];
+            let cargaNro = "S/C";
+            let esMixto = false;
+
+            rows.forEach(tr => {
                 const text = tr.innerText.toUpperCase();
-                if(text.includes("CARGA:")) cargaNro = (text.match(/CARGA:\s*(\d+)/)||[])[1]||cargaNro;
+                if(text.includes("CARGA:")) {
+                    const m = text.match(/CARGA:\s*(\d+)/);
+                    if(m) cargaNro = m[1];
+                }
                 if(text.includes("PALLET HOMOGENEO")) esMixto = false;
                 if(text.includes("PALLET MIXTO")) esMixto = true;
-                
+
                 const c = Array.from(tr.cells).map(td => td.innerText.trim());
                 if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
-                    let sku = c[1].trim();
-                    let info = maestro[sku] || { base: 21, cap: 84, fam: "0", ean: "", desc: c[4] };
-                    let loteSug = c[2] ? c[2].trim() : ""; 
-                    itemsRaw.push({ 
-                        ubi: c[0].trim(), 
-                        sku: sku, 
-                        desc: c[4].trim(), 
-                        loteSugerido: loteSug, 
-                        orden: c[6].trim(), 
-                        linea: parseFloat(c[7])||0, 
+                    let ubi = c[0];
+                    let sku = c[1];
+                    let info = maestro[sku] || { base: 21, cap: 84, fam: "0" };
+
+                    // Cruzar con la base de datos de Stock
+                    let claveStock = sku + "_" + ubi;
+                    let datosLote = stockInfo[claveStock] || null;
+                    let isObservado = datosLote ? datosLote.observado : false;
+                    let lotStatus = datosLote ? datosLote.statusText : "";
+
+                    itemsRaw.push({
+                        ubi: ubi, sku: sku, desc: c[4], orden: c[6],
+                        linea: parseFloat(c[7]) || 0,
                         cant: parseInt(c[8]), 
-                        pickeado: 0, 
-                        dep: "P0" + (c[0].split('.')[1]||"01"), 
-                        carga: cargaNro, 
-                        base: info.base, 
-                        capFull: info.cap, 
-                        fam: info.fam, 
-                        ean: info.ean 
+                        dep: "P0" + (ubi.split('.')[1] || "01"),
+                        carga: cargaNro, base: info.base, capFull: info.cap, fam: info.fam,
+                        observado: isObservado,
+                        estadoLote: lotStatus
                     });
                 }
             });
-            itemsRaw.sort((a,b) => a.dep.localeCompare(b.dep) || a.orden.localeCompare(b.orden) || b.ubi.localeCompare(a.ubi));
+
+            // Alerta global si hay lotes observados
+            let cantidadObservados = itemsRaw.filter(i => i.observado).length;
+            if (cantidadObservados > 0) {
+                alert(`⚠️ ¡ATENCIÓN OPERADOR!\n\nSe detectaron ${cantidadObservados} línea(s) con LOTE OBSERVADO.\n\nEstas líneas estarán marcadas en ROJO en las hojas de picking y NO DEBEN PICKEARSE.`);
+            }
+
+            // PRIORIDAD: Depósito > Orden > Ubicación
+            itemsRaw.sort((a,b) => 
+                a.dep.localeCompare(b.dep) || 
+                a.orden.localeCompare(b.orden) || 
+                b.ubi.localeCompare(a.ubi)
+            );
+
             armarLogica(itemsRaw);
         };
         reader.readAsText(file, "ISO-8859-1");
     }
 
+    // --- Lógica del Algoritmo ---
+    function obtenerCapacidadPallet(items) {
+        let maxCap = 84; 
+        for (let x of items) {
+            if (x.cant >= x.base) {
+                maxCap = Math.max(maxCap, x.capFull);
+            }
+        }
+        return maxCap;
+    }
+
+    function puedenMezclarse(itemsA, itemsB) {
+        let todos = [...itemsA, ...itemsB];
+        let cantLatas = 0;
+        let cantNoLatas = 0;
+        let baseLatas = 9999;
+
+        for (let x of todos) {
+            if (x.fam === "9") {
+                cantLatas += x.cant;
+                baseLatas = Math.min(baseLatas, x.base);
+            } else {
+                cantNoLatas += x.cant;
+            }
+        }
+
+        if (cantLatas > 0 && cantNoLatas > 0) {
+            if (cantLatas >= baseLatas) {
+                return false; 
+            }
+        }
+        return true; 
+    }
+
     function armarLogica(items) {
-        let pallets = [], cont = 1;
+        let pallets = [];
+        let cont = 1;
+
+        // FASE 1: Armado Estricto
         items.forEach(it => {
             let placed = false;
             for (let p of pallets) {
-                if (p.orden === it.orden && p.dep === it.dep) {
-                    let m = [...p.items, it], c = 0, no = 0, bl = 999;
-                    m.forEach(x => { if(x.fam==="9"){c+=x.cant; bl=Math.min(bl,x.base);} else no+=x.cant; });
-                    if(c>0 && no>0 && c>=bl) continue; 
-                    let maxCap = 84; m.forEach(x => { if(x.cant>=x.base) maxCap=Math.max(maxCap,x.capFull); });
-                    if (p.total + it.cant <= maxCap) {
-                        p.items.push(it); p.total += it.cant; p.capMaxVisual = maxCap; placed = true; break;
-                    }
-                }
+                if (p.orden !== it.orden) continue;
+                if (p.dep !== it.dep) continue;
+                if (!puedenMezclarse(p.items, [it])) continue;
+                
+                let mockItems = [...p.items, it];
+                let newMaxCap = obtenerCapacidadPallet(mockItems);
+                
+                if (p.total + it.cant > newMaxCap) continue; 
+                
+                p.items.push(it);
+                p.total += it.cant;
+                p.capMaxVisual = newMaxCap;
+                placed = true;
+                break;
             }
+
             if (!placed) {
-                let maxCap = 84; if(it.cant>=it.base) maxCap = it.capFull;
-                pallets.push({ id: cont++, dep: it.dep, carga: it.carga, orden: it.orden, total: it.cant, items: [it], capMaxVisual: maxCap });
+                let newCap = obtenerCapacidadPallet([it]);
+                pallets.push({ 
+                    id: cont++, dep: it.dep, carga: it.carga, orden: it.orden, 
+                    total: it.cant, items: [it], capMaxVisual: newCap 
+                });
             }
         });
-        globalPallets = pallets;
-        renderSugerencias(pallets);
+
+        // FASE 2: Consolidación
+        for (let i = pallets.length - 1; i >= 0; i--) {
+            let pOrigen = pallets[i];
+            if (!pOrigen) continue;
+
+            for (let j = 0; j < i; j++) {
+                let pDestino = pallets[j];
+                if (!pDestino) continue;
+
+                if (pOrigen.orden !== pDestino.orden) continue;
+                if (pOrigen.dep !== pDestino.dep) continue; 
+                if (!puedenMezclarse(pDestino.items, pOrigen.items)) continue; 
+
+                let mockItems = [...pDestino.items, ...pOrigen.items];
+                let newMaxCap = obtenerCapacidadPallet(mockItems);
+
+                if (pDestino.total + pOrigen.total <= newMaxCap) {
+                    pDestino.items.push(...pOrigen.items);
+                    pDestino.total += pOrigen.total;
+                    pDestino.capMaxVisual = newMaxCap;
+                    pallets[i] = null; 
+                    break;
+                }
+            }
+        }
+
+        pallets = pallets.filter(p => p !== null);
+        pallets.forEach((p, idx) => p.id = idx + 1);
+
+        render(pallets);
     }
 
-    function renderSugerencias(pallets) {
+    // --- Renderizado ---
+    function render(pallets) {
         document.getElementById('resArea').style.display = "block";
-        document.getElementById('pallets').innerHTML = ""; document.getElementById('tabs').innerHTML = "";
-        document.getElementById('totalCargaCount').innerText = pallets.reduce((s, p) => s + p.total, 0);
+        const tabs = document.getElementById('tabs');
+        const cont = document.getElementById('pallets');
+        const orderFilter = document.getElementById('orderFilter');
+        const countDisplay = document.getElementById('totalCargaCount');
         
-        let sel = document.getElementById('orderFilter');
-        sel.innerHTML = '<option value="ALL">Mostrar Todas</option>';
-        [...new Set(pallets.map(p => p.orden))].forEach(o => sel.innerHTML += `<option value="${o}">Orden ${o}</option>`);
+        tabs.innerHTML = ""; cont.innerHTML = "";
+        countDisplay.innerText = pallets.reduce((sum, p) => sum + p.total, 0);
+        
+        orderFilter.innerHTML = '<option value="ALL">Mostrar Todas</option>';
+        const ordenesUnicas = [...new Set(pallets.map(p => p.orden))];
+        ordenesUnicas.forEach(ord => {
+            const opt = document.createElement('option');
+            opt.value = ord;
+            opt.innerText = "Orden " + ord;
+            orderFilter.appendChild(opt);
+        });
 
         pallets.forEach((p, i) => {
             const btn = document.createElement('div');
-            btn.className = `pm-tab ${i===0?'active':''}`; btn.innerText = `PM #${p.id}`; btn.onclick = () => {
+            btn.className = `pm-tab ${i===0?'active':''}`;
+            btn.innerText = `PM #${p.id} (${p.total})`;
+            btn.setAttribute('data-orden', p.orden);
+            
+            btn.onclick = () => {
                 document.querySelectorAll('.pm-tab, .pallet-card').forEach(el => el.classList.remove('active'));
-                btn.classList.add('active'); document.getElementById('pc-'+p.id).classList.add('active');
+                btn.classList.add('active');
+                document.getElementById('pc-'+p.id).classList.add('active');
             };
-            document.getElementById('tabs').appendChild(btn);
+            tabs.appendChild(btn);
 
             const card = document.createElement('div');
-            card.id = 'pc-'+p.id; card.className = `pallet-card ${i===0?'active':''}`;
-            card.innerHTML = `<div class="order-badge">ORDEN: ${p.orden}</div><h2>Carga: ${p.carga}</h2>
-                <p><b>Sector:</b> ${p.dep} | <b>Pallet:</b> #${p.id} | <span style="background:yellow; padding:2px;">Ocupación: ${p.total}/${p.capMaxVisual}</span></p>
-                <table><thead><tr><th>Ubi</th><th>SKU</th><th>Desc</th><th>Lote Sugerido</th><th>Cant</th></tr></thead>
-                <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td><b style="color:#d35400;">${it.loteSugerido||'-'}</b></td><td><b>${it.cant}</b></td></tr>`).join('')}</tbody></table>`;
-            document.getElementById('pallets').appendChild(card);
-        });
-    }
-
-    function activarModoOperario() { document.getElementById('setupView').style.display = "none"; document.getElementById('operatorView').style.display = "block"; cargarPalletEnOperario(0); }
-    function volverASugerencias() { document.getElementById('operatorView').style.display = "none"; document.getElementById('setupView').style.display = "block"; }
-
-    function cargarPalletEnOperario(idx) {
-        currentPalletIdx = idx;
-        const p = globalPallets[idx];
-        if(!p) return;
-        document.getElementById('opPalletTitle').innerText = `Pallet Mixto #${p.id} (Carga ${p.carga})`;
-        
-        let pickeado = p.items.reduce((sum, i) => sum + i.pickeado, 0);
-        let pct = (pickeado / p.total) * 100;
-        document.getElementById('palletProgressBar').style.width = pct + "%";
-        document.getElementById('palletProgressText').innerText = `${pickeado} / ${p.total} CA (${Math.round(pct)}%)`;
-
-        let tb = p.items.map(it => {
-            let st = it.pickeado >= it.cant ? "✅" : (it.pickeado > 0 ? "⏳" : "❌");
-            return `<tr style="${it.pickeado>=it.cant?'opacity:0.6;':''}" onclick="seleccionarProductoDirecto('${it.sku}')">
-                <td>${it.sku}</td><td><b style="color:#d35400;">${it.loteSugerido||'-'}</b></td><td>${it.desc}</td><td>${st}</td>
-            </tr>`;
-        }).join('');
-        document.getElementById('opPalletItemsTable').innerHTML = tb;
-    }
-
-    function seleccionarProductoDirecto(sku) {
-        document.getElementById('searchResults').style.display = "none";
-        document.getElementById('productSearchInput').value = "";
-        
-        const it = globalPallets[currentPalletIdx].items.find(x => x.sku === sku);
-        if(!it) return;
-        selectedSkuForPick = sku;
-        
-        document.getElementById('selProdName').innerText = `${it.sku} - ${it.desc}`;
-        document.getElementById('selProdMeta').innerHTML = `EAN: ${it.ean} | Lote Sugerido JDE: <b id="sugLotLabel" style="color:red; font-size:1.1em;">${it.loteSugerido}</b>`;
-        document.getElementById('suggestedQtyLine').innerText = it.cant - it.pickeado;
-        document.getElementById('julianInput').value = '';
-        document.getElementById('timeInput').value = '';
-        document.getElementById('calcLotBadge').innerText = '---';
-        
-        document.getElementById('selectedProductCard').style.display = "block";
-        document.getElementById('noTargetNotice').style.display = "block";
-        document.getElementById('pickingTargetBox').style.display = "none";
-
-        document.getElementById('julianInput').focus();
-    }
-
-    function toggleCameraScanner() {
-        const rc = document.getElementById('reader');
-        const bt = document.getElementById('camBtnText');
-        if(rc.style.display === "block") { rc.style.display = "none"; bt.innerText = "Escanear Cód. Barras"; if(html5QrCode) html5QrCode.stop(); } 
-        else {
-            rc.style.display = "block"; bt.innerText = "Detener Cámara";
-            if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 100 } }, (txt) => {
-                let s = txt.split(' ');
-                let cod = s[0]; // Ej EAN 
-                // match manual a producto (simplificado)
-                document.getElementById('productSearchInput').value = cod;
-                document.getElementById('productSearchInput').dispatchEvent(new Event('input'));
-                html5QrCode.stop(); rc.style.display = "none"; bt.innerText = "Escanear Cód. Barras";
-                hablar("Código " + cod);
-            }, (err) => {}).catch(err => alert("Error cámara: " + err));
-        }
-    }
-
-    function toggleOCR() {
-        const bx = document.getElementById('ocrBox');
-        if(bx.style.display === "block") { 
-            bx.style.display = "none"; 
-            if(ocrStream) ocrStream.getTracks().forEach(t=>t.stop()); 
-        } else {
-            bx.style.display = "block";
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => {
-                ocrStream = stream;
-                document.getElementById('ocrVideo').srcObject = stream;
-            }).catch(e => alert("Error OCR: "+e));
-        }
-    }
-
-    function capturarYLeerOCR() {
-        const v = document.getElementById('ocrVideo'); const c = document.getElementById('ocrCanvas');
-        c.width = v.videoWidth; c.height = v.videoHeight;
-        c.getContext('2d').drawImage(v, 0,0);
-        document.getElementById('ocrStatus').innerText = "Procesando...";
-        Tesseract.recognize(c, 'eng').then(({ data: { text } }) => {
-            let m = text.match(/\d{3}\s*:\s*\d{4}|\d{7}/);
-            if(m) {
-                let cln = m[0].replace(/\D/g,'');
-                if(cln.length===7) {
-                    document.getElementById('julianInput').value = cln.substring(0,3);
-                    document.getElementById('timeInput').value = cln.substring(3,7);
-                    calcularSufijoLote();
-                    document.getElementById('ocrStatus').innerText = "Lote detectado: "+cln;
-                    toggleOCR(); return;
-                }
-            }
-            document.getElementById('ocrStatus').innerText = "No se detectó el lote. Intente de nuevo.";
-        });
-    }
-
-    function calcularSufijoLote() {
-        let j = document.getElementById('julianInput').value;
-        let t = document.getElementById('timeInput').value;
-        if(j.length === 3 && t.length === 4) {
-            let s = j + t;
-            document.getElementById('calcLotBadge').innerText = s;
-        } else {
-            document.getElementById('calcLotBadge').innerText = "---";
-        }
-    }
-
-    function validarYBuscarStock() {
-        const sufijo = document.getElementById('calcLotBadge').innerText;
-        if(sufijo === "---") return alert("Ingrese o escanee Juliano (3) y Hora (4) primero.");
-        
-        let itemEnPallet = globalPallets[currentPalletIdx].items.find(i => i.sku === selectedSkuForPick);
-        
-        if (itemEnPallet && itemEnPallet.loteSugerido) {
-            if (!itemEnPallet.loteSugerido.includes(sufijo)) {
-                let confirmarDesvio = confirm(`⚠️ ATENCIÓN: DISCREPANCIA DE LOTE (FEFO / FIFO)\n\nEl sistema sugiere: ${itemEnPallet.loteSugerido}\nUsted escanea: ${sufijo}\n\n¿Desea continuar de todos modos?`);
-                if (!confirmarDesvio) {
-                    document.getElementById('julianInput').value = '';
-                    document.getElementById('timeInput').value = '';
-                    document.getElementById('calcLotBadge').innerText = '---';
-                    return; 
-                }
-            }
-        }
-
-        const regs = stockLegacy.filter(r => r.SKU === selectedSkuForPick && r.Lote.includes(sufijo));
-        const targetBox = document.getElementById('pickingTargetBox');
-        const noTargetBox = document.getElementById('noTargetNotice');
-        
-        if(regs.length > 0) {
-            // Filtrar y ver si hay lotes bloqueados por calidad basados en nuestro flag "Observado"
-            const availableRegs = regs.filter(r => r.Observado === false);
+            card.id = 'pc-'+p.id;
+            card.className = `pallet-card ${i===0?'active':''}`;
             
-            if (availableRegs.length === 0) {
-                let mb = regs[0];
-                hablar("Atención. Lote bloqueado por calidad.");
-                noTargetBox.style.display = "block";
-                noTargetBox.innerHTML = `<div style="font-size:2.5em; margin-bottom:10px;">🛑</div><p style="color:var(--danger); font-weight:bold; font-size:1.1em;">LOTE BLOQUEADO / OBSERVADO<br>(Estado LotStatus: ${mb.Status || 'Observado'})</p><p style="font-size:0.9em; color:#555;">Por favor, busque un lote habilitado para despacho.</p>`;
-                targetBox.style.display = "none";
-                targetBox.classList.remove('active');
-                return;
+            p.items.sort((a,b) => b.ubi.localeCompare(a.ubi));
+
+            card.innerHTML = `
+                <div class="header-info">
+                    <div class="order-badge">ORDEN: ${p.orden}</div>
+                    <h1 style="margin:0">Carga: ${p.carga}</h1>
+                    <p style="font-size:1.2em; margin:10px 0;">
+                        <b>Sector:</b> ${p.dep} | <b>Pallet Mixto:</b> #${p.id} | 
+                        <b>Ocupación:</b> <span style="background:yellow; padding:2px 8px;">${p.total} / ${p.capMaxVisual} cajas</span>
+                    </p>
+                </div>
+                <table>
+                    <thead><tr><th>Línea</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant.</th></tr></thead>
+                    <tbody>
+                        ${p.items.map(it => `
+                            <tr style="${it.observado ? 'background-color: #fdeaea; color: #c0392b;' : ''}">
+                                <td>${it.linea.toFixed(3)}</td>
+                                <td><b>${it.ubi}</b></td>
+                                <td>${it.sku}</td>
+                                <td>
+                                    ${it.desc}
+                                    ${it.fam!=="0"?`<span class="tag tag-${it.fam}">${it.fam==="4"?'TERMO':'LATA'}</span>`:''}
+                                    ${it.observado ? `<br><span class="tag" style="background:#c0392b; margin-top:5px; margin-left:0;">🚫 LOTE OBSERVADO (${it.estadoLote}) - NO PICKEAR</span>` : ''}
+                                </td>
+                                <td><b style="font-size:1.3em">${it.cant}</b></td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+                <div style="margin-top:15px; border-top:1px solid #ccc; padding-top:10px; font-size:0.8em; color:#666;">
+                    <div>Interfaz diseñada para optimizar el armado lógico de pallets mixtos en JDE 9.2. Desarrollado por M2 Consultora Digital.</div>
+                </div>
+            `;
+            cont.appendChild(card);
+        });
+
+        orderFilter.onchange = (e) => {
+            const seleccion = e.target.value;
+            let primerVisible = null;
+
+            document.querySelectorAll('.pm-tab').forEach(btn => {
+                if (seleccion === "ALL" || btn.getAttribute('data-orden') === seleccion) {
+                    btn.style.display = "block";
+                    if (!primerVisible) primerVisible = btn;
+                } else {
+                    btn.style.display = "none";
+                }
+            });
+
+            let fPallets = (seleccion === "ALL") ? pallets : pallets.filter(p => p.orden === seleccion);
+            countDisplay.innerText = fPallets.reduce((acc, p) => acc + p.total, 0);
+
+            if (primerVisible) {
+                primerVisible.click();
+            } else {
+                document.querySelectorAll('.pallet-card').forEach(el => el.classList.remove('active'));
             }
-
-            availableRegs.sort((a, b) => b.Cantidad - a.Cantidad);
-            let m = availableRegs[0];
-
-            document.getElementById('targetLocationDisplay').innerText = m.Ubicacion || "ZONA PICKING";
-            document.getElementById('targetStockLot').innerText = m.Lote || sufijo;
-            document.getElementById('targetStockQty').innerText = m.Cantidad || "0";
-
-            hablar(`Ubicación ${m.Ubicacion}. Lote ${m.Lote}.`);
-        } else {
-            const fb = stockLegacy.find(r => r.SKU === selectedSkuForPick && r.Cantidad > 0);
-            let ubiText = fb ? fb.Ubicacion : "Ubicación general";
-            document.getElementById('targetLocationDisplay').innerText = fb ? fb.Ubicacion+" (Lote físico no en sistema)" : "UBICACIÓN GENERAL";
-            document.getElementById('targetStockLot').innerText = "Sufijo " + sufijo + " sin stock asignado";
-            document.getElementById('targetStockQty').innerText = fb ? fb.Cantidad : "N/D";
-            
-            hablar(`${ubiText}. Sufijo sin stock en sistema.`);
-        }
-
-        noTargetBox.style.display = "none";
-        targetBox.classList.add('active'); 
-        targetBox.style.display = "block";
-    }
-
-    function adjustQty(delta) {
-        const i = document.getElementById('confirmQtyInput');
-        i.value = Math.max(1, (parseInt(i.value)||1) + delta);
-    }
-
-    function confirmarPickeo() {
-        if(!selectedSkuForPick) return;
-        let cant = parseInt(document.getElementById('confirmQtyInput').value) || 1;
-        let item = globalPallets[currentPalletIdx].items.find(i => i.sku === selectedSkuForPick);
-        if(!item) return;
-        
-        item.pickeado += cant;
-        hablar(`Confirmado: SKU ${item.sku}, ${cant} cajas.`);
-
-        document.getElementById('pickingTargetBox').style.display = "none";
-        document.getElementById('noTargetNotice').style.display = "block";
-        document.getElementById('noTargetNotice').innerHTML = `<div style="font-size:2.5em;">📦</div><p>Seleccione un producto y complete el lote para ver la ubicación.</p>`;
-        document.getElementById('selectedProductCard').style.display = "none";
-        document.getElementById('productSearchInput').value = '';
-        selectedSkuForPick = null;
-        cargarPalletEnOperario(currentPalletIdx);
-    }
-
-    function iniciarReconocimientoVoz() {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if(!Speech) return alert("Voz no soportada. Usá Chrome.");
-        const r = new Speech(); r.lang = 'es-AR';
-        r.onstart = () => document.getElementById('productSearchInput').placeholder = "Escuchando...";
-        r.onresult = (e) => {
-            document.getElementById('productSearchInput').value = e.results[0][0].transcript;
-            document.getElementById('productSearchInput').dispatchEvent(new Event('input'));
         };
-        r.start();
     }
 </script>
 </body>
