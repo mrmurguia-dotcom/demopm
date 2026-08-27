@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Picking JDE v.PRO - Scanner Mode</title>
+    <title>Picking JDE v.PRO - Scanner & Lotes</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --warning: #f39c12; --dark: #1a252f; }
+        :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --warning: #f39c12; --dark: #1a252f; --info: #3498db; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; margin: 0; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .box { border: 2px dashed #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; background: #fafafa; }
         
-        /* Botones de Pallet */
         .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
-        .btn-scan-sug { background: var(--warning); color: #000; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1.1em; margin-top: 10px;}
-        .btn-scan-lib { background: #3498db; color: white; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%; font-size: 1.1em;}
-        .btn-toggle-view { background: var(--primary); color: white; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-bottom: 20px; width: 100%; font-size: 1.1em;}
+        .btn-scan-sug { background: var(--warning); color: #000; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; flex: 1; font-size: 1.1em; }
+        .btn-scan-lib { background: var(--info); color: white; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; flex: 1; font-size: 1.1em; }
+        .btn-toggle-view { background: var(--primary); color: white; padding: 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-bottom: 20px; width: 100%; font-size: 1.2em;}
+        .button-group { display: flex; gap: 10px; margin-top: 10px; margin-bottom: 10px;}
         
         .pm-nav { display: flex; gap: 5px; margin: 20px 0; overflow-x: auto; }
         .pm-tab { background: #eee; padding: 10px 15px; border-radius: 4px; cursor: pointer; border: 1px solid #ddd; font-weight: bold; white-space: nowrap; }
@@ -26,27 +26,22 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #000; padding: 8px; text-align: left; }
         
-        /* Modal Scanner Mode */
         #scannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 9999; color: white; flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto;}
         .scan-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 20px; }
-        .scan-target { background: #2c3e50; padding: 20px; border-radius: 10px; border: 2px solid #3498db; margin-bottom: 20px; text-align: center; }
+        .scan-target { background: #2c3e50; padding: 20px; border-radius: 10px; border: 2px solid var(--info); margin-bottom: 20px; text-align: center; }
         .scan-target h1 { margin: 0; font-size: 3em; color: #2ecc71; }
         
-        /* Controles de Input Scanner */
         .input-row { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; justify-content: center;}
         .scan-input { padding: 15px; font-size: 1.2em; border-radius: 5px; border: none; outline: none; text-align: center; flex: 1; max-width: 300px; }
         .scan-input-small { flex: 0.5; max-width: 150px; }
         .btn-cam { background: #34495e; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1.5em; }
         .btn-confirm { background: var(--success); color: white; border: none; padding: 20px; font-size: 1.2em; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; max-width: 610px; margin: 0 auto; display: block; }
         
-        /* Panel de Excepciones */
         #exceptionPanel { display: none; background: #c0392b; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; max-width: 610px; margin-left: auto; margin-right: auto;}
         .btn-exception { background: white; color: #c0392b; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; width: 100%; }
         
-        /* FAB Micrófono */
-        .fab-mic { position: fixed; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 70px; height: 70px; font-size: 2em; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; display: flex; justify-content: center; align-items: center; z-index: 10000; transition: 0.3s; }
+        .fab-mic { position: fixed; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 70px; height: 70px; font-size: 2em; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; display: flex; justify-content: center; align-items: center; z-index: 10000; }
         .fab-mic.listening { background: #c0392b; animation: pulse 1s infinite; transform: scale(1.1); }
-        
         .scan-list { background: #fff; color: #000; padding: 15px; border-radius: 5px; margin-top: 20px; overflow-x: auto; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     </style>
@@ -56,7 +51,7 @@
 <div class="container">
     <h2 style="text-align:center;">📦 Optimizador de Picking v.PRO</h2>
     <div class="box">
-        <strong>1. Maestro de Capacidades, Stock y Productos</strong><br>
+        <strong>1. Maestro de Stock y Productos</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
     </div>
     <div class="box">
@@ -69,15 +64,17 @@
 <div id="resArea" class="container" style="display:none; margin-top:20px;">
     <button id="btnToggleView" class="btn-toggle-view" onclick="toggleVista()">Ver todas las líneas</button>
     
-    <!-- Vista Pallets -->
     <div id="vistaPallets">
         <div id="tabs" class="pm-nav"></div>
         <div id="pallets"></div>
     </div>
 
-    <!-- Vista Surtido Completo -->
     <div id="vistaGeneral" style="display:none;">
         <h2>📋 Listado Completo de Surtido</h2>
+        <div class="button-group">
+            <button class="btn-scan-sug" onclick="abrirScannerGlobal(false)">🛠️ Armar TODO Sugerido</button>
+            <button class="btn-scan-lib" onclick="abrirScannerGlobal(true)">🔓 Armar TODO Libre</button>
+        </div>
         <table id="tablaGeneral">
             <thead><tr><th>Dep.</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
             <tbody></tbody>
@@ -85,7 +82,7 @@
     </div>
 </div>
 
-<!-- MODO SCANNER MODAL -->
+<!-- MODO SCANNER -->
 <div id="scannerModal">
     <div class="scan-header">
         <h2 style="margin:0;">📲 MODO SCANNER <span id="scanModeTitle"></span></h2>
@@ -99,24 +96,21 @@
         <h1><span id="scanTargetQty"></span> Cajas</h1>
     </div>
 
-    <!-- Fila EAN/SKU -->
     <div class="input-row">
         <input type="text" id="scanEanInput" class="scan-input" placeholder="1. EAN o SKU..." onblur="validarSkuBlur()">
         <button class="btn-cam" onclick="abrirCamara()">📷</button>
     </div>
 
-    <!-- Fila Lote / Hora -->
     <div class="input-row">
-        <input type="text" id="scanLotJulian" class="scan-input scan-input-small" placeholder="Lote (Ej: 25210)">
-        <input type="text" id="scanLotTime" class="scan-input scan-input-small" placeholder="Hora (hhmm)">
+        <input type="text" id="scanLotJulian" class="scan-input scan-input-small" placeholder="Lote (Ej: 25210 o 26dv07)">
+        <input type="text" id="scanLotTime" class="scan-input scan-input-small" placeholder="Hora (Vacío si es lata)">
     </div>
 
     <button class="btn-confirm" onclick="confirmarLinea()">✅ CONFIRMAR</button>
 
-    <!-- Panel de Excepciones (Oculto por defecto) -->
     <div id="exceptionPanel">
         <h3 style="margin-top:0;">⚠️ Lote no encontrado o stock insuficiente</h3>
-        <p>Lotes sugeridos por el sistema:</p>
+        <p>Lotes sugeridos en zona de picking:</p>
         <ul id="sysLotsList" style="text-align:left;"></ul>
         
         <div id="partialPickDiv" style="display:none; margin-top:10px;">
@@ -124,7 +118,6 @@
             <input type="number" id="partialQty" class="scan-input" style="width:100px; padding:5px; font-size:1em;" min="1">
             <button class="btn-exception" onclick="aplicarParcial()">Aceptar Cantidad Parcial</button>
         </div>
-
         <button class="btn-exception" onclick="solicitarReclasificacion()">📄 Solicitar Reclasificación (PDF)</button>
     </div>
 
@@ -135,41 +128,36 @@
             <tbody></tbody>
         </table>
     </div>
-    
     <button id="fabMic" class="fab-mic" onclick="activarMicrofono()">🎙️</button>
 </div>
 
 <script>
-    let maestro = JSON.parse(localStorage.getItem('m_v32_1')) || {};
-    let stockInfo = JSON.parse(localStorage.getItem('stock_v32_1')) || [];
-    let eanMap = JSON.parse(localStorage.getItem('ean_v32_1')) || {};
+    let maestro = JSON.parse(localStorage.getItem('m_v32_2')) || {};
+    let stockInfo = JSON.parse(localStorage.getItem('stock_v32_2')) || [];
+    let eanMap = JSON.parse(localStorage.getItem('ean_v32_2')) || {};
     let palletsGenerados = [];
     let itemsTotales = [];
     let pendingItems = [];
     let currentItemIndex = 0;
     let modoLibre = false;
-    let vistaPalletsActiva = true;
-    let loteFisicoIngresado = ""; // Para el PDF
-
+    let loteFisicoIngresado = "";
+    
     // Asistente de Voz
     const synth = window.speechSynthesis;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = SpeechRecognition ? new SpeechRecognition() : null;
-    if(recognition) {
-        recognition.lang = 'es-AR';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-    }
+    if(recognition) recognition.lang = 'es-AR';
 
     function hablar(texto) {
         if(synth.speaking) synth.cancel();
         const utterThis = new SpeechSynthesisUtterance(texto);
-        utterThis.lang = 'es-AR';
-        utterThis.rate = 1.1;
-        synth.speak(utterThis);
+        utterThis.lang = 'es-AR'; utterThis.rate = 1.1; synth.speak(utterThis);
     }
 
-    // Archivos (Carga de Maestros)
+    // Utilidades de limpieza (Espacios invisibles y puntos)
+    function cleanStr(s) { return String(s || "").trim().replace(/[\u200B-\u200D\uFEFF]/g, ''); }
+    function cleanUbi(u) { return cleanStr(u).replace(/\./g, '').toUpperCase(); }
+
     document.getElementById('masterFile').onchange = (e) => {
         if (!e.target.files.length) return;
         const reader = new FileReader();
@@ -180,21 +168,21 @@
                 const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
                 maestro = {};
                 dataCapacidades.slice(1).forEach(r => {
-                    let sku = String(r[1] || "").trim();
-                    if(sku) maestro[sku] = { base: parseInt(r[5])||21, cap: (parseInt(r[5])||21)*(parseInt(r[6])||4), fam: String(r[8]||"0") };
+                    let sku = cleanStr(r[1]);
+                    if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
             if (wb.SheetNames.includes('legacy vStockPT')) {
                 const dataStock = XLSX.utils.sheet_to_json(wb.Sheets['legacy vStockPT'], {header:1});
                 stockInfo = [];
                 dataStock.slice(1).forEach(r => {
-                    let mcu = String(r[0] || "").trim();
+                    let mcu = cleanStr(r[0]);
                     if (mcu.includes("503")) {
                         stockInfo.push({
-                            ubi: String(r[1] || "").trim(),
-                            lote: String(r[2] || "").trim().toUpperCase(),
+                            ubi: cleanUbi(r[1]),
+                            lote: cleanStr(r[2]).toUpperCase(),
                             qty: parseFloat(r[5]) || 0,
-                            sku: String(r[11] || "").trim()
+                            sku: cleanStr(r[11])
                         });
                     }
                 });
@@ -203,14 +191,13 @@
                 const dataProd = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
                 eanMap = {};
                 dataProd.slice(1).forEach(r => {
-                    let sku = String(r[1] || "").trim();
-                    let ean = String(r[9] || "").trim();
+                    let sku = cleanStr(r[1]); let ean = cleanStr(r[9]);
                     if(sku && ean) eanMap[ean] = sku;
                 });
             }
-            localStorage.setItem('m_v32_1', JSON.stringify(maestro));
-            localStorage.setItem('stock_v32_1', JSON.stringify(stockInfo));
-            localStorage.setItem('ean_v32_1', JSON.stringify(eanMap));
+            localStorage.setItem('m_v32_2', JSON.stringify(maestro));
+            localStorage.setItem('stock_v32_2', JSON.stringify(stockInfo));
+            localStorage.setItem('ean_v32_2', JSON.stringify(eanMap));
             alert("✅ Maestros actualizados.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
@@ -226,31 +213,51 @@
             let itemsRaw = []; let cargaNro = "S/C"; let esMixto = false;
 
             Array.from(doc.querySelectorAll('tr')).forEach(tr => {
-                const text = tr.innerText.toUpperCase();
+                const text = cleanStr(tr.innerText).toUpperCase();
                 if(text.includes("CARGA:")) { const m = text.match(/CARGA:\s*(\d+)/); if(m) cargaNro = m[1]; }
                 if(text.includes("PALLET HOMOGENEO")) esMixto = false;
                 if(text.includes("PALLET MIXTO")) esMixto = true;
-                const c = Array.from(tr.cells).map(td => td.innerText.trim());
+                const c = Array.from(tr.cells).map(td => cleanStr(td.innerText));
                 if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
-                    let info = maestro[c[1]] || { base: 21, cap: 84, fam: "0" };
+                    let info = maestro[c[1]] || { cap: 84 };
                     itemsRaw.push({
-                        ubi: c[0], sku: c[1], desc: c[4], orden: c[6], cant: parseInt(c[8]),
-                        dep: "P0" + (c[0].split('.')[1] || "01"), picked: false, originalCant: parseInt(c[8])
+                        ubi: c[0], sku: c[1], desc: c[4], orden: parseInt(c[6])||0, cant: parseInt(c[8]),
+                        dep: "P0" + (c[0].split('.')[1] || "01"), picked: false, capFull: info.cap
                     });
                 }
             });
+            itemsRaw.sort((a,b) => a.orden - b.orden);
             itemsTotales = itemsRaw;
-            armarLogica(itemsRaw);
+            armarLogicaVolumetrica(itemsRaw);
         };
         reader.readAsText(file, "ISO-8859-1");
     }
 
-    // Función simplificada de pallets para ejemplo visual
-    function armarLogica(items) {
-        palletsGenerados = []; let cont = 1;
-        items.forEach(it => { palletsGenerados.push({ id: cont++, orden: it.orden, items: [it] }); });
-        renderPallets();
-        renderTablaGeneral();
+    // Restauración Lógica Volumétrica (Agrupación por Carga y Capacidad)
+    function armarLogicaVolumetrica(items) {
+        palletsGenerados = []; 
+        let cont = 1;
+        let p = { id: cont, items: [], cantTotal: 0 };
+        
+        items.forEach(it => {
+            let qty = it.cant;
+            let capMax = it.capFull || 84;
+            
+            while(qty > 0) {
+                if(p.cantTotal === capMax) {
+                    palletsGenerados.push(p);
+                    cont++;
+                    p = { id: cont, items: [], cantTotal: 0 };
+                }
+                let espacioDisp = capMax - p.cantTotal;
+                let tomar = Math.min(qty, espacioDisp);
+                p.items.push({...it, cant: tomar});
+                p.cantTotal += tomar;
+                qty -= tomar;
+            }
+        });
+        if(p.items.length > 0) palletsGenerados.push(p);
+        renderPallets(); renderTablaGeneral();
     }
 
     function renderPallets() {
@@ -272,10 +279,10 @@
             const card = document.createElement('div');
             card.id = 'pc-'+p.id; card.className = `pallet-card ${i===0?'active':''}`;
             card.innerHTML = `
-                <h2>Orden: ${p.orden} | Pallet #${p.id}</h2>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-scan-sug" onclick="abrirScanner(${p.id}, false)">🛠️ Armar PM sugerido</button>
-                    <button class="btn-scan-lib" onclick="abrirScanner(${p.id}, true)">🔓 Armar PM libre</button>
+                <h2>Pallet #${p.id} (Cajas: ${p.cantTotal})</h2>
+                <div class="button-group">
+                    <button class="btn-scan-sug" onclick="abrirScannerPallet(${p.id}, false)">🛠️ Armar PM sugerido</button>
+                    <button class="btn-scan-lib" onclick="abrirScannerPallet(${p.id}, true)">🔓 Armar PM libre</button>
                 </div>
                 <table>
                     <thead><tr><th>Ubicación</th><th>SKU</th><th>Cant</th></tr></thead>
@@ -292,31 +299,36 @@
     }
 
     function toggleVista() {
-        vistaPalletsActiva = !vistaPalletsActiva;
+        const vp = document.getElementById('vistaPallets');
+        const vg = document.getElementById('vistaGeneral');
         const btn = document.getElementById('btnToggleView');
-        if(vistaPalletsActiva) {
-            document.getElementById('vistaPallets').style.display = "block";
-            document.getElementById('vistaGeneral').style.display = "none";
+        if(vp.style.display === "none") {
+            vp.style.display = "block"; vg.style.display = "none";
             btn.innerText = "Ver todas las líneas";
-            btn.style.background = "var(--primary)";
+            btn.style.background = "var(--primary)"; btn.style.color = "white";
         } else {
-            document.getElementById('vistaPallets').style.display = "none";
-            document.getElementById('vistaGeneral').style.display = "block";
+            vp.style.display = "none"; vg.style.display = "block";
             btn.innerText = "PK sugerido";
-            btn.style.background = "var(--warning)";
-            btn.style.color = "black";
+            btn.style.background = "var(--warning)"; btn.style.color = "black";
         }
     }
 
     // --- LOGICA SCANNER ---
-    function abrirScanner(id, esLibre) {
+    function abrirScannerPallet(id, esLibre) {
+        let p = palletsGenerados.find(x => x.id === id);
+        iniciarScanner(p.items, esLibre, `Pallet #${id}`);
+    }
+    function abrirScannerGlobal(esLibre) {
+        iniciarScanner(itemsTotales, esLibre, "Global");
+    }
+
+    function iniciarScanner(itemsSource, esLibre, titulo) {
         modoLibre = esLibre;
-        const activePallet = palletsGenerados.find(p => p.id === id);
-        pendingItems = JSON.parse(JSON.stringify(activePallet.items)); // Copia profunda
+        pendingItems = JSON.parse(JSON.stringify(itemsSource));
         currentItemIndex = 0;
         
         document.getElementById('scannerModal').style.display = 'flex';
-        document.getElementById('scanModeTitle').innerText = `- Pallet ${id} ` + (esLibre ? "(Libre)" : "(Sugerido)");
+        document.getElementById('scanModeTitle').innerText = `- ${titulo} ` + (esLibre ? "(Libre)" : "(Sugerido)");
         document.getElementById('exceptionPanel').style.display = "none";
 
         if(esLibre) {
@@ -329,15 +341,12 @@
         actualizarTablaProgreso();
     }
 
-    function cerrarScanner() {
-        document.getElementById('scannerModal').style.display = 'none';
-        hablar("Escáner cerrado");
-    }
+    function cerrarScanner() { document.getElementById('scannerModal').style.display = 'none'; hablar("Escáner cerrado"); }
 
     function cargarLineaSugerida() {
         if(currentItemIndex >= pendingItems.length) {
-            document.getElementById('scanTargetBox').innerHTML = `<h1 style="color:#2ecc71">✅ PALLET COMPLETADO</h1>`;
-            hablar("Pallet completado");
+            document.getElementById('scanTargetBox').innerHTML = `<h1 style="color:#2ecc71">✅ COMPLETADO</h1>`;
+            hablar("Completado");
             return;
         }
         let item = pendingItems[currentItemIndex];
@@ -372,49 +381,56 @@
         }
     }
 
-    function convertirHoraATurno(hhmm) {
-        if(!hhmm || hhmm.length < 3) return "";
-        let h = parseInt(hhmm.length === 3 ? hhmm.substring(0,1) : hhmm.substring(0,2));
-        if (h >= 0 && h <= 7) return 'A';
-        if (h >= 8 && h <= 15) return 'B';
-        if (h >= 16 && h <= 23) return 'C';
-        return "";
-    }
-
     function confirmarLinea() {
         let eanVal = document.getElementById('scanEanInput').value.trim();
         let julianVal = document.getElementById('scanLotJulian').value.trim().toUpperCase();
         let timeVal = document.getElementById('scanLotTime').value.trim();
         let skuScanned = eanMap[eanVal] || eanVal;
 
-        if(!skuScanned || !julianVal || !timeVal) return alert("Complete SKU, Lote Juliano y Hora.");
+        if(!skuScanned || !julianVal) return alert("Complete SKU y Lote.");
 
-        let turno = convertirHoraATurno(timeVal);
-        let loteCompleto = julianVal + turno;
+        // Determinar si es Lote Juliano Estándar (5 dígitos) o Especial (Lata/Spirits)
+        let loteCompleto = julianVal;
+        let esFormatoJuliano = /^\d{5}$/.test(julianVal);
+        let esLoteEspecial = timeVal === "" || !esFormatoJuliano;
+        
+        if (!esLoteEspecial) {
+            let h = parseInt(timeVal.length === 3 ? timeVal.substring(0,1) : timeVal.substring(0,2));
+            let turno = (h >= 0 && h <= 7) ? 'A' : (h >= 8 && h <= 15) ? 'B' : (h >= 16 && h <= 23) ? 'C' : '';
+            loteCompleto = julianVal + turno;
+        }
         loteFisicoIngresado = loteCompleto;
 
         let itemIndex = modoLibre ? pendingItems.findIndex(it => it.sku === skuScanned && !it.picked) : currentItemIndex;
-        if(itemIndex === -1) return alert(modoLibre ? "Ese SKU no está pendiente en este pallet." : "Línea ya completada.");
+        if(itemIndex === -1) return alert(modoLibre ? "Ese SKU no está pendiente." : "Línea ya completada.");
         
         let item = pendingItems[itemIndex];
+        let itemUbiClean = cleanUbi(item.ubi);
+        let zonaPicking = itemUbiClean.substring(0, 4); // Extrae ej. "P00A"
 
-        // Validar Stock
-        let lotesDisponibles = stockInfo.filter(s => s.sku === item.sku && s.ubi === item.ubi);
-        let loteEncontrado = lotesDisponibles.find(s => s.lote.endsWith(loteCompleto));
+        // 1. Buscar en Ubicación Sugerida y Zona Completa
+        let lotesEnZona = stockInfo.filter(s => s.sku === item.sku && cleanUbi(s.ubi).startsWith(zonaPicking));
+        
+        let loteEncontrado = lotesEnZona.find(s => {
+            return esLoteEspecial ? s.lote.includes(loteCompleto) : s.lote.endsWith(loteCompleto);
+        });
 
         if(!loteEncontrado) {
-            mostrarExcepcion(lotesDisponibles, item, "Lote no encontrado.");
+            mostrarExcepcion(lotesEnZona, item, "Lote no encontrado.");
             return;
         }
-
         if(loteEncontrado.qty < item.cant) {
-            mostrarExcepcion(lotesDisponibles, item, "Stock insuficiente en el sistema.");
+            mostrarExcepcion(lotesEnZona, item, "Stock insuficiente en el sistema.");
             return;
         }
 
-        // Éxito
+        // Si lo encontró en otra ubicación de la misma zona, actualizamos la línea
+        if (cleanUbi(loteEncontrado.ubi) !== itemUbiClean) {
+            item.ubi = loteEncontrado.ubi; // Auto-corrección
+        }
+
         item.picked = true;
-        hablar("Línea confirmada");
+        hablar("Confirmado");
         if(!modoLibre) currentItemIndex++;
         
         if(!modoLibre) cargarLineaSugerida();
@@ -425,59 +441,44 @@
         hablar("Atención. " + msj);
         const panel = document.getElementById('exceptionPanel');
         const ul = document.getElementById('sysLotsList');
-        const partialDiv = document.getElementById('partialPickDiv');
         
         ul.innerHTML = lotesSys.length > 0 
-            ? lotesSys.map(l => `<li>Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b></li>`).join('') 
-            : "<li>No hay lotes en sistema para esta ubicación.</li>";
+            ? lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b></li>`).join('') 
+            : "<li>No hay lotes en sistema para esta zona de picking.</li>";
             
-        partialDiv.style.display = lotesSys.length > 0 ? "block" : "none";
+        document.getElementById('partialPickDiv').style.display = lotesSys.length > 0 ? "block" : "none";
         document.getElementById('partialQty').max = item.cant;
-        
         panel.style.display = "block";
     }
 
     function aplicarParcial() {
         let inputQty = parseInt(document.getElementById('partialQty').value);
-        let item = pendingItems[modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex];
-        
+        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
+        let item = pendingItems[idx];
         if(!inputQty || inputQty >= item.cant || inputQty <= 0) return alert("Cantidad inválida.");
         
-        item.cant -= inputQty; // Reduzco la cantidad a buscar
-        hablar(`Picking parcial guardado. Faltan ${item.cant} cajas.`);
-        
+        item.cant -= inputQty;
+        hablar(`Parcial guardado.`);
         limpiarInputs();
         if(!modoLibre) cargarLineaSugerida();
         else actualizarTablaProgreso();
     }
 
     function solicitarReclasificacion() {
-        let item = pendingItems[modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex];
-        let lotesSys = stockInfo.filter(s => s.sku === item.sku && s.ubi === item.ubi);
+        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
+        let item = pendingItems[idx];
+        let lotesSys = stockInfo.filter(s => s.sku === item.sku && cleanUbi(s.ubi).startsWith(cleanUbi(item.ubi).substring(0,4)));
         
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
-        doc.setFontSize(16);
-        doc.text("Solicitud de Reclasificacion de Lotes", 20, 20);
-        doc.setFontSize(12);
-        doc.text(`Fecha: ${new Date().toLocaleString()}`, 20, 30);
-        doc.text(`SKU: ${item.sku} - ${item.desc}`, 20, 40);
-        doc.text(`Ubicacion: ${item.ubi}`, 20, 50);
-        doc.text(`Cantidad requerida: ${item.cant}`, 20, 60);
-        
-        doc.text(`Lote Fisico encontrado por operario: ${loteFisicoIngresado}`, 20, 80);
-        
-        doc.text(`Lotes en Sistema (JDE):`, 20, 100);
-        let y = 110;
-        lotesSys.forEach(l => {
-            doc.text(`- Lote: ${l.lote} | Stock: ${l.qty}`, 25, y);
-            y += 10;
-        });
-
-        doc.save(`Reclasificacion_${item.sku}_${item.ubi}.pdf`);
-        hablar("PDF generado. Envíelo a su supervisor.");
-        limpiarInputs(); // Resetea para intentar otro lote
+        doc.setFontSize(16); doc.text("Reclasificacion", 20, 20);
+        doc.setFontSize(12); doc.text(`SKU: ${item.sku} | Ubi orig: ${item.ubi}`, 20, 40);
+        doc.text(`Fisico escaneado: ${loteFisicoIngresado}`, 20, 50);
+        doc.text(`Lotes en Sistema:`, 20, 70);
+        let y = 80;
+        lotesSys.forEach(l => { doc.text(`- Ubi: ${l.ubi} | Lote: ${l.lote} | Qty: ${l.qty}`, 25, y); y += 10; });
+        doc.save(`Reclasificacion_${item.sku}.pdf`);
+        limpiarInputs();
     }
 
     function actualizarTablaProgreso() {
@@ -489,34 +490,6 @@
             </tr>
         `).join('');
     }
-
-    // --- MICROFONO ---
-    function activarMicrofono() {
-        if(!recognition) return alert("Voz no soportada.");
-        const fab = document.getElementById('fabMic');
-        fab.classList.add('listening');
-        
-        recognition.start();
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript.toLowerCase();
-            hablar("Escuché: " + transcript);
-            
-            // Lógica simple de parseo
-            if(transcript.includes("sku") || transcript.includes("artículo")) {
-                let nums = transcript.match(/\d+/);
-                if(nums) document.getElementById('scanEanInput').value = nums[0];
-            } else if (transcript.includes("lote")) {
-                let nums = transcript.match(/\d+/);
-                if(nums) document.getElementById('scanLotJulian').value = nums[0];
-            } else if (transcript.includes("hora")) {
-                let nums = transcript.match(/\d+/g); // Captura "14" y "30"
-                if(nums) document.getElementById('scanLotTime').value = nums.join('');
-            }
-        };
-        recognition.onend = () => { fab.classList.remove('listening'); };
-    }
-
-    function abrirCamara() { alert("Integración de cámara lista para API nativa."); }
 </script>
 </body>
 </html>
