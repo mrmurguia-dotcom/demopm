@@ -172,17 +172,26 @@
                     if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
-            if (wb.SheetNames.includes('legacy vStockPT')) {
-                const dataStock = XLSX.utils.sheet_to_json(wb.Sheets['legacy vStockPT'], {header:1});
+           if (wb.SheetNames.includes('legacy vStockPT')) {
+                const sheet = wb.Sheets['legacy vStockPT'];
+                const dataStock = XLSX.utils.sheet_to_json(sheet, {header:1});
+                
+                const headers = dataStock[0].map(h => cleanStr(h).toLowerCase());
+                const idxMcu = headers.indexOf('mcu');
+                const idxUbi = headers.indexOf('ubicacion') !== -1 ? headers.indexOf('ubicacion') : 1;
+                const idxLote = headers.indexOf('lote') !== -1 ? headers.indexOf('lote') : 2;
+                const idxQty = headers.indexOf('cantenmano') !== -1 ? headers.indexOf('cantenmano') : 5;
+                const idxSku = headers.indexOf('articulo') !== -1 ? headers.indexOf('articulo') : 11;
+
                 stockInfo = [];
                 dataStock.slice(1).forEach(r => {
-                    let mcu = cleanStr(r[0]);
-                    if (mcu.includes("503")) {
+                    let mcu = cleanStr(r[idxMcu]);
+                    if (mcu.includes("503") || mcu === "503") {
                         stockInfo.push({
-                            ubi: cleanUbi(r[1]),
-                            lote: cleanStr(r[2]).toUpperCase(),
-                            qty: parseFloat(r[5]) || 0,
-                            sku: cleanStr(r[11])
+                            ubi: cleanUbi(r[idxUbi]),
+                            lote: cleanStr(r[idxLote]).toUpperCase(),
+                            qty: parseFloat(r[idxQty]) || 0,
+                            sku: cleanStr(r[idxSku])
                         });
                     }
                 });
