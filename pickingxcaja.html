@@ -418,8 +418,20 @@
         let zonaPicking = itemUbiClean.substring(0, 4); // Extrae ej. "P00A"
 
         // 1. Buscar en Ubicación Sugerida y Zona Completa
-        let lotesEnZona = stockInfo.filter(s => s.sku === item.sku && cleanUbi(s.ubi).startsWith(zonaPicking));
+// Depuración en consola para ver qué busca y qué encuentra
+        console.log("--- BÚSQUEDA DE STOCK ---");
+        console.log("Buscando SKU:", item.sku);
+        console.log("Buscando Ubicación (Zona):", zonaPicking);
+        console.log("Lote ingresado/armado:", loteCompleto, "| Es especial?", esLoteEspecial);
         
+        let lotesEnZona = stockInfo.filter(s => {
+            let matchSku = s.sku === item.sku;
+            let matchUbi = cleanUbi(s.ubi).startsWith(zonaPicking);
+            return matchSku && matchUbi;
+        });
+        
+        console.log("Lotes filtrados en zona para este SKU:", lotesEnZona);
+
         let loteEncontrado = lotesEnZona.find(s => {
             return esLoteEspecial ? s.lote.includes(loteCompleto) : s.lote.endsWith(loteCompleto);
         });
