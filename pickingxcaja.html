@@ -172,29 +172,39 @@
                     if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
-           if (wb.SheetNames.includes('legacy vStockPT')) {
+if (wb.SheetNames.includes('legacy vStockPT')) {
                 const sheet = wb.Sheets['legacy vStockPT'];
                 const dataStock = XLSX.utils.sheet_to_json(sheet, {header:1});
-                
-                const headers = dataStock[0].map(h => cleanStr(h).toLowerCase());
-                const idxMcu = headers.indexOf('mcu');
-                const idxUbi = headers.indexOf('ubicacion') !== -1 ? headers.indexOf('ubicacion') : 1;
-                const idxLote = headers.indexOf('lote') !== -1 ? headers.indexOf('lote') : 2;
-                const idxQty = headers.indexOf('cantenmano') !== -1 ? headers.indexOf('cantenmano') : 5;
-                const idxSku = headers.indexOf('articulo') !== -1 ? headers.indexOf('articulo') : 11;
-
                 stockInfo = [];
+                
+                // Empezamos desde la fila 1 (saltando cabecera)
                 dataStock.slice(1).forEach(r => {
-                    let mcu = cleanStr(r[idxMcu]);
+                    let mcu = cleanStr(r[0]);
                     if (mcu.includes("503") || mcu === "503") {
+                        // Buscamos el SKU en cualquier columna desde la 6 hasta la 15 por si varía la posición
+                        let skuEncontrado = "";
+                        for (let c = 6; c < r.length; c++) {
+                            let valCol = cleanStr(r[c]);
+                            // Si parece un SKU (usualmente números o texto de producto)
+                            if (valCol.length > 0 && !isNaN(valCol)) {
+                                skuEncontrado = valCol;
+                                break;
+                            }
+                        }
+                        // Si no lo halló por número puro, toma la columna 11 por defecto
+                        if (!skuEncontrado && r[11]) {
+                            skuEncontrado = cleanStr(r[11]);
+                        }
+
                         stockInfo.push({
-                            ubi: cleanUbi(r[idxUbi]),
-                            lote: cleanStr(r[idxLote]).toUpperCase(),
-                            qty: parseFloat(r[idxQty]) || 0,
-                            sku: cleanStr(r[idxSku])
+                            ubi: cleanUbi(r[1]),
+                            lote: cleanStr(r[2]).toUpperCase(),
+                            qty: parseFloat(String(r[5]).replace(',', '.')) || 0,
+                            sku: skuEncontrado
                         });
                     }
                 });
+                console.log("Stock cargado exitosamente:", stockInfo.length, "registros.");
             }
             if (wb.SheetNames.includes('MST Producto')) {
                 const dataProd = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
@@ -415,7 +425,7 @@
         
         let item = pendingItems[itemIndex];
         let itemUbiClean = cleanUbi(item.ubi);
-        let zonaPicking = itemUbiClean.substring(0, 4); // Extrae ej. "P00A"
+        let zonaPicking = itemUbiClean.split('.')[0]; // Toma la primera parte ej. P0 o P014
 
         // 1. Buscar en Ubicación Sugerida y Zona Completa
 // Depuración en consola para ver qué busca y qué encuentra
