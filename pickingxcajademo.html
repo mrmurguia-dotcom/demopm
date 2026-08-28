@@ -176,41 +176,37 @@
             stockInfo = [];
 
             if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
-                const sheet = wb.Sheets[nombreHojaStock];
-                const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const sheet = wb.Sheets[nombreHojaStock];
+    // Convierte la planilla automáticamente en objetos usando los nombres de las columnas
+    const dataObjects = XLSX.utils.sheet_to_json(sheet);
+    stockInfo = [];
 
-                // Detectamos la fila donde empiezan los títulos (Ubicacion) para no leer la cabecera
-                let startRow = 0;
-                for(let i = 0; i < Math.min(20, dataStock.length); i++) {
-                    if (dataStock[i] && dataStock[i].some(c => cleanStr(String(c)).toLowerCase().includes('ubicacion'))) {
-                        startRow = i + 1; 
-                        break;
-                    }
-                }
+    dataObjects.forEach(row => {
+        // Mapeo por nombre de columna
+        let ubiRaw = row["Ubicacion"] || row["UBICACION"] || row["Ubi"] || "";
+        let loteRaw = row["Lote"] || row["LOTE"] || "";
+        let qtyRaw = row["CantEnMano"] || row["CANTENMANO"] || row["Cantidad"] || 0;
+        let skuRaw = row["articulo"] || row["ARTICULO"] || row["SKU"] || row["ITM"] || "";
 
-                // Leemos usando los índices fijos de tu Excel JDE
-                for(let i = startRow; i < dataStock.length; i++) {
-                    let r = dataStock[i];
-                    if (!r || r.length < 12) continue; // Si la fila no llega hasta la columna L, la saltamos
+        let ubiVal = cleanUbi(String(ubiRaw));
+        let loteVal = cleanStr(String(loteRaw)).toUpperCase();
+        let qtyVal = parseFloat(String(qtyRaw).replace(',', '.')) || 0;
+        let skuVal = cleanStr(String(skuRaw));
 
-                    let ubiVal = cleanUbi(String(r[1] || ""));                              // Índice 1 = Col B
-                    let loteVal = cleanStr(String(r[2] || "")).toUpperCase();               // Índice 2 = Col C
-                    let qtyVal = parseFloat(String(r[5] || "0").replace(',', '.')) || 0;    // Índice 5 = Col F
-                    let skuVal = cleanStr(String(r[11] || ""));                             // Índice 11 = Col L (articulo)
+        if (ubiVal && loteVal && qtyVal > 0 && skuVal) {
+            stockInfo.push({
+                ubi: ubiVal,
+                lote: loteVal,
+                qty: qtyVal,
+                sku: skuVal
+            });
+        }
+    });
 
-                    if (ubiVal && loteVal && qtyVal > 0 && skuVal) {
-                        stockInfo.push({
-                            ubi: ubiVal,
-                            lote: loteVal,
-                            qty: qtyVal,
-                            sku: skuVal
-                        });
-                    }
-                }
-                console.log("=== REVISIÓN DE STOCK CARGADO ===");
-                console.log("Registros totales:", stockInfo.length);
-            }
-
+    console.log("=== STOCK CARGADO EXITOSAMENTE ===");
+    console.log("Total registros leídos:", stockInfo.length);
+    console.log("Muestra del primer registro:", stockInfo[0]);
+}
             // 2. BÚSQUEDA DE CAPACIDADES / PRODUCTOS ('MST Producto')
             let nombreHojaCap = wb.SheetNames.find(name => 
                 cleanStr(name).toLowerCase().includes("mst producto") || 
