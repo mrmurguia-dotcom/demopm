@@ -51,11 +51,11 @@
 <div class="container">
     <h2 style="text-align:center;">📦 Optimizador de Picking v.PRO</h2>
     <div class="box">
-        <strong>1. Maestro de Stock y Productos</strong><br>
+        <strong>1. Maestro de Stock y Productos (Excel con solapas `legacy vStockPT` y `MST Producto`)</strong><br><br>
         <input type="file" id="masterFile" accept=".xlsx">
     </div>
     <div class="box">
-        <strong>2. Reporte de Surtido JDE</strong><br>
+        <strong>2. Reporte de Surtido JDE</strong><br><br>
         <input type="file" id="surtidoFile"><br><br>
         <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS</button>
     </div>
@@ -82,7 +82,6 @@
     </div>
 </div>
 
-<!-- MODO SCANNER -->
 <div id="scannerModal">
     <div class="scan-header">
         <h2 style="margin:0;">📲 MODO SCANNER <span id="scanModeTitle"></span></h2>
@@ -102,8 +101,8 @@
     </div>
 
     <div class="input-row">
-        <input type="text" id="scanLotJulian" class="scan-input scan-input-small" placeholder="Lote (Ej: 25210 o 26dv07)">
-        <input type="text" id="scanLotTime" class="scan-input scan-input-small" placeholder="Hora (Vacío si es lata)">
+        <input type="text" id="scanLotJulian" class="scan-input scan-input-small" placeholder="Lote (Ej: 25210 o B2629A)">
+        <input type="text" id="scanLotTime" class="scan-input scan-input-small" placeholder="Sub-lote / Hora (Opcional)">
     </div>
 
     <button class="btn-confirm" onclick="confirmarLinea()">✅ CONFIRMAR</button>
@@ -161,29 +160,26 @@
         const reader = new FileReader();
         reader.onload = (ev) => {
             const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-            
-            if (wb.SheetNames[0]) {
-                const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-                maestro = {};
-                dataCapacidades.slice(1).forEach(r => {
-                    let sku = cleanStr(r[1]);
-                    if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
-                });
+            console.log("📂 Pestañas encontradas en el archivo:", wb.SheetNames);
+
+            // 1. BÚSQUEDA ESPECÍFICA DE LA SOLAPA DE STOCK ('legacy vStockPT')
+            let nombreHojaStock = wb.SheetNames.find(name => 
+                cleanStr(name).toLowerCase() === "legacy vstockpt" || 
+                cleanStr(name).toLowerCase().includes("vstockpt")
+            );
+
+            if (!nombreHojaStock) {
+                nombreHojaStock = wb.SheetNames.find(name => cleanStr(name).toLowerCase().includes("stock")) || wb.SheetNames[0];
             }
 
-            if (wb.SheetNames.includes('legacy vStockPT')) {
-                const sheet = wb.Sheets['legacy vStockPT'];
+            console.log("🔍 Leyendo stock de la pestaña:", nombreHojaStock);
+            stockInfo = [];
+
+            if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
+                const sheet = wb.Sheets[nombreHojaStock];
                 const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                stockInfo = [];
 
-                // DIAGNOSTICO VISUAL EN CONSOLA: Imprime las primeras 15 filas tal cual vienen
-                console.log("=== DIAGNOSTICO HOJA STOCK (Primeras 15 filas) ===");
-                dataStock.slice(0, 15).forEach((fila, idx) => {
-                    console.log(`Fila ${idx}:`, fila);
-                });
-
-                // LECTURA ROBUSTA: Recorre cada fila y extrae cualquier celda que parezca Ubicación, Lote, SKU y Cantidad sin importar cabeceras fijas
-                dataStock.forEach((r, idx) => {
+                dataStock.forEach((r) => {
                     if (!r || r.length === 0) return;
 
                     let ubiVal = "";
@@ -191,38 +187,29 @@
                     let skuVal = "";
                     let qtyVal = 0;
 
-                    // Buscamos celda por celda patrones lógicos
                     r.forEach((cell) => {
                         let val = cleanStr(String(cell || ""));
                         if (!val) return;
 
-                        // Si tiene formato de ubicación JDE (ej: tiene puntos o letras seguidas de números como A.01 o similar)
                         if ((val.includes('.') || /^[A-Z]\d/i.test(val)) && val.length >= 3 && val.length <= 15 && !ubiVal) {
                             ubiVal = cleanUbi(val);
-                        }
-                        // Si parece SKU (números largos de 4 a 10 dígitos)
-                        else if (/^\d{4,10}$/.test(val) && !skuVal) {
+                        } else if (/^\d{4,10}$/.test(val) && !skuVal) {
                             skuVal = val;
-                        }
-                        // Si parece Lote (contiene letras y números o es un número de lote largo)
-                        else if ((val.length >= 4 && /[A-Z]/i.test(val) && /\d/.test(val)) || (/^\d{5}$/.test(val) && !loteVal)) {
+                        } else if ((val.length >= 4 && /[A-Z]/i.test(val) && /\d/.test(val)) || (/^\d{5}$/.test(val) && !loteVal)) {
                             loteVal = val.toUpperCase();
-                        }
-                        // Si es un número que puede ser cantidad
-                        else if (!isNaN(val) && Number(val) > 0 && Number(val) < 100000 && qtyVal === 0) {
+                        } else if (!isNaN(val) && Number(val) > 0 && Number(val) < 100000 && qtyVal === 0) {
                             qtyVal = parseFloat(val);
                         }
                     });
 
-                    // Fallback directo por posiciones comunes de JDE si la búsqueda genérica falló pero la fila tiene elementos suficientes
-                    if (r.length >= 5) {
-                        if (!ubiVal && r[0]) ubiVal = cleanUbi(String(r[0]));
-                        if (!skuVal && r[1]) skuVal = cleanStr(String(r[1]));
+                    // Posiciones fijas habituales de respaldo por columna JDE
+                    if (r.length >= 6) {
+                        if (!ubiVal && r[1]) ubiVal = cleanUbi(String(r[1]));
                         if (!loteVal && r[2]) loteVal = cleanStr(String(r[2])).toUpperCase();
-                        if (qtyVal === 0 && r[3] && !isNaN(r[3])) qtyVal = parseFloat(r[3]);
+                        if (qtyVal === 0 && r[5] && !isNaN(r[5])) qtyVal = parseFloat(r[5]);
                     }
 
-                    if (ubiVal && loteVal && qtyVal > 0 && skuVal) {
+                    if (ubiVal && loteVal && qtyVal > 0) {
                         stockInfo.push({
                             ubi: ubiVal,
                             lote: loteVal,
@@ -231,38 +218,44 @@
                         });
                     }
                 });
-
-                console.log("Stock cargado exitosamente:", stockInfo.length, "registros.", stockInfo);
             }
 
-            if (wb.SheetNames.includes('MST Producto')) {
-                const dataProd = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
-                eanMap = {};
-                dataProd.slice(1).forEach(r => {
-                    let sku = cleanStr(r[1]); let ean = cleanStr(r[9]);
-                    if(sku && ean) eanMap[ean] = sku;
+            // 2. BÚSQUEDA DE CAPACIDADES / PRODUCTOS ('MST Producto')
+            let nombreHojaCap = wb.SheetNames.find(name => 
+                cleanStr(name).toLowerCase().includes("mst producto") || 
+                cleanStr(name).toLowerCase().includes("mst")
+            );
+            if (!nombreHojaCap && wb.SheetNames.length > 1) {
+                nombreHojaCap = wb.SheetNames[1];
+            }
+
+            maestro = {};
+            if (nombreHojaCap && wb.Sheets[nombreHojaCap]) {
+                const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[nombreHojaCap], {header:1});
+                dataCapacidades.slice(1).forEach(r => {
+                    let sku = cleanStr(r[11] || r[1]); // Asumiendo columna SKU
+                    if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
+
             localStorage.setItem('m_v32_2', JSON.stringify(maestro));
             localStorage.setItem('stock_v32_2', JSON.stringify(stockInfo));
-            localStorage.setItem('ean_v32_2', JSON.stringify(eanMap));
-            alert("✅ Maestros actualizados. Registros leídos: " + stockInfo.length);
+            alert("✅ Maestros actualizados. Registros de stock leídos: " + stockInfo.length);
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("⚠️ Seleccione el reporte.");
+        if(!file) return alert("⚠️ Seleccione el reporte de surtido.");
         const reader = new FileReader();
         reader.onload = (e) => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(e.target.result, "text/html");
-            let itemsRaw = []; let cargaNro = "S/C"; let esMixto = false;
+            let itemsRaw = []; let esMixto = false;
 
             Array.from(doc.querySelectorAll('tr')).forEach(tr => {
                 const text = cleanStr(tr.innerText).toUpperCase();
-                if(text.includes("CARGA:")) { const m = text.match(/CARGA:\s*(\d+)/); if(m) cargaNro = m[1]; }
                 if(text.includes("PALLET HOMOGENEO")) esMixto = false;
                 if(text.includes("PALLET MIXTO")) esMixto = true;
                 const c = Array.from(tr.cells).map(td => cleanStr(td.innerText));
@@ -436,32 +429,29 @@
         if(!skuScanned || !julianVal) return alert("Complete SKU y Lote.");
 
         let loteCompleto = julianVal;
-        let esFormatoJuliano = /^\d{5}$/.test(julianVal);
-        let esLoteEspecial = timeVal === "" || !esFormatoJuliano;
-        
-        if (!esLoteEspecial) {
-            let h = parseInt(timeVal.length === 3 ? timeVal.substring(0,1) : timeVal.substring(0,2));
-            let turno = (h >= 0 && h <= 7) ? 'A' : (h >= 8 && h <= 15) ? 'B' : (h >= 16 && h <= 23) ? 'C' : '';
-            loteCompleto = julianVal + turno;
-        }
+        if(timeVal !== "") loteCompleto += timeVal;
         loteFisicoIngresado = loteCompleto;
 
         let itemIndex = modoLibre ? pendingItems.findIndex(it => it.sku === skuScanned && !it.picked) : currentItemIndex;
         if(itemIndex === -1) return alert(modoLibre ? "Ese SKU no está pendiente." : "Línea ya completada.");
         
         let item = pendingItems[itemIndex];
-        let itemUbiClean = cleanUbi(item.ubi);
-        let zonaPicking = itemUbiClean.split('.')[0];
+        let zonaPicking = cleanUbi(item.ubi);
         
+        console.log("--- BÚSQUEDA DE STOCK ---");
+        console.log("Buscando SKU:", item.sku);
+        console.log("Buscando Ubicación (Zona):", zonaPicking);
+        console.log("Lote ingresado:", loteCompleto);
+
         let lotesEnZona = stockInfo.filter(s => {
-            let matchSku = s.sku === item.sku;
-            let matchUbi = cleanUbi(s.ubi).startsWith(zonaPicking);
+            let matchSku = !s.sku || s.sku === item.sku;
+            let matchUbi = cleanUbi(s.ubi) === zonaPicking || cleanUbi(s.ubi).startsWith(zonaPicking.substring(0, 4));
             return matchSku && matchUbi;
         });
 
-        let loteEncontrado = lotesEnZona.find(s => {
-            return esLoteEspecial ? s.lote.includes(loteCompleto) : s.lote.endsWith(loteCompleto);
-        });
+        console.log("Lotes filtrados en zona para este SKU:", lotesEnZona);
+
+        let loteEncontrado = lotesEnZona.find(s => s.lote.toUpperCase().includes(loteCompleto));
 
         if(!loteEncontrado) {
             mostrarExcepcion(lotesEnZona, item, "Lote no encontrado.");
@@ -470,10 +460,6 @@
         if(loteEncontrado.qty < item.cant) {
             mostrarExcepcion(lotesEnZona, item, "Stock insuficiente en el sistema.");
             return;
-        }
-
-        if (cleanUbi(loteEncontrado.ubi) !== itemUbiClean) {
-            item.ubi = loteEncontrado.ubi;
         }
 
         item.picked = true;
@@ -491,7 +477,7 @@
         
         ul.innerHTML = lotesSys.length > 0 
             ? lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b></li>`).join('') 
-            : "<li>No hay lotes en sistema para esta zona de picking.</li>";
+            : "<li>No hay lotes en sistema para esta ubicación.</li>";
             
         document.getElementById('partialPickDiv').style.display = lotesSys.length > 0 ? "block" : "none";
         document.getElementById('partialQty').max = item.cant;
@@ -512,13 +498,13 @@
     }
 
     function solicitarReclasificacion() {
-        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
+        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput'].value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
         let item = pendingItems[idx];
-        let lotesSys = stockInfo.filter(s => s.sku === item.sku && cleanUbi(s.ubi).startsWith(cleanUbi(item.ubi).substring(0,4)));
+        let lotesSys = stockInfo.filter(s => s.sku === item.sku);
         
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFontSize(16); doc.text("Reclasificacion", 20, 20);
+        doc.setFontSize(16); doc.text("Solicitud de Reclasificación", 20, 20);
         doc.setFontSize(12); doc.text(`SKU: ${item.sku} | Ubi orig: ${item.ubi}`, 20, 40);
         doc.text(`Fisico escaneado: ${loteFisicoIngresado}`, 20, 50);
         doc.text(`Lotes en Sistema:`, 20, 70);
