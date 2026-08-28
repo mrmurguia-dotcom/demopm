@@ -172,61 +172,54 @@
                     if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
+
             if (wb.SheetNames.includes('legacy vStockPT')) {
                 const sheet = wb.Sheets['legacy vStockPT'];
-                const dataStock = XLSX.utils.sheet_to_json(sheet, {header:1});
+                // Al quitar {header: 1}, genera objetos directos (ej. { "Ubicacion": "P00A0530", "Lote": "B26..." })
+                const dataStock = XLSX.utils.sheet_to_json(sheet);
                 stockInfo = [];
-                
-                if (dataStock.length > 0) {
-                    // Mapear nombres de columnas de la cabecera (fila 0) de forma inteligente
-                    let headers = dataStock[0].map(h => cleanStr(h).toLowerCase());
-                    
-                    let colMcu = headers.findIndex(h => h.includes('mcu'));
-                    let colUbi = headers.findIndex(h => h.includes('ubicacion') || h.includes('ubi'));
-                    let colLote = headers.findIndex(h => h.includes('lote'));
-                    let colQty = headers.findIndex(h => h.includes('cantenmano') || h.includes('qty') || h.includes('cant'));
-                    let colSku = headers.findIndex(h => h.includes('articulo') || h.includes('sku') || h.includes('item'));
 
-                    // Valores por defecto si no los encuentra por nombre
-                    if (colMcu === -1) colMcu = 0;
-                    if (colUbi === -1) colUbi = 1;
-                    if (colLote === -1) colLote = 2;
-                    if (colQty === -1) colQty = 5;
-                    if (colSku === -1) colSku = 11; // fallback habitual
+                dataStock.forEach(r => {
+                    let ubiVal = "", loteVal = "", qtyVal = 0, skuVal = "", mcuVal = "";
 
-                    dataStock.slice(1).forEach(r => {
-                        let mcuVal = cleanStr(r[colMcu]);
-                        // Si la fila tiene datos de planta 503
-                        if (mcuVal.includes("503") || mcuVal === "503" || !mcuVal) { 
-                            let ubiVal = cleanUbi(r[colUbi]);
-                            let loteVal = cleanStr(r[colLote]).toUpperCase();
-                            let qtyVal = parseFloat(String(r[colQty] || "0").replace(',', '.')) || 0;
-                            let skuVal = cleanStr(r[colSku]);
+                    // Recorremos las claves del objeto buscando los nombres de columna dinámicamente
+                    Object.keys(r).forEach(key => {
+                        let k = String(key).toLowerCase().replace(/\s+/g, '');
+                        let val = String(r[key] || "");
 
-                            // Si el SKU viene vacío en la columna estándar, buscamos en la fila algún número de artículo válido
-                            if (!skuVal) {
-                                for (let c = 0; c < r.length; c++) {
-                                    let val = cleanStr(r[c]);
-                                    if (val.length >= 4 && !isNaN(val) && c !== colQty) {
-                                        skuVal = val;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (ubiVal && loteVal) {
-                                stockInfo.push({
-                                    ubi: ubiVal,
-                                    lote: loteVal,
-                                    qty: qtyVal,
-                                    sku: skuVal
-                                });
-                            }
-                        }
+                        if (k.includes('mcu')) mcuVal = cleanStr(val);
+                        else if (k.includes('ubicacion') || k.includes('ubi')) ubiVal = cleanUbi(val);
+                        else if ((k.includes('lote') || k === 'lot') && !k.includes('status')) loteVal = cleanStr(val).toUpperCase();
+                        else if (k.includes('cantenmano') || k.includes('qty') || k.includes('cant')) qtyVal = parseFloat(val.replace(',', '.')) || 0;
+                        else if (k.includes('articulo') || k.includes('sku') || k.includes('item')) skuVal = cleanStr(val);
                     });
-                }
+
+                    // Fallback: Si no halló el SKU en la cabecera, busca un número válido en la fila
+                    if (!skuVal) {
+                        Object.keys(r).forEach(key => {
+                            let val = cleanStr(String(r[key] || ""));
+                            let k = String(key).toLowerCase();
+                            if (val.length >= 4 && !isNaN(val) && !k.includes('cant') && !k.includes('qty') && !k.includes('mcu')) {
+                                skuVal = val;
+                            }
+                        });
+                    }
+
+                    // Guardar si tiene Ubicación y Lote (y pertenece a planta 503 o está vacío)
+                    if (ubiVal && loteVal) {
+                        if (!mcuVal || mcuVal.includes('503')) {
+                            stockInfo.push({
+                                ubi: ubiVal,
+                                lote: loteVal,
+                                qty: qtyVal,
+                                sku: skuVal
+                            });
+                        }
+                    }
+                });
                 console.log("Stock cargado exitosamente:", stockInfo.length, "registros.", stockInfo);
             }
+
             if (wb.SheetNames.includes('MST Producto')) {
                 const dataProd = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
                 eanMap = {};
@@ -449,7 +442,6 @@
         let zonaPicking = itemUbiClean.split('.')[0]; // Toma la primera parte ej. P0 o P014
 
         // 1. Buscar en Ubicación Sugerida y Zona Completa
-// Depuración en consola para ver qué busca y qué encuentra
         console.log("--- BÚSQUEDA DE STOCK ---");
         console.log("Buscando SKU:", item.sku);
         console.log("Buscando Ubicación (Zona):", zonaPicking);
