@@ -177,43 +177,41 @@
 
            if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
                 const sheet = wb.Sheets[nombreHojaStock];
-                // Leer como array de arrays (cuadrícula pura, sin adivinar cabeceras)
-                const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                // Convertir directamente a objetos leyendo la Fila 1 como títulos
+                const dataObjects = XLSX.utils.sheet_to_json(sheet, { defval: "" });
                 stockInfo = [];
 
-                let headerRowIdx = -1;
-                let colMap = { ubi: -1, lote: -1, qty: -1, sku: -1 };
+                dataObjects.forEach(row => {
+                    let ubiRaw = "", loteRaw = "", qtyRaw = 0, skuRaw = "";
 
-                // 1. Buscar en las primeras 20 filas dónde están los títulos reales
-                for(let i = 0; i < Math.min(20, dataStock.length); i++) {
-                    let row = dataStock[i];
-                    if(!row) continue;
-
-                    let foundUbi = row.findIndex(c => cleanStr(String(c)).toLowerCase().includes('ubicacion'));
-                    
-                    if(foundUbi !== -1) {
-                        headerRowIdx = i;
-                        colMap.ubi = foundUbi;
-                        colMap.lote = row.findIndex(c => cleanStr(String(c)).toLowerCase().includes('lote'));
-                        colMap.qty = row.findIndex(c => {
-                            let val = cleanStr(String(c)).toLowerCase();
-                            return val.includes('cantenmano') || val.includes('cantidad') || val === 'cant';
-                        });
-                        colMap.sku = row.findIndex(c => {
-                            let val = cleanStr(String(c)).toLowerCase();
-                            return val.includes('articulo') || val.includes('sku') || val === 'itm' || val.includes('2nd');
-                        });
-
-                        // Si no detecta el nombre de la columna de SKU, fuerza la columna L (índice 11) o K (10)
-                        if (colMap.sku === -1) {
-                            colMap.sku = row.length >= 12 ? 11 : 10;
-                        }
-                        
-                        console.log("📌 Cabeceras encontradas en la fila:", headerRowIdx + 1);
-                        console.log("📌 Columnas (Índices): Ubi=" + colMap.ubi + ", Lote=" + colMap.lote + ", Qty=" + colMap.qty + ", SKU=" + colMap.sku);
-                        break;
+                    // Inspeccionamos cada celda de la fila esquivando espacios ocultos en los títulos
+                    for (let key in row) {
+                        let k = String(key).toLowerCase().trim();
+                        if (k === 'ubicacion') ubiRaw = row[key];
+                        if (k === 'lote') loteRaw = row[key];
+                        if (k === 'cantenmano') qtyRaw = row[key];
+                        if (k === 'articulo') skuRaw = row[key];
                     }
-                }
+
+                    // Limpieza segura sin depender de funciones externas que puedan fallar
+                    let ubiVal = String(ubiRaw).trim();
+                    let loteVal = String(loteRaw).trim().toUpperCase();
+                    let qtyVal = parseFloat(String(qtyRaw).replace(',', '.')) || 0;
+                    let skuVal = String(skuRaw).trim();
+
+                    // Guardado estricto
+                    if (ubiVal !== "" && loteVal !== "" && qtyVal > 0 && skuVal !== "") {
+                        stockInfo.push({
+                            ubi: ubiVal,
+                            lote: loteVal,
+                            qty: qtyVal,
+                            sku: skuVal
+                        });
+                    }
+                });
+
+                console.log("✅ STOCK CARGADO. Total registros válidos:", stockInfo.length);
+            }
 
                 if (headerRowIdx === -1) {
                     alert("⚠️ No se encontró la columna 'Ubicacion' en la hoja de stock.");
