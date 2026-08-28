@@ -179,37 +179,26 @@
                 const sheet = wb.Sheets[nombreHojaStock];
                 const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                dataStock.forEach((r) => {
-                    if (!r || r.length === 0) return;
-
-                    let ubiVal = "";
-                    let loteVal = "";
-                    let skuVal = "";
-                    let qtyVal = 0;
-
-                    r.forEach((cell) => {
-                        let val = cleanStr(String(cell || ""));
-                        if (!val) return;
-
-                        if ((val.includes('.') || /^[A-Z]\d/i.test(val)) && val.length >= 3 && val.length <= 15 && !ubiVal) {
-                            ubiVal = cleanUbi(val);
-                        } else if (/^\d{4,10}$/.test(val) && !skuVal) {
-                            skuVal = val;
-                        } else if ((val.length >= 4 && /[A-Z]/i.test(val) && /\d/.test(val)) || (/^\d{5}$/.test(val) && !loteVal)) {
-                            loteVal = val.toUpperCase();
-                        } else if (!isNaN(val) && Number(val) > 0 && Number(val) < 100000 && qtyVal === 0) {
-                            qtyVal = parseFloat(val);
-                        }
-                    });
-
-                    // Posiciones fijas habituales de respaldo por columna JDE
-                    if (r.length >= 6) {
-                        if (!ubiVal && r[1]) ubiVal = cleanUbi(String(r[1]));
-                        if (!loteVal && r[2]) loteVal = cleanStr(String(r[2])).toUpperCase();
-                        if (qtyVal === 0 && r[5] && !isNaN(r[5])) qtyVal = parseFloat(r[5]);
+                // Detectamos la fila donde empiezan los títulos (Ubicacion) para no leer la cabecera
+                let startRow = 0;
+                for(let i = 0; i < Math.min(20, dataStock.length); i++) {
+                    if (dataStock[i] && dataStock[i].some(c => cleanStr(String(c)).toLowerCase().includes('ubicacion'))) {
+                        startRow = i + 1; 
+                        break;
                     }
+                }
 
-                    if (ubiVal && loteVal && qtyVal > 0) {
+                // Leemos usando los índices fijos de tu Excel JDE
+                for(let i = startRow; i < dataStock.length; i++) {
+                    let r = dataStock[i];
+                    if (!r || r.length < 12) continue; // Si la fila no llega hasta la columna L, la saltamos
+
+                    let ubiVal = cleanUbi(String(r[1] || ""));                              // Índice 1 = Col B
+                    let loteVal = cleanStr(String(r[2] || "")).toUpperCase();               // Índice 2 = Col C
+                    let qtyVal = parseFloat(String(r[5] || "0").replace(',', '.')) || 0;    // Índice 5 = Col F
+                    let skuVal = cleanStr(String(r[11] || ""));                             // Índice 11 = Col L (articulo)
+
+                    if (ubiVal && loteVal && qtyVal > 0 && skuVal) {
                         stockInfo.push({
                             ubi: ubiVal,
                             lote: loteVal,
@@ -217,7 +206,9 @@
                             sku: skuVal
                         });
                     }
-                });
+                }
+                console.log("=== REVISIÓN DE STOCK CARGADO ===");
+                console.log("Registros totales:", stockInfo.length);
             }
 
             // 2. BÚSQUEDA DE CAPACIDADES / PRODUCTOS ('MST Producto')
