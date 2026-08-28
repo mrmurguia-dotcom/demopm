@@ -162,7 +162,7 @@
             const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
             console.log("📂 Pestañas encontradas en el archivo:", wb.SheetNames);
 
-            // 1. BÚSQUEDA ESPECÍFICA DE LA SOLAPA DE STOCK ('legacy vStockPT')
+            // 1. BÚSQUEDA ESPECÍFICA DE LA SOLAPA DE STOCK
             let nombreHojaStock = wb.SheetNames.find(name => 
                 cleanStr(name).toLowerCase() === "legacy vstockpt" || 
                 cleanStr(name).toLowerCase().includes("vstockpt")
@@ -175,16 +175,13 @@
             console.log("🔍 Leyendo stock de la pestaña:", nombreHojaStock);
             stockInfo = [];
 
-           if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
+            if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
                 const sheet = wb.Sheets[nombreHojaStock];
-                // Convertir directamente a objetos leyendo la Fila 1 como títulos
                 const dataObjects = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-                stockInfo = [];
-
+                
                 dataObjects.forEach(row => {
                     let ubiRaw = "", loteRaw = "", qtyRaw = 0, skuRaw = "";
 
-                    // Inspeccionamos cada celda de la fila esquivando espacios ocultos en los títulos
                     for (let key in row) {
                         let k = String(key).toLowerCase().trim();
                         if (k === 'ubicacion') ubiRaw = row[key];
@@ -193,13 +190,11 @@
                         if (k === 'articulo') skuRaw = row[key];
                     }
 
-                    // Limpieza segura sin depender de funciones externas que puedan fallar
                     let ubiVal = String(ubiRaw).trim();
                     let loteVal = String(loteRaw).trim().toUpperCase();
                     let qtyVal = parseFloat(String(qtyRaw).replace(',', '.')) || 0;
                     let skuVal = String(skuRaw).trim();
 
-                    // Guardado estricto
                     if (ubiVal !== "" && loteVal !== "" && qtyVal > 0 && skuVal !== "") {
                         stockInfo.push({
                             ubi: ubiVal,
@@ -213,31 +208,6 @@
                 console.log("✅ STOCK CARGADO. Total registros válidos:", stockInfo.length);
             }
 
-                if (headerRowIdx === -1) {
-                    alert("⚠️ No se encontró la columna 'Ubicacion' en la hoja de stock.");
-                } else {
-                    // 2. Extraer datos a partir de la fila siguiente a los encabezados
-                    for(let i = headerRowIdx + 1; i < dataStock.length; i++) {
-                        let row = dataStock[i];
-                        if (!row || row.length === 0) continue;
-
-                        let ubiVal = cleanUbi(String(row[colMap.ubi] || ""));
-                        let loteVal = cleanStr(String(row[colMap.lote] || "")).toUpperCase();
-                        let qtyVal = parseFloat(String(row[colMap.qty] || "0").replace(',', '.')) || 0;
-                        let skuVal = cleanStr(String(row[colMap.sku] || ""));
-
-                        if (ubiVal && loteVal && qtyVal > 0 && skuVal) {
-                            stockInfo.push({
-                                ubi: ubiVal,
-                                lote: loteVal,
-                                qty: qtyVal,
-                                sku: skuVal
-                            });
-                        }
-                    }
-                    console.log("✅ STOCK CARGADO. Total registros válidos:", stockInfo.length);
-                }
-            }
             // 2. BÚSQUEDA DE CAPACIDADES / PRODUCTOS ('MST Producto')
             let nombreHojaCap = wb.SheetNames.find(name => 
                 cleanStr(name).toLowerCase().includes("mst producto") || 
@@ -251,7 +221,7 @@
             if (nombreHojaCap && wb.Sheets[nombreHojaCap]) {
                 const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[nombreHojaCap], {header:1});
                 dataCapacidades.slice(1).forEach(r => {
-                    let sku = cleanStr(r[11] || r[1]); // Asumiendo columna SKU
+                    let sku = cleanStr(r[11] || r[1]); 
                     if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
