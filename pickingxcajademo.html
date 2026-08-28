@@ -498,7 +498,7 @@
     }
 
     function solicitarReclasificacion() {
-        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput'].value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
+        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
         let item = pendingItems[idx];
         let lotesSys = stockInfo.filter(s => s.sku === item.sku);
         
