@@ -175,38 +175,59 @@
 
             if (wb.SheetNames.includes('legacy vStockPT')) {
                 const sheet = wb.Sheets['legacy vStockPT'];
-                // Al quitar {header: 1}, genera objetos directos (ej. { "Ubicacion": "P00A0530", "Lote": "B26..." })
-                const dataStock = XLSX.utils.sheet_to_json(sheet);
+                // Forzamos leer todo como matriz 2D para saltar las filas basura de JDE
+                const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
                 stockInfo = [];
 
-                dataStock.forEach(r => {
-                    let ubiVal = "", loteVal = "", qtyVal = 0, skuVal = "", mcuVal = "";
+                let colMcu = -1, colUbi = -1, colLote = -1, colCant = -1, colSku = -1;
+                let startRow = 0;
 
-                    // Recorremos las claves del objeto buscando los nombres de columna dinámicamente
-                    Object.keys(r).forEach(key => {
-                        let k = String(key).toLowerCase().replace(/\s+/g, '');
-                        let val = String(r[key] || "");
-
-                        if (k.includes('mcu')) mcuVal = cleanStr(val);
-                        else if (k.includes('ubicacion') || k.includes('ubi')) ubiVal = cleanUbi(val);
-                        else if ((k.includes('lote') || k === 'lot') && !k.includes('status')) loteVal = cleanStr(val).toUpperCase();
-                        else if (k.includes('cantenmano') || k.includes('qty') || k.includes('cant')) qtyVal = parseFloat(val.replace(',', '.')) || 0;
-                        else if (k.includes('articulo') || k.includes('sku') || k.includes('item')) skuVal = cleanStr(val);
+                // 1. Escanear las primeras 30 filas buscando dónde están los nombres de las columnas
+                for (let i = 0; i < Math.min(30, dataStock.length); i++) {
+                    let row = dataStock[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    let matches = 0;
+                    row.forEach((cell, index) => {
+                        let val = String(cell || "").toLowerCase().trim().replace(/\s+/g, '');
+                        if (val.includes('mcu') || val.includes('planta') || val.includes('sucursal')) { colMcu = index; matches++; }
+                        else if (val.includes('ubicacion') || val.includes('ubi')) { colUbi = index; matches++; }
+                        else if (val === 'lote' || val === 'lot' || val.includes('nrolote')) { colLote = index; matches++; }
+                        else if (val.includes('cantenmano') || val.includes('cantidad') || val.includes('qty') || val.includes('disp')) { colCant = index; matches++; }
+                        else if (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('art')) { colSku = index; matches++; }
                     });
+                    
+                    if (matches >= 2) { // Si encuentra al menos 2 palabras clave, asume que es la fila de cabeceras
+                        startRow = i + 1;
+                        break;
+                    }
+                }
 
-                    // Fallback: Si no halló el SKU en la cabecera, busca un número válido en la fila
+                // 2. Extraer los datos usando la posición exacta de las columnas encontradas
+                for (let i = startRow; i < dataStock.length; i++) {
+                    let r = dataStock[i];
+                    if (!r || r.length === 0) continue;
+
+                    let ubiVal = colUbi !== -1 ? cleanUbi(String(r[colUbi] || "")) : "";
+                    let loteVal = colLote !== -1 ? cleanStr(String(r[colLote] || "")).toUpperCase() : "";
+                    let skuVal = colSku !== -1 ? cleanStr(String(r[colSku] || "")) : "";
+                    let mcuVal = colMcu !== -1 ? cleanStr(String(r[colMcu] || "")) : "";
+                    
+                    let cantRaw = colCant !== -1 ? r[colCant] : 0;
+                    // JDE suele enviar números reales, pero validamos si llegan como string con comas
+                    let qtyVal = typeof cantRaw === 'number' ? cantRaw : (parseFloat(String(cantRaw).replace(',', '.')) || 0);
+
+                    // Fallback para SKU: si la columna falló, busca un número válido suelto en la fila
                     if (!skuVal) {
-                        Object.keys(r).forEach(key => {
-                            let val = cleanStr(String(r[key] || ""));
-                            let k = String(key).toLowerCase();
-                            if (val.length >= 4 && !isNaN(val) && !k.includes('cant') && !k.includes('qty') && !k.includes('mcu')) {
-                                skuVal = val;
+                        r.forEach(cell => {
+                            let text = cleanStr(String(cell || ""));
+                            if (text.length >= 4 && !isNaN(text) && text !== mcuVal && text !== String(qtyVal)) {
+                                skuVal = text;
                             }
                         });
                     }
 
-                    // Guardar si tiene Ubicación y Lote (y pertenece a planta 503 o está vacío)
-                    if (ubiVal && loteVal) {
+                    if (ubiVal && loteVal && qtyVal > 0) {
                         if (!mcuVal || mcuVal.includes('503')) {
                             stockInfo.push({
                                 ubi: ubiVal,
@@ -216,7 +237,7 @@
                             });
                         }
                     }
-                });
+                }
                 console.log("Stock cargado exitosamente:", stockInfo.length, "registros.", stockInfo);
             }
 
@@ -533,6 +554,16 @@
                 <td>${it.ubi}</td><td>${it.sku}</td><td>${it.cant}</td>
             </tr>
         `).join('');
+    }
+    
+    // Función Placeholder de cámara (para evitar error en consola)
+    function abrirCamara() {
+        alert("La función de cámara será implementada próximamente.");
+    }
+    
+    // Función Placeholder de micrófono (para evitar error en consola)
+    function activarMicrofono() {
+        alert("La función de micrófono será implementada próximamente.");
     }
 </script>
 </body>
