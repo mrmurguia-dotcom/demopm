@@ -134,6 +134,15 @@
     let maestro = JSON.parse(localStorage.getItem('m_v32_2')) || {};
     let stockInfo = JSON.parse(localStorage.getItem('stock_v32_2')) || [];
     let eanMap = JSON.parse(localStorage.getItem('ean_v32_2')) || {};
+    
+    // Estructura Map global para búsquedas O(1) instantáneas y chequeo de status
+    let maestroJDE = new Map();
+    if (stockInfo.length > 0) {
+        stockInfo.forEach(item => {
+            if (item.lote) maestroJDE.set(item.lote, item);
+        });
+    }
+
     let palletsGenerados = [];
     let itemsTotales = [];
     let pendingItems = [];
@@ -174,36 +183,56 @@
 
             console.log("🔍 Leyendo stock de la pestaña:", nombreHojaStock);
             stockInfo = [];
+            maestroJDE.clear();
 
             if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
                 const sheet = wb.Sheets[nombreHojaStock];
-                const dataObjects = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                // Lectura aislada usando letras de columnas exactas (A, B, C...)
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: "A", defval: "" });
                 
-                dataObjects.forEach(row => {
-                    let ubiRaw = "", loteRaw = "", qtyRaw = 0, skuRaw = "";
-
-                    for (let key in row) {
-                        let k = String(key).toLowerCase().trim();
-                        if (k === 'ubicacion') ubiRaw = row[key];
-                        if (k === 'lote') loteRaw = row[key];
-                        if (k === 'cantenmano') qtyRaw = row[key];
-                        if (k === 'articulo') skuRaw = row[key];
+                if (rows.length > 0) {
+                    // Mapeo inicial predeterminado según estandar JDE: D=Lote, E=Status, M=Artículo, N=Descripción
+                    let colMap = { ubi: "B", lote: "D", status: "E", qty: "G", sku: "M", desc: "N" };
+                    
+                    // Inspección opcional del encabezado fila 0 para auto-calibración si los nombres varían
+                    let headerRow = rows[0];
+                    for (let col in headerRow) {
+                        let val = cleanStr(headerRow[col]).toLowerCase().replace(/\s+/g, '');
+                        if (val.includes("ubicacion") || val.includes("ubi")) colMap.ubi = col;
+                        if (val === "lote") colMap.lote = col;
+                        if (val.includes("status") || val.includes("estado") || val.includes("est")) colMap.status = col;
+                        if (val.includes("cantenmano") || val.includes("disponible") || val.includes("cant")) colMap.qty = col;
+                        if (val.includes("articulo") || val.includes("sku")) colMap.sku = col;
+                        if (val.includes("descripcion") || val.includes("desc")) colMap.desc = col;
                     }
 
-                    let ubiVal = String(ubiRaw).trim();
-                    let loteVal = String(loteRaw).trim().toUpperCase();
-                    let qtyVal = parseFloat(String(qtyRaw).replace(',', '.')) || 0;
-                    let skuVal = String(skuRaw).trim();
+                    for (let i = 1; i < rows.length; i++) {
+                        let r = rows[i];
+                        let ubiVal = cleanStr(r[colMap.ubi]);
+                        let loteVal = cleanStr(r[colMap.lote]).replace(/\s+/g, '').toUpperCase();
+                        let statusVal = cleanStr(r[colMap.status]);
+                        let qtyVal = parseFloat(String(r[colMap.qty] || "0").replace(',', '.')) || 0;
+                        let skuVal = cleanStr(r[colMap.sku]);
+                        let descVal = cleanStr(r[colMap.desc]);
 
-                    if (ubiVal !== "" && loteVal !== "" && qtyVal > 0 && skuVal !== "") {
-                        stockInfo.push({
-                            ubi: ubiVal,
-                            lote: loteVal,
-                            qty: qtyVal,
-                            sku: skuVal
-                        });
+                        if (loteVal !== "") {
+                            let itemData = {
+                                ubi: ubiVal,
+                                lote: loteVal,
+                                status: statusVal,
+                                qty: qtyVal,
+                                sku: skuVal,
+                                desc: descVal
+                            };
+
+                            if (ubiVal !== "" && qtyVal > 0 && skuVal !== "") {
+                                stockInfo.push(itemData);
+                            }
+                            // Registro directo en Map para consultas rápidas
+                            maestroJDE.set(loteVal, itemData);
+                        }
                     }
-                });
+                }
 
                 console.log("✅ STOCK CARGADO. Total registros válidos:", stockInfo.length);
             }
@@ -420,6 +449,14 @@
         if(timeVal !== "") loteCompleto += timeVal;
         loteFisicoIngresado = loteCompleto;
 
+        // 1. Verificación rápida de estado del lote en Maestro JDE (vía Map)
+        if (maestroJDE.has(loteCompleto)) {
+            let infoLoteMemoria = maestroJDE.get(loteCompleto);
+            if (infoLoteMemoria.status !== "") {
+                alert("⚠️ ATENCIÓN: El lote " + loteCompleto + " se encuentra OBSERVADO/RETENIDO en JDE (Status: '" + infoLoteMemoria.status + "').");
+            }
+        }
+
         let itemIndex = modoLibre ? pendingItems.findIndex(it => it.sku === skuScanned && !it.picked) : currentItemIndex;
         if(itemIndex === -1) return alert(modoLibre ? "Ese SKU no está pendiente." : "Línea ya completada.");
         
@@ -464,7 +501,7 @@
         const ul = document.getElementById('sysLotsList');
         
         ul.innerHTML = lotesSys.length > 0 
-            ? lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b></li>`).join('') 
+            ? lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b> ${l.status ? '| Status: <b>' + l.status + '</b>' : ''}</li>`).join('') 
             : "<li>No hay lotes en sistema para esta ubicación.</li>";
             
         document.getElementById('partialPickDiv').style.display = lotesSys.length > 0 ? "block" : "none";
