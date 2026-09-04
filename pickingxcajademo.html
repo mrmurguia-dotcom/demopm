@@ -155,12 +155,21 @@
     if(recognition) recognition.lang = 'es-AR';
 
     function hablar(texto) {
-        if(synth.speaking) synth.cancel();
-        const utterThis = new SpeechSynthesisUtterance(texto);
-        utterThis.lang = 'es-AR'; utterThis.rate = 1.1; synth.speak(utterThis);
+        if(synth && synth.speaking) synth.cancel();
+        if(synth) {
+            const utterThis = new SpeechSynthesisUtterance(texto);
+            utterThis.lang = 'es-AR'; utterThis.rate = 1.1; synth.speak(utterThis);
+        }
     }
 
-    function cleanStr(s) { return String(s || "").trim().replace(/[\u200B-\u200D\uFEFF]/g, ''); }
+    function cleanStr(s) { 
+        return String(s || "").trim().replace(/[\u200B-\u200D\uFEFF]/g, ''); 
+    }
+    
+    function normalizeKey(k) {
+        return cleanStr(k).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
     function cleanUbi(u) { return cleanStr(u).replace(/\./g, '').toUpperCase(); }
 
     document.getElementById('masterFile').onchange = (e) => {
@@ -192,13 +201,13 @@
                     let ubiRaw = "", loteRaw = "", qtyRaw = 0, skuRaw = "", statusRaw = "", descRaw = "";
 
                     for (let key in row) {
-                        let k = String(key).toLowerCase().trim();
-                        if (k === 'ubicacion' || k.includes('ubi')) ubiRaw = row[key];
-                        if (k === 'lote') loteRaw = row[key];
-                        if (k === 'cantenmano' || k.includes('mano')) qtyRaw = row[key];
-                        if (k === 'articulo' || k === 'sku') skuRaw = row[key];
-                        if (k === 'status' || k.includes('estado')) statusRaw = row[key];
-                        if (k === 'descripcion' || k.includes('desc')) descRaw = row[key];
+                        let k = normalizeKey(key);
+                        if (k.includes('ubic') || k.includes('ubi')) ubiRaw = row[key];
+                        else if (k.includes('lote')) loteRaw = row[key];
+                        else if (k.includes('mano') || k.includes('cant') || k.includes('qty')) qtyRaw = row[key];
+                        else if (k.includes('articul') || k.includes('sku') || k.includes('item')) skuRaw = row[key];
+                        else if (k.includes('status') || k.includes('estado')) statusRaw = row[key];
+                        else if (k.includes('descrip') || k.includes('desc')) descRaw = row[key];
                     }
 
                     let ubiVal = cleanStr(ubiRaw);
@@ -268,10 +277,10 @@
                 if(text.includes("PALLET HOMOGENEO")) esMixto = false;
                 if(text.includes("PALLET MIXTO")) esMixto = true;
                 const c = Array.from(tr.cells).map(td => cleanStr(td.innerText));
-                if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
+                if(esMixto && c.length >= 9 && c[0].includes(".") && c[1] !== "") {
                     let info = maestro[c[1]] || { cap: 84 };
                     itemsRaw.push({
-                        ubi: c[0], sku: c[1], desc: c[4], orden: parseInt(c[6])||0, cant: parseInt(c[8]),
+                        ubi: c[0], sku: c[1], desc: c[4], orden: parseInt(c[6])||0, cant: parseInt(c[8])||0,
                         dep: "P0" + (c[0].split('.')[1] || "01"), picked: false, capFull: info.cap
                     });
                 }
@@ -364,8 +373,9 @@
 
     function abrirScannerPallet(id, esLibre) {
         let p = palletsGenerados.find(x => x.id === id);
-        iniciarScanner(p.items, esLibre, `Pallet #${id}`);
+        if(p) iniciarScanner(p.items, esLibre, `Pallet #${id}`);
     }
+    
     function abrirScannerGlobal(esLibre) {
         iniciarScanner(itemsTotales, esLibre, "Global");
     }
@@ -389,7 +399,10 @@
         actualizarTablaProgreso();
     }
 
-    function cerrarScanner() { document.getElementById('scannerModal').style.display = 'none'; hablar("Escáner cerrado"); }
+    function cerrarScanner() { 
+        document.getElementById('scannerModal').style.display = 'none'; 
+        hablar("Escáner cerrado"); 
+    }
 
     function cargarLineaSugerida() {
         if(currentItemIndex >= pendingItems.length) {
