@@ -195,30 +195,28 @@
 
             if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
                 const sheet = wb.Sheets[nombreHojaStock];
-                // CAMBIO RADICAL: Leer como matriz pura (header: 1 ignora nombres de columnas)
                 const dataMatriz = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                 
-                // Empezamos desde i=1 para saltar la fila 1 (los encabezados)
                 for (let i = 1; i < dataMatriz.length; i++) {
                     let row = dataMatriz[i];
                     
-                    // Si la fila está vacía o no tiene columnas suficientes, se ignora
-                    if (!row || row.length < 13) continue; 
+                    // Solo pedimos que exista hasta la columna F (CantEnMano = índice 5)
+                    if (!row || row.length < 6) continue; 
 
-                    // Asignación directa por posición de columna en Excel (A=0, B=1, C=2...)
-                    let mcuRaw = row[0];    // A = MCU
-                    let ubiRaw = row[1];    // B = Ubicacion
-                    let loteRaw = row[2];   // C = LOTE
-                    let statusRaw = row[3]; // D = LotStatus
-                    let qtyRaw = row[5];    // F = CantEnMano (A=0, B=1, C=2, D=3, E=4, F=5)
-                    let skuRaw = row[11];   // L = articulo
-                    let descRaw = row[12];  // M = articulodescripcion
+                    let mcuRaw = row[0] || "";    // A = MCU
+                    let ubiRaw = row[1] || "";    // B = Ubicacion
+                    let loteRaw = row[2] || "";   // C = LOTE
+                    let statusRaw = row[3] || ""; // D = LotStatus
+                    let qtyRaw = row[5] || 0;     // F = CantEnMano
+                    
+                    // Buscamos el SKU en la L (11) y si está vacía, buscamos en la K (10)
+                    let skuRaw = row[11] || row[10] || "";   
+                    let descRaw = row[12] || "";  
 
                     let mcuVal = cleanStr(mcuRaw);
                     let ubiVal = cleanStr(ubiRaw);
                     let loteVal = cleanStr(loteRaw).replace(/\s+/g, '').toUpperCase();
                     
-                    // Limpieza estricta de números (elimina puntos de miles y cambia coma por punto)
                     let cleanQty = String(qtyRaw).replace(/\./g, '').replace(',', '.');
                     let qtyVal = parseFloat(cleanQty) || 0;
                     
@@ -226,15 +224,14 @@
                     let statusVal = cleanStr(statusRaw);
                     let descVal = cleanStr(descRaw);
 
-                    // REGLA: Solo considerar el deposito 503
-                    if (mcuVal === "503" || mcuVal === "503.0") {
+                    // Usamos .includes("503") por si hay espacios ocultos
+                    if (mcuVal.includes("503")) {
                         if (loteVal !== "") {
                             let itemData = {
                                 ubi: ubiVal, lote: loteVal, qty: qtyVal,
                                 sku: skuVal, status: statusVal, desc: descVal
                             };
 
-                            // Condición estricta: debe tener ubicación, SKU y cantidad mayor a 0
                             if (ubiVal !== "" && qtyVal > 0 && skuVal !== "") {
                                 stockInfo.push(itemData);
                             }
@@ -244,7 +241,7 @@
                 }
 
                 console.log("✅ STOCK CARGADO. Total registros válidos:", stockInfo.length);
-                }
+            }
                 
             // 2. BÚSQUEDA DE CAPACIDADES / PRODUCTOS ('MST Producto')
             let nombreHojaCap = wb.SheetNames.find(name => 
