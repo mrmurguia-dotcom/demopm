@@ -195,27 +195,33 @@
 
             if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
                 const sheet = wb.Sheets[nombreHojaStock];
-                const dataObjects = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                // CAMBIO RADICAL: Leer como matriz pura (header: 1 ignora nombres de columnas)
+                const dataMatriz = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                 
-                dataObjects.forEach(row => {
-                    let mcuRaw = "", ubiRaw = "", loteRaw = "", qtyRaw = 0, skuRaw = "", statusRaw = "", descRaw = "";
+                // Empezamos desde i=1 para saltar la fila 1 (los encabezados)
+                for (let i = 1; i < dataMatriz.length; i++) {
+                    let row = dataMatriz[i];
+                    
+                    // Si la fila está vacía o no tiene columnas suficientes, se ignora
+                    if (!row || row.length < 13) continue; 
 
-                    // Buscar las columnas exactas
-                    for (let key in row) {
-                        let k = normalizeKey(key);
-                        if (k === 'mcu' || k === 'deposito') mcuRaw = row[key];
-                        else if (k === 'ubicacion' || k === 'ubic') ubiRaw = row[key];
-                        else if (k === 'lote') loteRaw = row[key];
-                        else if (k === 'lotstatus') statusRaw = row[key];
-                        else if (k === 'cantenmano' || k === 'cant en mano') qtyRaw = row[key];
-                        else if (k === 'articulo' || k === 'itm') skuRaw = row[key];
-                        else if (k === 'articulodescripcion' || k.includes('descrip')) descRaw = row[key];
-                    }
+                    // Asignación directa por posición de columna en Excel (A=0, B=1, C=2...)
+                    let mcuRaw = row[0];    // A = MCU
+                    let ubiRaw = row[1];    // B = Ubicacion
+                    let loteRaw = row[2];   // C = LOTE
+                    let statusRaw = row[3]; // D = LotStatus
+                    let qtyRaw = row[5];    // F = CantEnMano (A=0, B=1, C=2, D=3, E=4, F=5)
+                    let skuRaw = row[11];   // L = articulo
+                    let descRaw = row[12];  // M = articulodescripcion
 
                     let mcuVal = cleanStr(mcuRaw);
                     let ubiVal = cleanStr(ubiRaw);
                     let loteVal = cleanStr(loteRaw).replace(/\s+/g, '').toUpperCase();
-                    let qtyVal = parseFloat(String(qtyRaw).replace(',', '.')) || 0;
+                    
+                    // Limpieza estricta de números (elimina puntos de miles y cambia coma por punto)
+                    let cleanQty = String(qtyRaw).replace(/\./g, '').replace(',', '.');
+                    let qtyVal = parseFloat(cleanQty) || 0;
+                    
                     let skuVal = cleanStr(skuRaw);
                     let statusVal = cleanStr(statusRaw);
                     let descVal = cleanStr(descRaw);
@@ -224,25 +230,22 @@
                     if (mcuVal === "503" || mcuVal === "503.0") {
                         if (loteVal !== "") {
                             let itemData = {
-                                ubi: ubiVal,
-                                lote: loteVal,
-                                qty: qtyVal,
-                                sku: skuVal,
-                                status: statusVal,
-                                desc: descVal
+                                ubi: ubiVal, lote: loteVal, qty: qtyVal,
+                                sku: skuVal, status: statusVal, desc: descVal
                             };
 
+                            // Condición estricta: debe tener ubicación, SKU y cantidad mayor a 0
                             if (ubiVal !== "" && qtyVal > 0 && skuVal !== "") {
                                 stockInfo.push(itemData);
                             }
                             maestroJDE.set(loteVal, itemData);
                         }
                     }
-                });
+                }
 
                 console.log("✅ STOCK CARGADO. Total registros válidos:", stockInfo.length);
-            }
-
+                }
+                
             // 2. BÚSQUEDA DE CAPACIDADES / PRODUCTOS ('MST Producto')
             let nombreHojaCap = wb.SheetNames.find(name => 
                 cleanStr(name).toLowerCase().includes("mst producto") || 
