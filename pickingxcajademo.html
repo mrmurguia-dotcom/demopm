@@ -198,18 +198,21 @@
                 const dataObjects = XLSX.utils.sheet_to_json(sheet, { defval: "" });
                 
                 dataObjects.forEach(row => {
-                    let ubiRaw = "", loteRaw = "", qtyRaw = 0, skuRaw = "", statusRaw = "", descRaw = "";
+                    let mcuRaw = "", ubiRaw = "", loteRaw = "", qtyRaw = 0, skuRaw = "", statusRaw = "", descRaw = "";
 
+                    // Buscar las columnas exactas
                     for (let key in row) {
                         let k = normalizeKey(key);
-                        if (k.includes('ubic') || k.includes('ubi')) ubiRaw = row[key];
-                        else if (k.includes('lote')) loteRaw = row[key];
-                        else if (k.includes('mano') || k.includes('cant') || k.includes('qty')) qtyRaw = row[key];
-                        else if (k.includes('articul') || k.includes('sku') || k.includes('item')) skuRaw = row[key];
-                        else if (k.includes('status') || k.includes('estado')) statusRaw = row[key];
-                        else if (k.includes('descrip') || k.includes('desc')) descRaw = row[key];
+                        if (k === 'mcu' || k === 'deposito') mcuRaw = row[key];
+                        else if (k === 'ubicacion' || k === 'ubic') ubiRaw = row[key];
+                        else if (k === 'lote') loteRaw = row[key];
+                        else if (k === 'lotstatus') statusRaw = row[key];
+                        else if (k === 'cantenmano' || k === 'cant en mano') qtyRaw = row[key];
+                        else if (k === 'articulo' || k === 'itm') skuRaw = row[key];
+                        else if (k === 'articulodescripcion' || k.includes('descrip')) descRaw = row[key];
                     }
 
+                    let mcuVal = cleanStr(mcuRaw);
                     let ubiVal = cleanStr(ubiRaw);
                     let loteVal = cleanStr(loteRaw).replace(/\s+/g, '').toUpperCase();
                     let qtyVal = parseFloat(String(qtyRaw).replace(',', '.')) || 0;
@@ -217,21 +220,23 @@
                     let statusVal = cleanStr(statusRaw);
                     let descVal = cleanStr(descRaw);
 
-                    if (loteVal !== "") {
-                        let itemData = {
-                            ubi: ubiVal,
-                            lote: loteVal,
-                            qty: qtyVal,
-                            sku: skuVal,
-                            status: statusVal,
-                            desc: descVal
-                        };
+                    // REGLA: Solo considerar el deposito 503
+                    if (mcuVal === "503" || mcuVal === "503.0") {
+                        if (loteVal !== "") {
+                            let itemData = {
+                                ubi: ubiVal,
+                                lote: loteVal,
+                                qty: qtyVal,
+                                sku: skuVal,
+                                status: statusVal,
+                                desc: descVal
+                            };
 
-                        if (ubiVal !== "" && qtyVal > 0 && skuVal !== "") {
-                            stockInfo.push(itemData);
+                            if (ubiVal !== "" && qtyVal > 0 && skuVal !== "") {
+                                stockInfo.push(itemData);
+                            }
+                            maestroJDE.set(loteVal, itemData);
                         }
-
-                        maestroJDE.set(loteVal, itemData);
                     }
                 });
 
@@ -456,8 +461,12 @@
 
         if (maestroJDE.has(loteCompleto)) {
             let infoLoteMemoria = maestroJDE.get(loteCompleto);
+            // REGLA: Si LotStatus tiene alguna letra, está observado y NO se puede pickear
             if (infoLoteMemoria.status !== "") {
-                alert("⚠️ ATENCIÓN: El lote " + loteCompleto + " se encuentra OBSERVADO/RETENIDO en JDE (Status: '" + infoLoteMemoria.status + "').");
+                hablar("Lote observado. No se puede pickear.");
+                alert("❌ OPERACIÓN BLOQUEADA: El lote " + loteCompleto + " se encuentra OBSERVADO en JDE (Status: '" + infoLoteMemoria.status + "'). Avise al supervisor.");
+                limpiarInputs();
+                return; // Corta la ejecución para evitar el picking
             }
         }
 
