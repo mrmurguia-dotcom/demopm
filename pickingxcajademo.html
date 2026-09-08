@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PK JDE v.PRO - Scanner & Lotes</title>
+    <title>Picking JDE v.PRO - Scanner & Lotes</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -51,11 +51,11 @@
 <div class="container">
     <h2 style="text-align:center;">📦 Optimizador de Picking v.PRO</h2>
     <div class="box">
-        <strong>1. Maestro de Stock y Productos (Excel con solapas `legacy vStockPT` y `MST Producto`)</strong><br><br>
+        <strong>1. Maestro de Stock y Productos</strong><br>
         <input type="file" id="masterFile" accept=".xlsx">
     </div>
     <div class="box">
-        <strong>2. Reporte de Surtido JDE</strong><br><br>
+        <strong>2. Reporte de Surtido JDE</strong><br>
         <input type="file" id="surtidoFile"><br><br>
         <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS</button>
     </div>
@@ -82,6 +82,7 @@
     </div>
 </div>
 
+<!-- MODO SCANNER -->
 <div id="scannerModal">
     <div class="scan-header">
         <h2 style="margin:0;">📲 MODO SCANNER <span id="scanModeTitle"></span></h2>
@@ -101,8 +102,8 @@
     </div>
 
     <div class="input-row">
-        <input type="text" id="scanLotJulian" class="scan-input scan-input-small" placeholder="Lote (Ej: 25210 o B2629A)">
-        <input type="text" id="scanLotTime" class="scan-input scan-input-small" placeholder="Sub-lote / Hora (Opcional)">
+        <input type="text" id="scanLotJulian" class="scan-input scan-input-small" placeholder="Lote (Ej: 25210 o 26dv07)">
+        <input type="text" id="scanLotTime" class="scan-input scan-input-small" placeholder="Hora (Vacío si es lata)">
     </div>
 
     <button class="btn-confirm" onclick="confirmarLinea()">✅ CONFIRMAR</button>
@@ -134,14 +135,6 @@
     let maestro = JSON.parse(localStorage.getItem('m_v32_2')) || {};
     let stockInfo = JSON.parse(localStorage.getItem('stock_v32_2')) || [];
     let eanMap = JSON.parse(localStorage.getItem('ean_v32_2')) || {};
-    
-    let maestroJDE = new Map();
-    if (stockInfo.length > 0) {
-        stockInfo.forEach(item => {
-            if (item.lote) maestroJDE.set(item.lote, item);
-        });
-    }
-
     let palletsGenerados = [];
     let itemsTotales = [];
     let pendingItems = [];
@@ -149,27 +142,20 @@
     let modoLibre = false;
     let loteFisicoIngresado = "";
     
+    // Asistente de Voz
     const synth = window.speechSynthesis;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = SpeechRecognition ? new SpeechRecognition() : null;
     if(recognition) recognition.lang = 'es-AR';
 
     function hablar(texto) {
-        if(synth && synth.speaking) synth.cancel();
-        if(synth) {
-            const utterThis = new SpeechSynthesisUtterance(texto);
-            utterThis.lang = 'es-AR'; utterThis.rate = 1.1; synth.speak(utterThis);
-        }
+        if(synth.speaking) synth.cancel();
+        const utterThis = new SpeechSynthesisUtterance(texto);
+        utterThis.lang = 'es-AR'; utterThis.rate = 1.1; synth.speak(utterThis);
     }
 
-    function cleanStr(s) { 
-        return String(s || "").trim().replace(/[\u200B-\u200D\uFEFF]/g, ''); 
-    }
-    
-    function normalizeKey(k) {
-        return cleanStr(k).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    }
-
+    // Utilidades de limpieza (Espacios invisibles y puntos)
+    function cleanStr(s) { return String(s || "").trim().replace(/[\u200B-\u200D\uFEFF]/g, ''); }
     function cleanUbi(u) { return cleanStr(u).replace(/\./g, '').toUpperCase(); }
 
     document.getElementById('masterFile').onchange = (e) => {
@@ -177,115 +163,129 @@
         const reader = new FileReader();
         reader.onload = (ev) => {
             const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-            console.log("📂 Pestañas encontradas en el archivo:", wb.SheetNames);
-
-            // 1. BÚSQUEDA ESPECÍFICA DE LA SOLAPA DE STOCK
-            let nombreHojaStock = wb.SheetNames.find(name => 
-                cleanStr(name).toLowerCase() === "legacy vstockpt" || 
-                cleanStr(name).toLowerCase().includes("vstockpt")
-            );
-
-            if (!nombreHojaStock) {
-                nombreHojaStock = wb.SheetNames.find(name => cleanStr(name).toLowerCase().includes("stock")) || wb.SheetNames[0];
-            }
-
-            console.log("🔍 Leyendo stock de la pestaña:", nombreHojaStock);
-            stockInfo = [];
-            maestroJDE.clear();
-
-            if (nombreHojaStock && wb.Sheets[nombreHojaStock]) {
-                const sheet = wb.Sheets[nombreHojaStock];
-                const dataMatriz = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-                
-                for (let i = 1; i < dataMatriz.length; i++) {
-                    let row = dataMatriz[i];
-                    
-                    // Solo pedimos que exista hasta la columna F (CantEnMano = índice 5)
-                    if (!row || row.length < 6) continue; 
-
-                    let mcuRaw = row[0] || "";    // A = MCU
-                    let ubiRaw = row[1] || "";    // B = Ubicacion
-                    let loteRaw = row[2] || "";   // C = LOTE
-                    let statusRaw = row[3] || ""; // D = LotStatus
-                    let qtyRaw = row[5] || 0;     // F = CantEnMano
-                    
-                    // Buscamos el SKU en la L (11) y si está vacía, buscamos en la K (10)
-                    let skuRaw = row[11] || row[10] || "";   
-                    let descRaw = row[12] || "";  
-
-                    let mcuVal = cleanStr(mcuRaw);
-                    let ubiVal = cleanStr(ubiRaw);
-                    let loteVal = cleanStr(loteRaw).replace(/\s+/g, '').toUpperCase();
-                    
-                    let cleanQty = String(qtyRaw).replace(/\./g, '').replace(',', '.');
-                    let qtyVal = parseFloat(cleanQty) || 0;
-                    
-                    let skuVal = cleanStr(skuRaw);
-                    let statusVal = cleanStr(statusRaw);
-                    let descVal = cleanStr(descRaw);
-
-                    // Usamos .includes("503") por si hay espacios ocultos
-                    if (mcuVal.includes("503")) {
-                        if (loteVal !== "") {
-                            let itemData = {
-                                ubi: ubiVal, lote: loteVal, qty: qtyVal,
-                                sku: skuVal, status: statusVal, desc: descVal
-                            };
-
-                            if (ubiVal !== "" && qtyVal > 0 && skuVal !== "") {
-                                stockInfo.push(itemData);
-                            }
-                            maestroJDE.set(loteVal, itemData);
-                        }
-                    }
-                }
-
-                console.log("✅ STOCK CARGADO. Total registros válidos:", stockInfo.length);
-            }
-                
-            // 2. BÚSQUEDA DE CAPACIDADES / PRODUCTOS ('MST Producto')
-            let nombreHojaCap = wb.SheetNames.find(name => 
-                cleanStr(name).toLowerCase().includes("mst producto") || 
-                cleanStr(name).toLowerCase().includes("mst")
-            );
-            if (!nombreHojaCap && wb.SheetNames.length > 1) {
-                nombreHojaCap = wb.SheetNames[1];
-            }
-
-            maestro = {};
-            if (nombreHojaCap && wb.Sheets[nombreHojaCap]) {
-                const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[nombreHojaCap], {header:1});
+            
+            if (wb.SheetNames[0]) {
+                const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+                maestro = {};
                 dataCapacidades.slice(1).forEach(r => {
-                    let sku = cleanStr(r[11] || r[1]); 
+                    let sku = cleanStr(r[1]);
                     if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
                 });
             }
 
+            // NUEVA LÓGICA DE DETECCIÓN DE HOJA DE STOCK
+            // Busca la hoja ignorando mayúsculas/minúsculas basándose en posibles nombres
+            const nombreHojaStock = wb.SheetNames.find(name => {
+                const n = name.toLowerCase();
+                return n.includes('legacy vstockpt') || 
+                       n.includes('maestro jde') || 
+                       n.includes('maestro de stock') || 
+                       n.includes('stock'); // 'stock' lo hace compatible con nombres genéricos
+            });
+
+            if (nombreHojaStock) {
+                const sheet = wb.Sheets[nombreHojaStock];
+                // Forzamos leer todo como matriz 2D para saltar las filas basura de JDE
+                const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                stockInfo = [];
+
+                let colMcu = -1, colUbi = -1, colLote = -1, colCant = -1, colSku = -1;
+                let startRow = 0;
+
+                // 1. Escanear las primeras 30 filas buscando dónde están los nombres de las columnas
+                for (let i = 0; i < Math.min(30, dataStock.length); i++) {
+                    let row = dataStock[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    let matches = 0;
+                    row.forEach((cell, index) => {
+                        let val = String(cell || "").toLowerCase().trim().replace(/\s+/g, '');
+                        if (val.includes('mcu') || val.includes('planta') || val.includes('sucursal')) { colMcu = index; matches++; }
+                        else if (val.includes('ubicacion') || val.includes('ubi')) { colUbi = index; matches++; }
+                        else if (val === 'lote' || val === 'lot' || val.includes('nrolote')) { colLote = index; matches++; }
+                        else if (val.includes('cantenmano') || val.includes('cantidad') || val.includes('qty') || val.includes('disp')) { colCant = index; matches++; }
+                        else if (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('art')) { colSku = index; matches++; }
+                    });
+                    
+                    if (matches >= 2) { // Si encuentra al menos 2 palabras clave, asume que es la fila de cabeceras
+                        startRow = i + 1;
+                        break;
+                    }
+                }
+
+                // 2. Extraer los datos usando la posición exacta de las columnas encontradas
+                for (let i = startRow; i < dataStock.length; i++) {
+                    let r = dataStock[i];
+                    if (!r || r.length === 0) continue;
+
+                    let ubiVal = colUbi !== -1 ? cleanUbi(String(r[colUbi] || "")) : "";
+                    let loteVal = colLote !== -1 ? cleanStr(String(r[colLote] || "")).toUpperCase() : "";
+                    let skuVal = colSku !== -1 ? cleanStr(String(r[colSku] || "")) : "";
+                    let mcuVal = colMcu !== -1 ? cleanStr(String(r[colMcu] || "")) : "";
+                    
+                    let cantRaw = colCant !== -1 ? r[colCant] : 0;
+                    // JDE suele enviar números reales, pero validamos si llegan como string con comas
+                    let qtyVal = typeof cantRaw === 'number' ? cantRaw : (parseFloat(String(cantRaw).replace(',', '.')) || 0);
+
+                    // Fallback para SKU: si la columna falló, busca un número válido suelto en la fila
+                    if (!skuVal) {
+                        r.forEach(cell => {
+                            let text = cleanStr(String(cell || ""));
+                            if (text.length >= 4 && !isNaN(text) && text !== mcuVal && text !== String(qtyVal)) {
+                                skuVal = text;
+                            }
+                        });
+                    }
+
+                    if (ubiVal && loteVal && qtyVal > 0) {
+                        if (!mcuVal || mcuVal.includes('503')) {
+                            stockInfo.push({
+                                ubi: ubiVal,
+                                lote: loteVal,
+                                qty: qtyVal,
+                                sku: skuVal
+                            });
+                        }
+                    }
+                }
+                console.log("Stock cargado exitosamente desde pestaña '"+nombreHojaStock+"':", stockInfo.length, "registros.");
+            }
+
+            if (wb.SheetNames.includes('MST Producto')) {
+                const dataProd = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
+                eanMap = {};
+                dataProd.slice(1).forEach(r => {
+                    let sku = cleanStr(r[1]); let ean = cleanStr(r[9]);
+                    if(sku && ean) eanMap[ean] = sku;
+                });
+            }
             localStorage.setItem('m_v32_2', JSON.stringify(maestro));
             localStorage.setItem('stock_v32_2', JSON.stringify(stockInfo));
-            alert("✅ Maestros actualizados. Registros de stock leídos: " + stockInfo.length);
+            localStorage.setItem('ean_v32_2', JSON.stringify(eanMap));
+            alert("✅ Maestros actualizados.");
         };
         reader.readAsArrayBuffer(e.target.files[0]);
-    }
+    };
 
     function procesar() {
         const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("⚠️ Seleccione el reporte de surtido.");
+        if(!file) return alert("⚠️ Seleccione el reporte.");
         const reader = new FileReader();
         reader.onload = (e) => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(e.target.result, "text/html");
-            let itemsRaw = []; let esMixto = false;
+            let itemsRaw = []; let cargaNro = "S/C"; let esMixto = false;
 
             Array.from(doc.querySelectorAll('tr')).forEach(tr => {
                 const text = cleanStr(tr.innerText).toUpperCase();
+                if(text.includes("CARGA:")) { const m = text.match(/CARGA:\s*(\d+)/); if(m) cargaNro = m[1]; }
                 if(text.includes("PALLET HOMOGENEO")) esMixto = false;
                 if(text.includes("PALLET MIXTO")) esMixto = true;
                 const c = Array.from(tr.cells).map(td => cleanStr(td.innerText));
-                if(esMixto && c.length >= 9 && c[0].includes(".") && c[1] !== "") {
+                if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
                     let info = maestro[c[1]] || { cap: 84 };
                     itemsRaw.push({
-                        ubi: c[0], sku: c[1], desc: c[4], orden: parseInt(c[6])||0, cant: parseInt(c[8])||0,
+                        ubi: c[0], sku: c[1], desc: c[4], orden: parseInt(c[6])||0, cant: parseInt(c[8]),
                         dep: "P0" + (c[0].split('.')[1] || "01"), picked: false, capFull: info.cap
                     });
                 }
@@ -297,6 +297,7 @@
         reader.readAsText(file, "ISO-8859-1");
     }
 
+    // Restauración Lógica Volumétrica (Agrupación por Carga y Capacidad)
     function armarLogicaVolumetrica(items) {
         palletsGenerados = []; 
         let cont = 1;
@@ -376,11 +377,11 @@
         }
     }
 
+    // --- LOGICA SCANNER ---
     function abrirScannerPallet(id, esLibre) {
         let p = palletsGenerados.find(x => x.id === id);
-        if(p) iniciarScanner(p.items, esLibre, `Pallet #${id}`);
+        iniciarScanner(p.items, esLibre, `Pallet #${id}`);
     }
-    
     function abrirScannerGlobal(esLibre) {
         iniciarScanner(itemsTotales, esLibre, "Global");
     }
@@ -404,10 +405,7 @@
         actualizarTablaProgreso();
     }
 
-    function cerrarScanner() { 
-        document.getElementById('scannerModal').style.display = 'none'; 
-        hablar("Escáner cerrado"); 
-    }
+    function cerrarScanner() { document.getElementById('scannerModal').style.display = 'none'; hablar("Escáner cerrado"); }
 
     function cargarLineaSugerida() {
         if(currentItemIndex >= pendingItems.length) {
@@ -455,41 +453,41 @@
 
         if(!skuScanned || !julianVal) return alert("Complete SKU y Lote.");
 
+        // Determinar si es Lote Juliano Estándar (5 dígitos) o Especial (Lata/Spirits)
         let loteCompleto = julianVal;
-        if(timeVal !== "") loteCompleto += timeVal;
-        loteFisicoIngresado = loteCompleto;
-
-        if (maestroJDE.has(loteCompleto)) {
-            let infoLoteMemoria = maestroJDE.get(loteCompleto);
-            // REGLA: Si LotStatus tiene alguna letra, está observado y NO se puede pickear
-            if (infoLoteMemoria.status !== "") {
-                hablar("Lote observado. No se puede pickear.");
-                alert("❌ OPERACIÓN BLOQUEADA: El lote " + loteCompleto + " se encuentra OBSERVADO en JDE (Status: '" + infoLoteMemoria.status + "'). Avise al supervisor.");
-                limpiarInputs();
-                return; // Corta la ejecución para evitar el picking
-            }
+        let esFormatoJuliano = /^\d{5}$/.test(julianVal);
+        let esLoteEspecial = timeVal === "" || !esFormatoJuliano;
+        
+        if (!esLoteEspecial) {
+            let h = parseInt(timeVal.length === 3 ? timeVal.substring(0,1) : timeVal.substring(0,2));
+            let turno = (h >= 0 && h <= 7) ? 'A' : (h >= 8 && h <= 15) ? 'B' : (h >= 16 && h <= 23) ? 'C' : '';
+            loteCompleto = julianVal + turno;
         }
+        loteFisicoIngresado = loteCompleto;
 
         let itemIndex = modoLibre ? pendingItems.findIndex(it => it.sku === skuScanned && !it.picked) : currentItemIndex;
         if(itemIndex === -1) return alert(modoLibre ? "Ese SKU no está pendiente." : "Línea ya completada.");
         
         let item = pendingItems[itemIndex];
-        let zonaPicking = cleanUbi(item.ubi);
-        
+        let itemUbiClean = cleanUbi(item.ubi);
+        let zonaPicking = itemUbiClean.split('.')[0]; // Toma la primera parte ej. P0 o P014
+
         console.log("--- BÚSQUEDA DE STOCK ---");
         console.log("Buscando SKU:", item.sku);
         console.log("Buscando Ubicación (Zona):", zonaPicking);
-        console.log("Lote ingresado:", loteCompleto);
-
+        console.log("Lote ingresado/armado:", loteCompleto, "| Es especial?", esLoteEspecial);
+        
         let lotesEnZona = stockInfo.filter(s => {
-            let matchSku = !s.sku || s.sku === item.sku;
-            let matchUbi = cleanUbi(s.ubi) === zonaPicking || cleanUbi(s.ubi).startsWith(zonaPicking.substring(0, 4));
+            let matchSku = s.sku === item.sku;
+            let matchUbi = cleanUbi(s.ubi).startsWith(zonaPicking);
             return matchSku && matchUbi;
         });
-
+        
         console.log("Lotes filtrados en zona para este SKU:", lotesEnZona);
 
-        let loteEncontrado = lotesEnZona.find(s => s.lote.toUpperCase().includes(loteCompleto));
+        let loteEncontrado = lotesEnZona.find(s => {
+            return esLoteEspecial ? s.lote.includes(loteCompleto) : s.lote.endsWith(loteCompleto);
+        });
 
         if(!loteEncontrado) {
             mostrarExcepcion(lotesEnZona, item, "Lote no encontrado.");
@@ -498,6 +496,11 @@
         if(loteEncontrado.qty < item.cant) {
             mostrarExcepcion(lotesEnZona, item, "Stock insuficiente en el sistema.");
             return;
+        }
+
+        // Si lo encontró en otra ubicación de la misma zona, actualizamos la línea
+        if (cleanUbi(loteEncontrado.ubi) !== itemUbiClean) {
+            item.ubi = loteEncontrado.ubi; // Auto-corrección
         }
 
         item.picked = true;
@@ -514,8 +517,8 @@
         const ul = document.getElementById('sysLotsList');
         
         ul.innerHTML = lotesSys.length > 0 
-            ? lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b> ${l.status ? '| Status: <b>' + l.status + '</b>' : ''}</li>`).join('') 
-            : "<li>No hay lotes en sistema para esta ubicación.</li>";
+            ? lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b></li>`).join('') 
+            : "<li>No hay lotes en sistema para esta zona de picking.</li>";
             
         document.getElementById('partialPickDiv').style.display = lotesSys.length > 0 ? "block" : "none";
         document.getElementById('partialQty').max = item.cant;
@@ -538,11 +541,11 @@
     function solicitarReclasificacion() {
         let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
         let item = pendingItems[idx];
-        let lotesSys = stockInfo.filter(s => s.sku === item.sku);
+        let lotesSys = stockInfo.filter(s => s.sku === item.sku && cleanUbi(s.ubi).startsWith(cleanUbi(item.ubi).substring(0,4)));
         
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFontSize(16); doc.text("Solicitud de Reclasificación", 20, 20);
+        doc.setFontSize(16); doc.text("Reclasificacion", 20, 20);
         doc.setFontSize(12); doc.text(`SKU: ${item.sku} | Ubi orig: ${item.ubi}`, 20, 40);
         doc.text(`Fisico escaneado: ${loteFisicoIngresado}`, 20, 50);
         doc.text(`Lotes en Sistema:`, 20, 70);
@@ -562,8 +565,13 @@
         `).join('');
     }
     
-    function abrirCamara() { alert("La función de cámara será implementada próximamente."); }
-    function activarMicrofono() { alert("La función de micrófono será implementada próximamente."); }
+    function abrirCamara() {
+        alert("La función de cámara será implementada próximamente.");
+    }
+    
+    function activarMicrofono() {
+        alert("La función de micrófono será implementada próximamente.");
+    }
 </script>
 </body>
 </html>
