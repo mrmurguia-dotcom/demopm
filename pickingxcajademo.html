@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Picking JDE v.PRO - Multifuente & Scanner Avanzado</title>
+    <title>Picking JDE v.PRO - Surtido Mixto Validado</title>
     <!-- SheetJS para lectura de Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <!-- jsPDF para generación de Reportes y Reclasificación -->
@@ -58,7 +58,6 @@
         .fab-mic.listening { background: #c0392b; animation: pulse 1s infinite; transform: scale(1.1); }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 
-        /* Contenedor de Vista de Cámara en Vivo */
         #cameraContainer { display: none; position: relative; width: 100%; max-width: 400px; margin: 10px auto; background: #000; border-radius: 8px; overflow: hidden; }
         #cameraPreview { width: 100%; height: auto; display: block; }
     </style>
@@ -66,7 +65,7 @@
 <body>
 
 <div class="container">
-    <h2 class="section-title">📦 Picking JDE v.PRO - Configuración Multifuente</h2>
+    <h2 class="section-title">📦 Picking JDE v.PRO - PM Surtido Mixto</h2>
     
     <div class="grid-inputs">
         <!-- ARCHIVO 1 -->
@@ -77,19 +76,19 @@
         </div>
         <!-- ARCHIVO 2 -->
         <div class="box">
-            <label>2. Maestro de Productos / Capacidades (Excel)</label>
+            <label>2. Maestro de Productos / Capacidades</label>
             <input type="file" id="fileMaestro" accept=".xlsx, .xls">
             <small id="statusMaestro" style="color:#7f8c8d; display:block; margin-top:5px;">Pendiente de carga...</small>
         </div>
         <!-- ARCHIVO 3 -->
         <div class="box" style="grid-column: 1 / -1;">
-            <label>3. Reporte de Surtido (HTML / Archivo JDE)</label>
-            <input type="file" id="fileSurtido" accept=".html, .htm, .txt, .xls, .xlsx">
+            <label>3. Reporte de Surtido Final (Excel JDE)</label>
+            <input type="file" id="fileSurtido" accept=".xls, .xlsx, .html, .htm">
             <small id="statusSurtido" style="color:#7f8c8d; display:block; margin-top:5px;">Pendiente de carga...</small>
         </div>
     </div>
 
-    <button class="btn btn-gen" onclick="procesarFuentesYGenerarPallets()">⚡ PROCESAR Y GENERAR PALLETS PM</button>
+    <button class="btn btn-gen" onclick="procesarFuentesYGenerarPallets()">⚡ EXTRAER MIXTOS Y GENERAR PALLETS</button>
 </div>
 
 <!-- ÁREA DE RESULTADOS -->
@@ -102,7 +101,7 @@
     </div>
 
     <div id="vistaGeneral" style="display:none;">
-        <h3>📋 Listado Completo de Surtido</h3>
+        <h3>📋 Listado Completo de Surtido (Solo PM Mixto)</h3>
         <div class="button-group">
             <button class="btn btn-scan-sug" onclick="abrirScannerGlobal(false)">🛠️ Armar TODO Sugerido</button>
             <button class="btn btn-scan-lib" onclick="abrirScannerGlobal(true)">🔓 Armar TODO Libre</button>
@@ -114,7 +113,7 @@
     </div>
 </div>
 
-<!-- MODO SCANNER & CÁMARA & VOZ -->
+<!-- MODO SCANNER & CÁMARA & VOZ (Oculto por defecto) -->
 <div id="scannerModal">
     <div class="scan-header">
         <h2 style="margin:0;">📲 MODO SCANNER <span id="scanModeTitle"></span></h2>
@@ -128,7 +127,6 @@
         <h1><span id="scanTargetQty"></span> Cajas</h1>
     </div>
 
-    <!-- Vista previa de cámara para escanear código de barras EAN -->
     <div id="cameraContainer">
         <video id="cameraPreview" autoplay playsinline></video>
         <button onclick="cerrarCamara()" style="background:#e74c3c; color:white; border:none; width:100%; padding:8px; cursor:pointer;">Apagar Cámara</button>
@@ -170,21 +168,20 @@
 </div>
 
 <script>
-    // --- ESTAS VARIABLES ALMACENAN LOS DATOS DE LOS 3 ARCHIVOS SEPARADOS ---
-    let stockData = [];       // Archivo 1: Stock JDE
-    let maestroData = {};     // Archivo 2: Capacidades / Maestro
-    let eanMapData = {};      // Archivo 2: Mapeo EAN a SKU
-    let htmlSurtidoDoc = "";  // Archivo 3: Contenido HTML del Surtido
+    // Variables Globales
+    let stockData = [];       
+    let maestroData = {};     
+    let eanMapData = {};      
+    let surtidoData = [];     // Ahora usamos array parseado por SheetJS
     
     let itemsTotales = [];
     let palletsGenerados = [];
     let pendingItems = [];
     let currentItemIndex = 0;
     let modoLibre = false;
-    let loteFisicoIngresado = "";
     let mediaStream = null;
 
-    // --- MANEJO DE CARGA INDEPENDIENTE DE ARCHIVOS ---
+    // --- CARGA DE ARCHIVOS ---
     document.getElementById('fileStock').onchange = async (e) => {
         let file = e.target.files[0];
         if(!file) return;
@@ -202,8 +199,6 @@
         let file = e.target.files[0];
         if(!file) return;
         let wb = await leerWorkbook(file);
-        
-        // Procesar Capacidades
         if(wb.SheetNames[0]) {
             let sheet = wb.Sheets[wb.SheetNames[0]];
             let json = XLSX.utils.sheet_to_json(sheet, {header:1});
@@ -213,7 +208,6 @@
                 if(sku) maestroData[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
             });
         }
-        // Procesar EAN si existe pestaña MST Producto
         if(wb.SheetNames.includes('MST Producto')) {
             let jsonMst = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
             eanMapData = {};
@@ -227,12 +221,17 @@
         document.getElementById('statusMaestro').style.color = "var(--success)";
     };
 
+    // NUEVA CARGA DE SURTIDO (Usando SheetJS también para extraer data del Excel)
     document.getElementById('fileSurtido').onchange = async (e) => {
         let file = e.target.files[0];
         if(!file) return;
-        htmlSurtidoDoc = await file.text();
-        document.getElementById('statusSurtido').innerText = `✅ Reporte de Surtido listo`;
-        document.getElementById('statusSurtido').style.color = "var(--success)";
+        try {
+            surtidoData = await leerExcelComoMatriz(file);
+            document.getElementById('statusSurtido').innerText = `✅ Surtido listo (${surtidoData.length} filas analizadas)`;
+            document.getElementById('statusSurtido').style.color = "var(--success)";
+        } catch(err) {
+            alert("Error procesando surtido: " + err.message);
+        }
     };
 
     function leerWorkbook(file) {
@@ -248,145 +247,146 @@
 
     async function leerExcelComoMatriz(file) {
         let wb = await leerWorkbook(file);
-        // Busca hoja de stock por nombre o toma la primera
-        const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('legacy vstockpt') || n.toLowerCase().includes('vstock')) || wb.SheetNames[0];
+        // Si es el Excel JDE normal, tomamos la hoja que se llame vStock, si no, la primera
+        const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('vstock')) || wb.SheetNames[0];
         return XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1});
     }
 
-    // --- FUNCIÓN ROBUSTA DE LECTURA DE STOCK JDE ---
+    // --- PROCESAMIENTO ROBUSTO DE STOCK ---
     function procesarMatrizStock(data) {
         let res = [];
         let keyUbi = -1, keyLote = -1, keyCant = -1, keySku = -1;
-        let startRow = 0;
+        let startRow = 1;
+        const norm = (str) => String(str || "").toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        const norm = (str) => String(str || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-
-        // 1. Escanear encabezados en las primeras 25 filas (Flexible)
         for (let i = 0; i < Math.min(25, data.length); i++) {
             let row = data[i];
             if (!row || row.length === 0) continue;
-
             row.forEach((cell, index) => {
                 let val = norm(cell);
                 if (!val) return;
-                
-                if (keyUbi === -1 && (val.includes('ubicacio') || val.includes('location') || val.includes('posic') || val.includes('ubi') || val.includes('loc'))) keyUbi = index;
-                if (keyLote === -1 && (val.includes('lote') || val.includes('lot') || val.includes('batch') || val.includes('nroldelote'))) keyLote = index;
-                if (keyCant === -1 && (val.includes('cant') || val.includes('qty') || val.includes('disp') || val.includes('mano') || val.includes('saldo') || val.includes('stock'))) keyCant = index;
-                if (keySku === -1 && (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('codigo') || val.includes('prod') || val.includes('short'))) keySku = index;
+                if (keyUbi === -1 && (val.includes('ubicacio') || val.includes('posic'))) keyUbi = index;
+                if (keyLote === -1 && (val.includes('lote') || val.includes('batch'))) keyLote = index;
+                if (keyCant === -1 && (val.includes('cant') || val.includes('disp'))) keyCant = index;
+                if (keySku === -1 && (val.includes('articulo') || val.includes('sku'))) keySku = index;
             });
-
-            if (keyUbi !== -1 || keyLote !== -1 || keySku !== -1 || keyCant !== -1) {
-                startRow = i + 1;
-            }
+            if (keyUbi !== -1 || keyLote !== -1) { startRow = i + 1; break; }
         }
 
-        // 2. Fallbacks inteligentes si la cabecera no se detectó por texto (índices comunes de JDE: B=1, C=2, D=3, F=5)
-        if (keyUbi === -1) keyUbi = 1;
-        if (keyLote === -1) keyLote = 3;
-        if (keySku === -1) keySku = 2; // O a veces la 4 o 12 dependiendo del formato
-        if (keyCant === -1) keyCant = 5;
+        if (keyUbi === -1) keyUbi = 1; if (keyLote === -1) keyLote = 3;
+        if (keySku === -1) keySku = 2; if (keyCant === -1) keyCant = 5;
 
-        if (startRow === 0) startRow = 1;
-
-        // 3. Recorrer celdas basándose en las posiciones encontradas
         for (let i = startRow; i < data.length; i++) {
             let r = data[i];
             if (!r || r.length === 0) continue;
-
             let ubiVal = String(r[keyUbi] || "").trim().toUpperCase().replace(/\./g, '');
             let loteVal = String(r[keyLote] || "").trim().toUpperCase();
             let skuVal = String(r[keySku] || "").trim();
-            
-            // Búsqueda auxiliar si la columna principal de SKU estaba vacía
-            if (!skuVal || skuVal.length < 2) {
-                [2, 12, 4, 1, 0].forEach(col => {
-                    let pot = String(r[col] || "").trim();
-                    if (pot && pot.length >= 3 && !pot.toLowerCase().includes('lote') && !pot.toLowerCase().includes('ubi')) {
-                        skuVal = pot;
-                    }
-                });
-            }
-
-            let qtyVal = 0;
-            if (keyCant !== -1 && r[keyCant] !== undefined && r[keyCant] !== "") {
-                qtyVal = parseFloat(String(r[keyCant]).replace(',', '.')) || 0;
-            }
-
-            // Búsqueda auxiliar de cantidad numérica
-            if (qtyVal <= 0) {
-                [5, 6, 7, 8, 4].forEach(col => {
-                    let num = parseFloat(String(r[col] || "").replace(',', '.'));
-                    if (!isNaN(num) && num > 0 && num < 999999) {
-                        qtyVal = num;
-                    }
-                });
-            }
+            let qtyVal = parseFloat(String(r[keyCant] || "").replace(',', '.')) || 0;
 
             if (skuVal && skuVal.toUpperCase() !== "SKU" && skuVal.toUpperCase() !== "ARTICULO") {
-                res.push({
-                    ubi: ubiVal || "S/U",
-                    lote: (loteVal && loteVal !== "LOTE") ? loteVal : "ESTANDAR",
-                    qty: qtyVal > 0 ? qtyVal : 999,
-                    sku: skuVal
-                });
+                res.push({ ubi: ubiVal || "S/U", lote: (loteVal && loteVal !== "LOTE") ? loteVal : "ESTANDAR", qty: qtyVal > 0 ? qtyVal : 999, sku: skuVal });
             }
         }
-
-        // 4. Fallback Extremo: Búsqueda Heurística Celda por Celda
-        if (res.length === 0) {
-            for (let i = 1; i < data.length; i++) {
-                let row = data[i];
-                if (!row || row.length === 0) continue;
-                
-                let posibleSku = "";
-                let posibleLote = "";
-                let posibleCant = 1;
-
-                row.forEach(cell => {
-                    let cStr = String(cell || "").trim();
-                    if (cStr.length >= 4 && !posibleSku && !isNaN(cStr)) posibleSku = cStr;
-                    else if (cStr.length >= 3 && !posibleLote && cStr.toUpperCase().includes('L')) posibleLote = cStr;
-                    else if (!isNaN(cell) && cell > 0 && cell < 10000) posibleCant = parseFloat(cell);
-                });
-
-                if (posibleSku) {
-                    res.push({
-                        ubi: "GENERAL",
-                        lote: posibleLote || "S/LOTE",
-                        qty: posibleCant,
-                        sku: posibleSku
-                    });
-                }
-            }
-        }
-        
         return res;
     }
 
-    // --- PROCESAMIENTO PRINCIPAL COMBINADO ---
+    // --- LÓGICA PRINCIPAL: EXTRACCIÓN SOLO MIXTOS Y VALIDACIÓN TOTAL ---
     function procesarFuentesYGenerarPallets() {
         if(stockData.length === 0) return alert("⚠️ Falta cargar el Archivo 1 (Stock JDE).");
         if(Object.keys(maestroData).length === 0) return alert("⚠️ Falta cargar el Archivo 2 (Maestro / Capacidades).");
-        if(!htmlSurtidoDoc) return alert("⚠️ Falta cargar el Archivo 3 (Reporte Surtido).");
+        if(surtidoData.length === 0) return alert("⚠️ Falta cargar el Archivo 3 (Reporte Surtido).");
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlSurtidoDoc, "text/html");
         let itemsRaw = [];
-        let esMixto = false;
+        let enZonaMixtos = false;
+        let expectedTotal = 0;
+        let cajasMixtasExtraidas = 0;
 
-        Array.from(doc.querySelectorAll('tr')).forEach(tr => {
-            const text = tr.innerText.toUpperCase();
-            if(text.includes("PALLET MIXTO")) esMixto = true;
-            const c = Array.from(tr.cells).map(td => td.innerText.trim());
-            if(c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
-                let info = maestroData[c[1]] || { cap: 84 };
-                itemsRaw.push({
-                    ubi: c[0], sku: c[1], desc: c[4], orden: parseInt(c[6])||0, cant: parseInt(c[8]),
-                    dep: "P0" + (c[0].split('.')[1] || "01"), picked: false, capFull: info.cap
+        for (let i = 0; i < surtidoData.length; i++) {
+            let row = surtidoData[i];
+            if (!row || row.length === 0) continue;
+            
+            let rowStr = row.join(" ").toUpperCase();
+
+            // 1. Detectar inicio/fin de la sección "PM Pallet Mixto"
+            if (rowStr.includes("AREA SURTIDO") && rowStr.includes("PALLET MIXTO")) {
+                enZonaMixtos = true;
+                continue; // Saltamos la línea del título
+            } else if (rowStr.includes("AREA SURTIDO") && !rowStr.includes("PALLET MIXTO")) {
+                // Entramos a otra área (Ej: Pallet Completo), apagamos la extracción
+                enZonaMixtos = false; 
+            }
+
+            // 2. Extraer el Gran Total para Validación
+            if (rowStr.includes("CANTIDAD POR UNIDAD DE MEDIDA")) {
+                // Revisar la línea actual y las 2 siguientes para cazar el número 
+                let bloque = [...row, ...(surtidoData[i+1] || []), ...(surtidoData[i+2] || [])];
+                bloque.forEach(cell => {
+                    let num = parseFloat(String(cell));
+                    // El número de cajas total suele ser el valor numérico más alto en esta zona
+                    if (!isNaN(num) && num > 0 && num > expectedTotal) {
+                        expectedTotal = num;
+                    }
                 });
             }
-        });
+
+            // 3. Extraer solo líneas de Picking si estamos en la zona correcta
+            if (enZonaMixtos) {
+                let ubi = String(row[0] || "").trim();
+                
+                // Si la ubicación parece válida (Ej: P0.02.035.1)
+                if (ubi.includes(".") && ubi.length > 6 && !ubi.includes(" ")) {
+                    let sku = String(row[1] || "").trim();
+                    let desc = String(row[4] || row[3] || "").trim();
+                    
+                    let qty = 0;
+                    // Buscar la cantidad buscando "CA" de derecha a izquierda
+                    for (let c = row.length - 1; c >= 2; c--) {
+                        let cellVal = String(row[c] || "").trim().toUpperCase();
+                        if (cellVal === "CA") {
+                            qty = parseFloat(row[c-1]); // La celda anterior tiene el número
+                            break;
+                        } else if (cellVal.includes(" CA") || cellVal.includes("CA")) {
+                            qty = parseFloat(cellVal.replace("CA", "").trim()); // El número y CA están juntos en la celda
+                            break;
+                        }
+                    }
+
+                    // Fallback si "CA" no se leyó bien
+                    if (isNaN(qty) || qty === 0) {
+                        for(let c = row.length - 1; c >= 2; c--) {
+                            let num = parseFloat(row[c]);
+                            if(!isNaN(num) && num > 0 && num < 10000) { qty = num; break; }
+                        }
+                    }
+
+                    if (qty > 0 && sku && !isNaN(parseInt(sku))) {
+                        let info = maestroData[sku] || { cap: 84 };
+                        itemsRaw.push({
+                            ubi: ubi, sku: sku, desc: desc, orden: parseInt(row[6] || 0), cant: qty,
+                            dep: ubi.substring(0, 4) || "P001", picked: false, capFull: info.cap
+                        });
+                        cajasMixtasExtraidas += qty;
+                    }
+                }
+            }
+        }
+
+        if (itemsRaw.length === 0) {
+            return alert("❌ No se encontraron líneas de picking en la sección 'PM Pallet Mixto'. Verificá que el archivo contenga esta área.");
+        }
+
+        // VALIDACIÓN
+        let mensajeExito = `✅ ÉXITO: Se extrajeron ${cajasMixtasExtraidas} cajas correspondientes ÚNICAMENTE a Pallets Mixtos.`;
+        if (expectedTotal > 0) {
+            if (cajasMixtasExtraidas === expectedTotal) {
+                alert(`${mensajeExito}\n\n✔️ TOTAL VALIDADO PERFECTO: Coincide con el reporte final de ${expectedTotal} Cajas.`);
+            } else {
+                alert(`${mensajeExito}\n\n⚠️ ADVERTENCIA: El total final del documento marca ${expectedTotal} Cajas. (Nota: Esto es normal si tu reporte consolida en el total final tanto Mixtos como Homogéneos).`);
+            }
+        } else {
+            alert(`${mensajeExito}\n\n(No se pudo detectar el número total al final para cruzar datos).`);
+        }
 
         itemsRaw.sort((a,b) => a.orden - b.orden);
         itemsTotales = itemsRaw;
@@ -420,6 +420,7 @@
         renderTablaGeneral();
     }
 
+    // --- RENDERIZADO Y UI ---
     function renderPallets() {
         document.getElementById('resArea').style.display = "block";
         const tabs = document.getElementById('tabs'); 
@@ -543,7 +544,6 @@
         }
     }
 
-    // Funciones de Cámara en Vivo para capturar EAN
     async function toggleCamara() {
         let container = document.getElementById('cameraContainer');
         if (container.style.display === "block") {
@@ -568,7 +568,6 @@
         document.getElementById('cameraContainer').style.display = "none";
     }
 
-    // Asistente de Voz Integrado
     const synth = window.speechSynthesis;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = SpeechRecognition ? new SpeechRecognition() : null;
