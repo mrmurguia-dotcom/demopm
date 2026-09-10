@@ -173,47 +173,60 @@
                 });
             }
 
-            // NUEVA LÓGICA DE DETECCIÓN DE HOJA DE STOCK
-            // Busca la hoja ignorando mayúsculas/minúsculas basándose en posibles nombres
+            // DETECCIÓN Y PROCESAMIENTO MEJORADO DE HOJA DE STOCK
             const nombreHojaStock = wb.SheetNames.find(name => {
                 const n = name.toLowerCase();
                 return n.includes('legacy vstockpt') || 
                        n.includes('maestro jde') || 
                        n.includes('maestro de stock') || 
-                       n.includes('stock'); // 'stock' lo hace compatible con nombres genéricos
+                       n.includes('stock') ||
+                       n.includes('vstock');
             });
 
             if (nombreHojaStock) {
                 const sheet = wb.Sheets[nombreHojaStock];
-                // Forzamos leer todo como matriz 2D para saltar las filas basura de JDE
                 const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
                 stockInfo = [];
 
                 let colMcu = -1, colUbi = -1, colLote = -1, colCant = -1, colSku = -1;
                 let startRow = 0;
 
-                // 1. Escanear las primeras 30 filas buscando dónde están los nombres de las columnas
+                // Normalizador para eliminar tildes, mayúsculas, puntos y espacios
+                const norm = (str) => String(str || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+
+                // 1. Detección flexible de columnas mediante palabras clave
                 for (let i = 0; i < Math.min(30, dataStock.length); i++) {
                     let row = dataStock[i];
                     if (!row || row.length === 0) continue;
                     
+                    let tempUbi = -1, tempLote = -1, tempCant = -1, tempSku = -1, tempMcu = -1;
                     let matches = 0;
+
                     row.forEach((cell, index) => {
-                        let val = String(cell || "").toLowerCase().trim().replace(/\s+/g, '');
-                        if (val.includes('mcu') || val.includes('planta') || val.includes('sucursal')) { colMcu = index; matches++; }
-                        else if (val.includes('ubicacion') || val.includes('ubi')) { colUbi = index; matches++; }
-                        else if (val === 'lote' || val === 'lot' || val.includes('nrolote')) { colLote = index; matches++; }
-                        else if (val.includes('cantenmano') || val.includes('cantidad') || val.includes('qty') || val.includes('disp')) { colCant = index; matches++; }
-                        else if (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('art')) { colSku = index; matches++; }
+                        let val = norm(cell);
+                        if (!val) return;
+
+                        if (tempUbi === -1 && (val.includes('ubicacio') || val.includes('ubi') || val.includes('location') || val.includes('posicio'))) { tempUbi = index; matches++; }
+                        else if (tempLote === -1 && (val.includes('lote') || val.includes('lot') || val.includes('batch'))) { tempLote = index; matches++; }
+                        else if (tempCant === -1 && (val.includes('cant') || val.includes('qty') || val.includes('disp') || val.includes('mano') || val.includes('saldo') || val.includes('stock'))) { tempCant = index; matches++; }
+                        else if (tempSku === -1 && (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('art') || val.includes('codigo') || val.includes('prod'))) { tempSku = index; matches++; }
+                        else if (tempMcu === -1 && (val.includes('mcu') || val.includes('planta') || val.includes('sucursal') || val.includes('branch'))) { tempMcu = index; matches++; }
                     });
                     
-                    if (matches >= 2) { // Si encuentra al menos 2 palabras clave, asume que es la fila de cabeceras
+                    if (matches >= 2) {
+                        colUbi = tempUbi;
+                        colLote = tempLote;
+                        colCant = tempCant;
+                        colSku = tempSku;
+                        colMcu = tempMcu;
                         startRow = i + 1;
                         break;
                     }
                 }
 
-                // 2. Extraer los datos usando la posición exacta de las columnas encontradas
+                console.log(`Mapeo -> Ubi:${colUbi}, Lote:${colLote}, Cant:${colCant}, SKU:${colSku}, MCU:${colMcu} | Fila inicio: ${startRow}`);
+
+                // 2. Extraer los datos usando el mapeo detectado
                 for (let i = startRow; i < dataStock.length; i++) {
                     let r = dataStock[i];
                     if (!r || r.length === 0) continue;
@@ -224,10 +237,9 @@
                     let mcuVal = colMcu !== -1 ? cleanStr(String(r[colMcu] || "")) : "";
                     
                     let cantRaw = colCant !== -1 ? r[colCant] : 0;
-                    // JDE suele enviar números reales, pero validamos si llegan como string con comas
                     let qtyVal = typeof cantRaw === 'number' ? cantRaw : (parseFloat(String(cantRaw).replace(',', '.')) || 0);
 
-                    // Fallback para SKU: si la columna falló, busca un número válido suelto en la fila
+                    // Fallback para SKU: busca un número o código de producto en la fila si la columna no se mapeó
                     if (!skuVal) {
                         r.forEach(cell => {
                             let text = cleanStr(String(cell || ""));
@@ -237,15 +249,16 @@
                         });
                     }
 
-                    if (ubiVal && loteVal && qtyVal > 0) {
-                        if (!mcuVal || mcuVal.includes('503')) {
-                            stockInfo.push({
-                                ubi: ubiVal,
-                                lote: loteVal,
-                                qty: qtyVal,
-                                sku: skuVal
-                            });
-                        }
+                    // Permite el registro si MCU incluye 503 o si no hay columna de MCU especificada
+                    let mcuOk = (colMcu === -1) || !mcuVal || mcuVal.includes('503');
+
+                    if (ubiVal && loteVal && qtyVal > 0 && mcuOk) {
+                        stockInfo.push({
+                            ubi: ubiVal,
+                            lote: loteVal,
+                            qty: qtyVal,
+                            sku: skuVal
+                        });
                     }
                 }
                 console.log("Stock cargado exitosamente desde pestaña '"+nombreHojaStock+"':", stockInfo.length, "registros.");
@@ -262,7 +275,7 @@
             localStorage.setItem('m_v32_2', JSON.stringify(maestro));
             localStorage.setItem('stock_v32_2', JSON.stringify(stockInfo));
             localStorage.setItem('ean_v32_2', JSON.stringify(eanMap));
-            alert("✅ Maestros actualizados.");
+            alert(`✅ Maestros actualizados. (${stockInfo.length} registros de stock cargados)`);
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     };
