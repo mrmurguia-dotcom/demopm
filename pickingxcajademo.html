@@ -3,587 +3,1016 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Picking JDE v.PRO - Scanner & Lotes</title>
+    <title>Sistema de Gestión de Picking y Armado de Pallets PM - M2 Consultora</title>
+    <!-- SheetJS para lectura de Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF para generación de PDF de Reclasificación -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <style>
-        :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --warning: #f39c12; --dark: #1a252f; --info: #3498db; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .box { border: 2px dashed #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; background: #fafafa; }
+        :root { 
+            --primary: #2c3e50; 
+            --secondary: #34495e;
+            --success: #27ae60; 
+            --info: #2980b9; 
+            --warning: #e67e22; 
+            --danger: #c0392b; 
+            --light-bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --accent: #8e44ad;
+        }
+
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light-bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1300px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         
-        .btn-gen { background: var(--success); color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
-        .btn-scan-sug { background: var(--warning); color: #000; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; flex: 1; font-size: 1.1em; }
-        .btn-scan-lib { background: var(--info); color: white; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; flex: 1; font-size: 1.1em; }
-        .btn-toggle-view { background: var(--primary); color: white; padding: 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-bottom: 20px; width: 100%; font-size: 1.2em;}
-        .button-group { display: flex; gap: 10px; margin-top: 10px; margin-bottom: 10px;}
+        .header-title { text-align: center; color: var(--primary); margin-top: 0; margin-bottom: 5px; font-size: 1.8em; }
+        .sub-title { text-align: center; color: #7f8c8d; margin-top: 0; margin-bottom: 20px; font-size: 0.95em; }
+
+        /* Sección de Carga de Archivos */
+        .box { border: 2px dashed #bdc3c7; padding: 20px; border-radius: 8px; margin-bottom: 25px; background: #fafafa; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; margin-bottom: 15px; }
+
+        .drop-area { 
+            border: 2px dashed #95a5a6; 
+            padding: 15px; 
+            border-radius: 8px; 
+            background: #ffffff; 
+            transition: all 0.3s ease; 
+            text-align: left;
+            position: relative;
+        }
+        .drop-area.dragover { background-color: #eef7fc; border-color: var(--info); }
+        .drop-area label { font-weight: bold; color: var(--primary); display: block; margin-bottom: 8px; font-size: 0.95em; }
+        .drop-area input[type="file"] { width: 100%; cursor: pointer; padding: 6px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 0.85em; }
         
-        .pm-nav { display: flex; gap: 5px; margin: 20px 0; overflow-x: auto; }
-        .pm-tab { background: #eee; padding: 10px 15px; border-radius: 4px; cursor: pointer; border: 1px solid #ddd; font-weight: bold; white-space: nowrap; }
-        .pm-tab.active { background: var(--primary); color: white; }
-        .pallet-card { display: none; border: 2px solid #000; padding: 20px; margin-bottom: 20px; }
-        .pallet-card.active { display: block; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+        .file-status { margin-top: 8px; font-size: 0.85em; font-weight: 600; color: #7f8c8d; }
+        .file-status.loaded { color: var(--success); }
+
+        /* Botones Principales */
+        .btn { border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95em; color: white; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-process { background: var(--success); width: 100%; font-size: 1.1em; padding: 14px; box-shadow: 0 4px 6px rgba(39, 174, 96, 0.2); }
+        .btn-scanner { background: var(--accent); }
+        .btn-copy { background: var(--warning); }
+        .btn-export { background: var(--info); }
+        .btn-danger { background: var(--danger); }
+        .btn-secondary { background: var(--secondary); }
+
+        .action-bar { display: none; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; background: #ebf2f7; padding: 12px 18px; border-radius: 8px; }
         
-        #scannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 9999; color: white; flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto;}
-        .scan-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 20px; }
-        .scan-target { background: #2c3e50; padding: 20px; border-radius: 10px; border: 2px solid var(--info); margin-bottom: 20px; text-align: center; }
-        .scan-target h1 { margin: 0; font-size: 3em; color: #2ecc71; }
+        /* Resumen de Métricas */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .metric-card { background: #fff; padding: 15px; border-radius: 8px; border-left: 5px solid var(--info); box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
+        .metric-card h4 { margin: 0; color: #7f8c8d; font-size: 0.85em; text-transform: uppercase; }
+        .metric-card .value { font-size: 1.6em; font-weight: bold; color: var(--primary); margin-top: 5px; }
+
+        /* Tablas y Tarjetas */
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
+        .tab-btn { background: none; border: none; padding: 8px 16px; font-weight: bold; cursor: pointer; color: #7f8c8d; font-size: 1em; border-radius: 4px; }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        .table-container { overflow-x: auto; max-height: 550px; border: 1px solid #ddd; border-radius: 6px; background: white; }
+        table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 0.88em; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px 12px; text-align: left; }
+        th { background: var(--primary); color: white; position: sticky; top: 0; z-index: 2; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        tr:hover { background-color: #edf2f7; }
+
+        /* Badge Status */
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; display: inline-block; }
+        .badge-pending { background: #ffeaa7; color: #d63031; }
+        .badge-completed { background: #55efc4; color: #00b894; }
+        .badge-partial { background: #74b9ff; color: #0984e3; }
+
+        /* Tarjetas de Pallets */
+        .pallets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 15px; }
+        .pallet-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .pallet-header { background: var(--primary); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .pallet-body { padding: 15px; }
+
+        /* Modal del Escáner */
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .modal-content { background: white; width: 95%; max-width: 850px; border-radius: 10px; padding: 25px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         
-        .input-row { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; justify-content: center;}
-        .scan-input { padding: 15px; font-size: 1.2em; border-radius: 5px; border: none; outline: none; text-align: center; flex: 1; max-width: 300px; }
-        .scan-input-small { flex: 0.5; max-width: 150px; }
-        .btn-cam { background: #34495e; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1.5em; }
-        .btn-confirm { background: var(--success); color: white; border: none; padding: 20px; font-size: 1.2em; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; max-width: 610px; margin: 0 auto; display: block; }
-        
-        #exceptionPanel { display: none; background: #c0392b; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; max-width: 610px; margin-left: auto; margin-right: auto;}
-        .btn-exception { background: white; color: #c0392b; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; width: 100%; }
-        
-        .fab-mic { position: fixed; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 70px; height: 70px; font-size: 2em; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; display: flex; justify-content: center; align-items: center; z-index: 10000; }
-        .fab-mic.listening { background: #c0392b; animation: pulse 1s infinite; transform: scale(1.1); }
-        .scan-list { background: #fff; color: #000; padding: 15px; border-radius: 5px; margin-top: 20px; overflow-x: auto; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+        .scanner-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-weight: bold; font-size: 0.85em; color: var(--primary); }
+        .form-group input { padding: 10px; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 1.05em; font-weight: bold; }
+        .form-group input:focus { border-color: var(--info); outline: none; }
+
+        .julian-info { background: #e0f2fe; padding: 8px 12px; border-radius: 6px; border-left: 4px solid var(--info); font-size: 0.85em; margin-bottom: 10px; font-weight: 600; color: #0369a1; }
+
+        /* Floating Mic Button */
+        .mic-btn { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: white; border: none; font-size: 1.6em; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .mic-btn.listening { background: var(--danger); animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align:center;">📦 Optimizador de Picking v.PRO</h2>
-    <div class="box">
-        <strong>1. Maestro de Stock y Productos</strong><br>
-        <input type="file" id="masterFile" accept=".xlsx">
-    </div>
-    <div class="box">
-        <strong>2. Reporte de Surtido JDE</strong><br>
-        <input type="file" id="surtidoFile"><br><br>
-        <button class="btn-gen" onclick="procesar()">⚡ GENERAR PALLETS</button>
-    </div>
-</div>
+    <h2 class="header-title">📦 Sistema de Gestión de Picking y Armado de Pallets PM</h2>
+    <p class="sub-title">M2 Consultora | Configuración Multifuente (Stock JDE + Maestro Producto + Surtido)</p>
 
-<div id="resArea" class="container" style="display:none; margin-top:20px;">
-    <button id="btnToggleView" class="btn-toggle-view" onclick="toggleVista()">Ver todas las líneas</button>
-    
-    <div id="vistaPallets">
-        <div id="tabs" class="pm-nav"></div>
-        <div id="pallets"></div>
-    </div>
+    <!-- ZONA DE CARGA DE ARCHIVOS MULTIFUENTE -->
+    <div class="box">
+        <div class="controls">
+            <!-- ARCHIVO 1: STOCK JDE -->
+            <div class="drop-area" id="dropAreaStock">
+                <label>1. Excel Stock JDE (legacy vStockPT / OTC MI 126):</label>
+                <input type="file" id="stockFile" accept=".xls,.xlsx" title="Cargá la hoja vStockPT">
+                <div id="statusStock" class="file-status">Esperando archivo...</div>
+            </div>
 
-    <div id="vistaGeneral" style="display:none;">
-        <h2>📋 Listado Completo de Surtido</h2>
-        <div class="button-group">
-            <button class="btn-scan-sug" onclick="abrirScannerGlobal(false)">🛠️ Armar TODO Sugerido</button>
-            <button class="btn-scan-lib" onclick="abrirScannerGlobal(true)">🔓 Armar TODO Libre</button>
+            <!-- ARCHIVO 2: MAESTRO PRODUCTO / CAPACIDADES -->
+            <div class="drop-area" id="dropAreaMaestro">
+                <label>2. Excel Maestro Producto (MST / Capacidades PM):</label>
+                <input type="file" id="maestroFile" accept=".xls,.xlsx" title="Cargá la hoja Capacidades / MST Producto">
+                <div id="statusMaestro" class="file-status">Esperando archivo...</div>
+            </div>
+
+            <!-- ARCHIVO 3: SURTIDO JDE -->
+            <div class="drop-area" id="dropAreaSurtido" style="grid-column: span 1;">
+                <label>3. Reporte Surtido JDE (HTML / XLS / TXT):</label>
+                <input type="file" id="surtidoFile" accept=".html,.txt,.xls,.xlsx" title="Cargá la orden de picking">
+                <div id="statusSurtido" class="file-status">Esperando archivo...</div>
+            </div>
         </div>
-        <table id="tablaGeneral">
-            <thead><tr><th>Dep.</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
-            <tbody></tbody>
+
+        <button class="btn btn-process" onclick="procesarTodo()" id="btnProcess">⚡ GENERAR SUGERENCIA DE PALLETS & SUGESTIVO</button>
+    </div>
+
+    <!-- METRICAS DE RESUMEN -->
+    <div class="metrics-grid" id="metricsGrid" style="display:none;">
+        <div class="metric-card">
+            <h4>Registros Surtido</h4>
+            <div class="value" id="mTotalSurtido">0</div>
+        </div>
+        <div class="metric-card">
+            <h4>Cajas Totales</h4>
+            <div class="value" id="mTotalCajas">0</div>
+        </div>
+        <div class="metric-card">
+            <h4>Pallets Sugeridos</h4>
+            <div class="value" id="mTotalPallets">0</div>
+        </div>
+        <div class="metric-card">
+            <h4>Progreso Picking</h4>
+            <div class="value" id="mProgreso">0%</div>
+        </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES -->
+    <div class="action-bar" id="actionBar">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-scanner" onclick="abrirScannerGlobal(false)">📱 ESCÁNER GUIADO</button>
+            <button class="btn btn-secondary" onclick="abrirScannerGlobal(true)">🔓 MODO LIBRE / MANUAL</button>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-copy" onclick="copiarResumen()">📋 COPIAR DATOS</button>
+            <button class="btn btn-export" onclick="exportarExcel()">💾 DESCARGAR EXCEL</button>
+            <button class="btn btn-danger" onclick="descargarPDFExcepciones()">📄 EXPORTAR RECLASIFICACIÓN PDF</button>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS DE VISTA -->
+    <div class="tabs" id="tabsBar" style="display:none;">
+        <button class="tab-btn active" onclick="cambiarVista('pallets')" id="tabPallets">📦 Vista Pallets Sugeridos</button>
+        <button class="tab-btn" onclick="cambiarVista('tabla')" id="tabTabla">📋 Tabla Detallada Surtido</button>
+    </div>
+
+    <!-- CONTENEDOR VISTA PALLETS -->
+    <div id="vistaPallets" class="pallets-grid"></div>
+
+    <!-- CONTENEDOR VISTA TABLA DETALLADA -->
+    <div id="vistaTabla" class="table-container" style="display:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Línea</th>
+                    <th>SKU</th>
+                    <th>EAN</th>
+                    <th>Descripción</th>
+                    <th>Solicitado</th>
+                    <th>Pickeado</th>
+                    <th>Estado</th>
+                    <th>Pallet Asignado</th>
+                    <th>Ubicación Stock</th>
+                    <th>Lote Sugerido</th>
+                    <th>Lote Escaneado</th>
+                    <th>Fecha Julián</th>
+                </tr>
+            </thead>
+            <tbody id="tablaSurtidoBody"></tbody>
         </table>
     </div>
 </div>
 
-<!-- MODO SCANNER -->
-<div id="scannerModal">
-    <div class="scan-header">
-        <h2 style="margin:0;">📲 MODO SCANNER <span id="scanModeTitle"></span></h2>
-        <button onclick="cerrarScanner()" style="background:#e74c3c; color:white; border:none; padding:10px 20px; font-size:1.2em; border-radius:5px;">Cerrar</button>
-    </div>
-    
-    <div class="scan-target" id="scanTargetBox">
-        <div style="font-size:1.2em; color:#bdc3c7;">PRÓXIMA LÍNEA A PREPARAR</div>
-        <h2 id="scanTargetSku">SKU / Desc</h2>
-        <div>Ubicación: <strong id="scanTargetUbi" style="font-size:1.5em; color:#f1c40f;"></strong></div>
-        <h1><span id="scanTargetQty"></span> Cajas</h1>
-    </div>
-
-    <div class="input-row">
-        <input type="text" id="scanEanInput" class="scan-input" placeholder="1. EAN o SKU..." onblur="validarSkuBlur()">
-        <button class="btn-cam" onclick="abrirCamara()">📷</button>
-    </div>
-
-    <div class="input-row">
-        <input type="text" id="scanLotJulian" class="scan-input scan-input-small" placeholder="Lote (Ej: 25210 o 26dv07)">
-        <input type="text" id="scanLotTime" class="scan-input scan-input-small" placeholder="Hora (Vacío si es lata)">
-    </div>
-
-    <button class="btn-confirm" onclick="confirmarLinea()">✅ CONFIRMAR</button>
-
-    <div id="exceptionPanel">
-        <h3 style="margin-top:0;">⚠️ Lote no encontrado o stock insuficiente</h3>
-        <p>Lotes sugeridos en zona de picking:</p>
-        <ul id="sysLotsList" style="text-align:left;"></ul>
-        
-        <div id="partialPickDiv" style="display:none; margin-top:10px;">
-            <label>Preparar cantidad parcial:</label>
-            <input type="number" id="partialQty" class="scan-input" style="width:100px; padding:5px; font-size:1em;" min="1">
-            <button class="btn-exception" onclick="aplicarParcial()">Aceptar Cantidad Parcial</button>
+<!-- MODAL DEL ESCÁNER -->
+<div class="modal-overlay" id="modalScanner">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle" style="margin:0; color:var(--primary);">📱 Mapeo Físico de Picking</h3>
+            <button onclick="cerrarScanner()" style="border:none; background:none; font-size:1.4em; cursor:pointer;">✖</button>
         </div>
-        <button class="btn-exception" onclick="solicitarReclasificacion()">📄 Solicitar Reclasificación (PDF)</button>
-    </div>
 
-    <div class="scan-list">
-        <h3 style="margin-top:0; color:black;">📋 Progreso</h3>
-        <table id="scanProgressTable">
-            <thead><tr><th>Est.</th><th>Ubicación</th><th>SKU</th><th>Cant</th></tr></thead>
-            <tbody></tbody>
-        </table>
+        <div class="julian-info" id="julianBanner">
+            📅 Formato Julián Detectado: <span id="txtJulianDetail">Esperando lectura...</span>
+        </div>
+
+        <div class="scanner-form">
+            <div class="form-group">
+                <label>Código SKU / EAN Escaneado:</label>
+                <input type="text" id="inputSku" placeholder="Escanear EAN o SKU..." onblur="validarSkuBlur()">
+            </div>
+            <div class="form-group">
+                <label>Lote Físico Escaneado:</label>
+                <input type="text" id="inputLote" placeholder="Escanear Lote..." oninput="procesarLoteJulianInput()">
+            </div>
+            <div class="form-group">
+                <label>Cantidad Cajas Confirmadas:</label>
+                <input type="number" id="inputCantidad" placeholder="Cantidad cajas...">
+            </div>
+            <div class="form-group">
+                <label>Ubicación Confirmada:</label>
+                <input type="text" id="inputUbi" placeholder="Ubicación...">
+            </div>
+        </div>
+
+        <div style="margin-bottom:15px; background:#f8fafc; padding:12px; border-radius:6px; font-size:0.9em; border:1px solid #cbd5e1;">
+            <b>Línea Sugerida Actual:</b> <span id="lblSugerida">N/A</span><br>
+            <b>Ubicación en Stock:</b> <span id="lblUbiStock" style="color:var(--info); font-weight:bold;">N/A</span> | 
+            <b>Lote en Stock:</b> <span id="lblLoteStock" style="color:var(--accent); font-weight:bold;">N/A</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-process" style="flex:2;" onclick="confirmarLecturaScanner()">✅ CONFIRMAR Y SIGUIENTE</button>
+            <button class="btn btn-warning" style="flex:1;" onclick="mostrarModalExcepcion()">⚠️ NO CONFORME / PARCIAL</button>
+        </div>
+
+        <div style="margin-top:20px;">
+            <h4 style="margin-bottom:8px; color:var(--primary);">Progreso de Picking Actual:</h4>
+            <div class="table-container" style="max-height:200px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Lote</th>
+                            <th>Solicitado</th>
+                            <th>Pickeado</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaProgresoScanner"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    <button id="fabMic" class="fab-mic" onclick="activarMicrofono()">🎙️</button>
 </div>
+
+<!-- BOTÓN MICRÓFONO FLOTANTE -->
+<button class="mic-btn" id="btnMic" onclick="toggleReconocimientoVoz()" title="Asistente por Voz">🎙️</button>
 
 <script>
-    let maestro = JSON.parse(localStorage.getItem('m_v32_2')) || {};
-    let stockInfo = JSON.parse(localStorage.getItem('stock_v32_2')) || [];
-    let eanMap = JSON.parse(localStorage.getItem('ean_v32_2')) || {};
-    let palletsGenerados = [];
-    let itemsTotales = [];
-    let pendingItems = [];
-    let currentItemIndex = 0;
-    let modoLibre = false;
-    let loteFisicoIngresado = "";
+    // ESTADO GLOBAL DE DATOS
+    let stockInfo = [];       // Contiene { ubi, lote, qty, sku }
+    let maestro = {};         // SKU -> { cap: number }
+    let eanMap = {};          // EAN -> SKU
+    let itemsSurtido = [];    // Ítems procesados del reporte de picking
+    let palletsGenerados = [];// Estructura de Pallets PM
+    let excepcionesLog = [];  // Novedades para reclasificación
     
-    // Asistente de Voz
-    const synth = window.speechSynthesis;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = SpeechRecognition ? new SpeechRecognition() : null;
-    if(recognition) recognition.lang = 'es-AR';
+    let modoScannerLibre = false;
+    let palletScannerIdActual = null;
+    let itemScannerIndex = 0;
+    let recVoz = null;
+    let escuchando = false;
 
-    function hablar(texto) {
-        if(synth.speaking) synth.cancel();
-        const utterThis = new SpeechSynthesisUtterance(texto);
-        utterThis.lang = 'es-AR'; utterThis.rate = 1.1; synth.speak(utterThis);
-    }
+    // AL CARGAR LA PÁGINA: PERSISTENCIA LOCAL Y CONFIGURACIÓN DRAG & DROP
+    window.onload = () => {
+        setupDragAndDrop('dropAreaStock', 'stockFile', (file) => procesarStockFile(file));
+        setupDragAndDrop('dropAreaMaestro', 'maestroFile', (file) => procesarMaestroFile(file));
+        setupDragAndDrop('dropAreaSurtido', 'surtidoFile', (file) => alert("Reporte de Surtido listo para procesar."));
 
-    // Utilidades de limpieza (Espacios invisibles y puntos)
-    function cleanStr(s) { return String(s || "").trim().replace(/[\u200B-\u200D\uFEFF]/g, ''); }
-    function cleanUbi(u) { return cleanStr(u).replace(/\./g, '').toUpperCase(); }
+        document.getElementById('stockFile').addEventListener('change', (e) => procesarStockFile(e.target.files[0]));
+        document.getElementById('maestroFile').addEventListener('change', (e) => procesarMaestroFile(e.target.files[0]));
 
-    document.getElementById('masterFile').onchange = (e) => {
-        if (!e.target.files.length) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-            
-            if (wb.SheetNames[0]) {
-                const dataCapacidades = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-                maestro = {};
-                dataCapacidades.slice(1).forEach(r => {
-                    let sku = cleanStr(r[1]);
-                    if(sku) maestro[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
-                });
-            }
+        // Cargar desde localStorage si existen
+        if (localStorage.getItem('stock_v32_2')) {
+            try {
+                stockInfo = JSON.parse(localStorage.getItem('stock_v32_2'));
+                document.getElementById('statusStock').innerText = `✅ Stock cargado (${stockInfo.length} registros)`;
+                document.getElementById('statusStock').classList.add('loaded');
+            } catch(e){}
+        }
 
-            // DETECCIÓN Y PROCESAMIENTO MEJORADO DE HOJA DE STOCK
-            const nombreHojaStock = wb.SheetNames.find(name => {
-                const n = name.toLowerCase();
-                return n.includes('legacy vstockpt') || 
-                       n.includes('maestro jde') || 
-                       n.includes('maestro de stock') || 
-                       n.includes('stock') ||
-                       n.includes('vstock');
-            });
+        if (localStorage.getItem('maestro_v32_2')) {
+            try {
+                const parsed = JSON.parse(localStorage.getItem('maestro_v32_2'));
+                maestro = parsed.maestro || {};
+                eanMap = parsed.eanMap || {};
+                document.getElementById('statusMaestro').innerText = `✅ Maestro cargado (${Object.keys(maestro).length} productos)`;
+                document.getElementById('statusMaestro').classList.add('loaded');
+            } catch(e){}
+        }
 
-            if (nombreHojaStock) {
-                const sheet = wb.Sheets[nombreHojaStock];
-                const dataStock = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                stockInfo = [];
-
-                let colMcu = -1, colUbi = -1, colLote = -1, colCant = -1, colSku = -1;
-                let startRow = 0;
-
-                // Normalizador para eliminar tildes, mayúsculas, puntos y espacios
-                const norm = (str) => String(str || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-
-                // 1. Detección flexible de columnas mediante palabras clave
-                for (let i = 0; i < Math.min(30, dataStock.length); i++) {
-                    let row = dataStock[i];
-                    if (!row || row.length === 0) continue;
-                    
-                    let tempUbi = -1, tempLote = -1, tempCant = -1, tempSku = -1, tempMcu = -1;
-                    let matches = 0;
-
-                    row.forEach((cell, index) => {
-                        let val = norm(cell);
-                        if (!val) return;
-
-                        if (tempUbi === -1 && (val.includes('ubicacio') || val.includes('ubi') || val.includes('location') || val.includes('posicio'))) { tempUbi = index; matches++; }
-                        else if (tempLote === -1 && (val.includes('lote') || val.includes('lot') || val.includes('batch'))) { tempLote = index; matches++; }
-                        else if (tempCant === -1 && (val.includes('cant') || val.includes('qty') || val.includes('disp') || val.includes('mano') || val.includes('saldo') || val.includes('stock'))) { tempCant = index; matches++; }
-                        else if (tempSku === -1 && (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('art') || val.includes('codigo') || val.includes('prod'))) { tempSku = index; matches++; }
-                        else if (tempMcu === -1 && (val.includes('mcu') || val.includes('planta') || val.includes('sucursal') || val.includes('branch'))) { tempMcu = index; matches++; }
-                    });
-                    
-                    if (matches >= 2) {
-                        colUbi = tempUbi;
-                        colLote = tempLote;
-                        colCant = tempCant;
-                        colSku = tempSku;
-                        colMcu = tempMcu;
-                        startRow = i + 1;
-                        break;
-                    }
-                }
-
-                console.log(`Mapeo -> Ubi:${colUbi}, Lote:${colLote}, Cant:${colCant}, SKU:${colSku}, MCU:${colMcu} | Fila inicio: ${startRow}`);
-
-                // 2. Extraer los datos usando el mapeo detectado
-                for (let i = startRow; i < dataStock.length; i++) {
-                    let r = dataStock[i];
-                    if (!r || r.length === 0) continue;
-
-                    let ubiVal = colUbi !== -1 ? cleanUbi(String(r[colUbi] || "")) : "";
-                    let loteVal = colLote !== -1 ? cleanStr(String(r[colLote] || "")).toUpperCase() : "";
-                    let skuVal = colSku !== -1 ? cleanStr(String(r[colSku] || "")) : "";
-                    let mcuVal = colMcu !== -1 ? cleanStr(String(r[colMcu] || "")) : "";
-                    
-                    let cantRaw = colCant !== -1 ? r[colCant] : 0;
-                    let qtyVal = typeof cantRaw === 'number' ? cantRaw : (parseFloat(String(cantRaw).replace(',', '.')) || 0);
-
-                    // Fallback para SKU: busca un número o código de producto en la fila si la columna no se mapeó
-                    if (!skuVal) {
-                        r.forEach(cell => {
-                            let text = cleanStr(String(cell || ""));
-                            if (text.length >= 4 && !isNaN(text) && text !== mcuVal && text !== String(qtyVal)) {
-                                skuVal = text;
-                            }
-                        });
-                    }
-
-                    // Permite el registro si MCU incluye 503 o si no hay columna de MCU especificada
-                    let mcuOk = (colMcu === -1) || !mcuVal || mcuVal.includes('503');
-
-                    if (ubiVal && loteVal && qtyVal > 0 && mcuOk) {
-                        stockInfo.push({
-                            ubi: ubiVal,
-                            lote: loteVal,
-                            qty: qtyVal,
-                            sku: skuVal
-                        });
-                    }
-                }
-                console.log("Stock cargado exitosamente desde pestaña '"+nombreHojaStock+"':", stockInfo.length, "registros.");
-            }
-
-            if (wb.SheetNames.includes('MST Producto')) {
-                const dataProd = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
-                eanMap = {};
-                dataProd.slice(1).forEach(r => {
-                    let sku = cleanStr(r[1]); let ean = cleanStr(r[9]);
-                    if(sku && ean) eanMap[ean] = sku;
-                });
-            }
-            localStorage.setItem('m_v32_2', JSON.stringify(maestro));
-            localStorage.setItem('stock_v32_2', JSON.stringify(stockInfo));
-            localStorage.setItem('ean_v32_2', JSON.stringify(eanMap));
-            alert(`✅ Maestros actualizados. (${stockInfo.length} registros de stock cargados)`);
-        };
-        reader.readAsArrayBuffer(e.target.files[0]);
+        inicializarReconocimientoVoz();
     };
 
-    function procesar() {
-        const file = document.getElementById('surtidoFile').files[0];
-        if(!file) return alert("⚠️ Seleccione el reporte.");
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(e.target.result, "text/html");
-            let itemsRaw = []; let cargaNro = "S/C"; let esMixto = false;
+    // --- CONFIGURACIÓN DRAG & DROP ---
+    function setupDragAndDrop(dropAreaId, inputId, callback) {
+        const dropArea = document.getElementById(dropAreaId);
+        const input = document.getElementById(inputId);
 
-            Array.from(doc.querySelectorAll('tr')).forEach(tr => {
-                const text = cleanStr(tr.innerText).toUpperCase();
-                if(text.includes("CARGA:")) { const m = text.match(/CARGA:\s*(\d+)/); if(m) cargaNro = m[1]; }
-                if(text.includes("PALLET HOMOGENEO")) esMixto = false;
-                if(text.includes("PALLET MIXTO")) esMixto = true;
-                const c = Array.from(tr.cells).map(td => cleanStr(td.innerText));
-                if(esMixto && c.length >= 9 && c[0].includes(".") && !isNaN(c[1])) {
-                    let info = maestro[c[1]] || { cap: 84 };
-                    itemsRaw.push({
-                        ubi: c[0], sku: c[1], desc: c[4], orden: parseInt(c[6])||0, cant: parseInt(c[8]),
-                        dep: "P0" + (c[0].split('.')[1] || "01"), picked: false, capFull: info.cap
-                    });
-                }
-            });
-            itemsRaw.sort((a,b) => a.orden - b.orden);
-            itemsTotales = itemsRaw;
-            armarLogicaVolumetrica(itemsRaw);
-        };
-        reader.readAsText(file, "ISO-8859-1");
-    }
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eName => {
+            dropArea.addEventListener(eName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
 
-    // Restauración Lógica Volumétrica (Agrupación por Carga y Capacidad)
-    function armarLogicaVolumetrica(items) {
-        palletsGenerados = []; 
-        let cont = 1;
-        let p = { id: cont, items: [], cantTotal: 0 };
-        
-        items.forEach(it => {
-            let qty = it.cant;
-            let capMax = it.capFull || 84;
-            
-            while(qty > 0) {
-                if(p.cantTotal === capMax) {
-                    palletsGenerados.push(p);
-                    cont++;
-                    p = { id: cont, items: [], cantTotal: 0 };
-                }
-                let espacioDisp = capMax - p.cantTotal;
-                let tomar = Math.min(qty, espacioDisp);
-                p.items.push({...it, cant: tomar});
-                p.cantTotal += tomar;
-                qty -= tomar;
+        ['dragenter', 'dragover'].forEach(eName => {
+            dropArea.addEventListener(eName, () => dropArea.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eName => {
+            dropArea.addEventListener(eName, () => dropArea.classList.remove('dragover'), false);
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            let files = e.dataTransfer.files;
+            if (files.length > 0) {
+                input.files = files;
+                if (callback) callback(files[0]);
             }
         });
-        if(p.items.length > 0) palletsGenerados.push(p);
-        renderPallets(); renderTablaGeneral();
     }
 
-    function renderPallets() {
-        document.getElementById('resArea').style.display = "block";
-        const tabs = document.getElementById('tabs'); const cont = document.getElementById('pallets');
-        tabs.innerHTML = ""; cont.innerHTML = "";
+    // NORMALIZADOR DE STRINGS Y LIMPIEZA
+    function cleanStr(s) {
+        return String(s || "").trim().replace(/\s+/g, ' ');
+    }
 
-        palletsGenerados.forEach((p, i) => {
-            const btn = document.createElement('div');
-            btn.className = `pm-tab ${i===0?'active':''}`;
-            btn.innerText = `PM #${p.id}`;
-            btn.onclick = () => { 
-                document.querySelectorAll('.pm-tab, .pallet-card').forEach(el=>el.classList.remove('active')); 
-                btn.classList.add('active'); 
-                document.getElementById('pc-'+p.id).classList.add('active'); 
-            };
-            tabs.appendChild(btn);
+    function cleanUbi(u) {
+        return String(u || "").trim().toUpperCase();
+    }
 
-            const card = document.createElement('div');
-            card.id = 'pc-'+p.id; card.className = `pallet-card ${i===0?'active':''}`;
-            card.innerHTML = `
-                <h2>Pallet #${p.id} (Cajas: ${p.cantTotal})</h2>
-                <div class="button-group">
-                    <button class="btn-scan-sug" onclick="abrirScannerPallet(${p.id}, false)">🛠️ Armar PM sugerido</button>
-                    <button class="btn-scan-lib" onclick="abrirScannerPallet(${p.id}, true)">🔓 Armar PM libre</button>
-                </div>
-                <table>
-                    <thead><tr><th>Ubicación</th><th>SKU</th><th>Cant</th></tr></thead>
-                    <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.cant}</td></tr>`).join('')}</tbody>
-                </table>
-            `;
-            cont.appendChild(card);
+    // ==========================================
+    // PASO 1: LECTURA DEL EXCEL DE STOCK (legacy vStockPT)
+    // Utiliza el método exacto con header: "A" que garantiza compatibilidad 100%
+    // ==========================================
+    async function procesarStockFile(file) {
+        if (!file) return;
+        const statusLbl = document.getElementById('statusStock');
+        statusLbl.innerText = "⏳ Leyendo Stock JDE...";
+
+        try {
+            const data = await leerArrayBuffer(file);
+            const wb = XLSX.read(data, { type: 'array' });
+            
+            // Buscar hoja 'legacy vStockPT' o similar
+            const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('legacy vstockpt') || n.toLowerCase().includes('vstock')) || wb.SheetNames[0];
+            const sheet = wb.Sheets[sheetName];
+
+            if (!sheet) throw new Error("No se encontró pestaña de stock.");
+
+            // Lectura por letras de columna A, B, C, D...
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: "A", defval: "" });
+            
+            stockInfo = [];
+            const norm = (str) => String(str || "").toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+
+            let keyUbi = "", keyLote = "", keyCant = "", keySku = "", keyMcu = "";
+            let startRow = 0;
+
+            // Escanear encabezados en las primeras 15 filas
+            for (let i = 0; i < Math.min(15, rows.length); i++) {
+                let r = rows[i];
+                let keys = Object.keys(r);
+                let matches = 0;
+
+                keys.forEach(k => {
+                    let val = norm(r[k]);
+                    if (!val) return;
+
+                    if (!keyUbi && (val.includes('ubicacio') || val.includes('location') || val.includes('posic') || val.includes('ubi'))) { keyUbi = k; matches++; }
+                    else if (!keyLote && (val.includes('lote') || val.includes('lot') || val.includes('batch'))) { keyLote = k; matches++; }
+                    else if (!keyCant && (val.includes('cant') || val.includes('qty') || val.includes('disp') || val.includes('mano') || val.includes('saldo') || val.includes('stock'))) { keyCant = k; matches++; }
+                    else if (!keySku && (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('codigo') || val.includes('prod'))) { keySku = k; matches++; }
+                    else if (!keyMcu && (val.includes('mcu') || val.includes('planta') || val.includes('sucursal') || val.includes('branch'))) { keyMcu = k; matches++; }
+                });
+
+                if (matches >= 2) {
+                    startRow = i + 1;
+                    break;
+                }
+            }
+
+            // Fallbacks de columnas JDE predeterminadas
+            if (!keyLote) keyLote = "D";
+            if (!keyUbi) keyUbi = "B";
+            if (!keySku) keySku = "M";
+            if (!keyMcu) keyMcu = "A";
+
+            for (let i = startRow; i < rows.length; i++) {
+                let r = rows[i];
+                let loteVal = cleanStr(String(r[keyLote] || "")).toUpperCase();
+                let ubiVal = cleanUbi(String(r[keyUbi] || ""));
+                let skuVal = cleanStr(String(r[keySku] || ""));
+
+                if (!skuVal) {
+                    let pot = String(r["M"] || r["C"] || "").trim();
+                    if (pot && pot.length >= 3) skuVal = cleanStr(pot);
+                }
+
+                let qtyVal = 0;
+                if (keyCant && r[keyCant] !== undefined && r[keyCant] !== "") {
+                    qtyVal = parseFloat(String(r[keyCant]).replace(',', '.')) || 0;
+                } else {
+                    for (let col of ["F", "G", "H", "I", "C", "J"]) {
+                        let num = parseFloat(String(r[col] || "").replace(',', '.'));
+                        if (!isNaN(num) && num > 0) {
+                            qtyVal = num;
+                            break;
+                        }
+                    }
+                }
+
+                if (loteVal && loteVal.length >= 3 && loteVal !== "N°DELOTE/SERIE" && loteVal !== "LOTE") {
+                    stockInfo.push({
+                        ubi: ubiVal || "S/U",
+                        lote: loteVal,
+                        qty: qtyVal > 0 ? qtyVal : 999,
+                        sku: skuVal
+                    });
+                }
+            }
+
+            localStorage.setItem('stock_v32_2', JSON.stringify(stockInfo));
+            statusLbl.innerText = `✅ Stock cargado (${stockInfo.length} registros)`;
+            statusLbl.classList.add('loaded');
+            alert(`✅ Stock JDE cargado exitosamente: ${stockInfo.length} registros de lotes leídos.`);
+        } catch (err) {
+            statusLbl.innerText = "❌ Error al leer Stock";
+            alert("Ocurrió un error al procesar el Excel de Stock JDE: " + err.message);
+        }
+    }
+
+    // ==========================================
+    // PASO 2: LECTURA DEL EXCEL MAESTRO DE PRODUCTO / CAPACIDADES
+    // ==========================================
+    async function procesarMaestroFile(file) {
+        if (!file) return;
+        const statusLbl = document.getElementById('statusMaestro');
+        statusLbl.innerText = "⏳ Leyendo Maestro...";
+
+        try {
+            const data = await leerArrayBuffer(file);
+            const wb = XLSX.read(data, { type: 'array' });
+            
+            maestro = {};
+            eanMap = {};
+
+            // Leer pestaña de Capacidades (Pestaña 0 o 'Capacidades')
+            const sheetCap = wb.Sheets[wb.SheetNames[0]];
+            const jsonCap = XLSX.utils.sheet_to_json(sheetCap, { header: 1 });
+
+            for (let i = 1; i < jsonCap.length; i++) {
+                let row = jsonCap[i];
+                if (!row || row.length < 2) continue;
+                
+                let sku = cleanStr(row[1] || row[0]);
+                let base = parseFloat(row[5] || row[4]) || 0;
+                let alt = parseFloat(row[6] || row[5]) || 0;
+                let capCalc = base * alt;
+
+                if (sku && capCalc > 0) {
+                    maestro[sku] = { cap: capCalc };
+                }
+            }
+
+            // Leer pestaña 'MST Producto' para EAN si existe
+            if (wb.Sheets['MST Producto']) {
+                const jsonMst = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], { header: 1 });
+                for (let i = 1; i < jsonMst.length; i++) {
+                    let r = jsonMst[i];
+                    let sku = cleanStr(r[1]);
+                    let ean = cleanStr(r[9] || r[8]);
+                    if (sku && ean) {
+                        eanMap[ean] = sku;
+                    }
+                }
+            }
+
+            localStorage.setItem('maestro_v32_2', JSON.stringify({ maestro, eanMap }));
+            statusLbl.innerText = `✅ Maestro cargado (${Object.keys(maestro).length} prods)`;
+            statusLbl.classList.add('loaded');
+            alert(`✅ Maestro de Producto cargado: ${Object.keys(maestro).length} productos configurados.`);
+        } catch (err) {
+            statusLbl.innerText = "❌ Error al leer Maestro";
+            alert("Error al leer Excel Maestro: " + err.message);
+        }
+    }
+
+    function leerArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = (e) => resolve(new Uint8Array(e.target.result));
+            r.onerror = (e) => reject(e);
+            r.readAsArrayBuffer(file);
         });
     }
 
-    function renderTablaGeneral() {
-        const tbody = document.querySelector('#tablaGeneral tbody');
-        tbody.innerHTML = itemsTotales.map(it => `<tr><td>${it.dep}</td><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td>${it.cant}</td></tr>`).join('');
-    }
+    // ==========================================
+    // PASO 3: PROCESAMIENTO INTEGRAL Y GENERACIÓN DE PALLETS
+    // ==========================================
+    async function procesarTodo() {
+        const surtidoFileInput = document.getElementById('surtidoFile');
+        const btn = document.getElementById('btnProcess');
 
-    function toggleVista() {
-        const vp = document.getElementById('vistaPallets');
-        const vg = document.getElementById('vistaGeneral');
-        const btn = document.getElementById('btnToggleView');
-        if(vp.style.display === "none") {
-            vp.style.display = "block"; vg.style.display = "none";
-            btn.innerText = "Ver todas las líneas";
-            btn.style.background = "var(--primary)"; btn.style.color = "white";
-        } else {
-            vp.style.display = "none"; vg.style.display = "block";
-            btn.innerText = "PK sugerido";
-            btn.style.background = "var(--warning)"; btn.style.color = "black";
+        if (!surtidoFileInput.files || surtidoFileInput.files.length === 0) {
+            return alert("Por favor, cargá o arrastrá el Reporte de Surtido JDE.");
+        }
+
+        btn.innerText = "⏳ Procesando Picking y Generando Pallets PM...";
+        btn.disabled = true;
+
+        try {
+            const file = surtidoFileInput.files[0];
+            const textContent = await file.text();
+
+            // Extracción HTML del Reporte JDE
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(textContent, 'text/html');
+            const rows = doc.querySelectorAll('tr');
+
+            itemsSurtido = [];
+            let cantTotalCajas = 0;
+
+            rows.forEach((r, idx) => {
+                const tds = r.querySelectorAll('td');
+                if (tds.length >= 6) {
+                    let sku = cleanStr(tds[0]?.innerText);
+                    let desc = cleanStr(tds[1]?.innerText);
+                    let cant = parseInt(tds[2]?.innerText) || 0;
+
+                    if (sku && cant > 0 && !sku.toLowerCase().includes('articulo')) {
+                        // Buscar match en stock
+                        let matchStock = stockInfo.find(s => s.sku === sku) || { ubi: 'A CONFIRMAR', lote: 'SUGERIDO_JDE' };
+
+                        itemsSurtido.push({
+                            id: itemsSurtido.length + 1,
+                            sku: sku,
+                            ean: buscarEanPorSku(sku),
+                            desc: desc,
+                            cantSolicitada: cant,
+                            cantPickeada: 0,
+                            estado: 'PENDIENTE',
+                            palletId: null,
+                            ubiStock: matchStock.ubi,
+                            loteSugerido: matchStock.lote,
+                            loteEscaneado: '',
+                            fechaJulian: ''
+                        });
+
+                        cantTotalCajas += cant;
+                    }
+                }
+            });
+
+            if (itemsSurtido.length === 0) {
+                throw new Error("No se detectaron líneas válidas en el archivo de surtido. Verificá que sea un HTML/TXT de JDE válido.");
+            }
+
+            // Armado de Pallets Sugeridos PM
+            generarPalletsVolumetricos();
+
+            // Actualizar Métricas y Vista
+            document.getElementById('mTotalSurtido').innerText = itemsSurtido.length;
+            document.getElementById('mTotalCajas').innerText = cantTotalCajas;
+            document.getElementById('mTotalPallets').innerText = palletsGenerados.length;
+            document.getElementById('mProgreso').innerText = "0%";
+
+            document.getElementById('metricsGrid').style.display = "grid";
+            document.getElementById('actionBar').style.display = "flex";
+            document.getElementById('tabsBar').style.display = "flex";
+
+            renderizarPallets();
+            renderizarTablaSurtido();
+
+            alert(`🎉 ¡Proceso completado! Se armaron ${palletsGenerados.length} Pallets Sugeridos para ${itemsSurtido.length} líneas de surtido.`);
+
+        } catch (err) {
+            alert("Ocurrió un error al procesar el Surtido: " + err.message);
+        } finally {
+            btn.innerText = "⚡ GENERAR SUGERENCIA DE PALLETS & SUGESTIVO";
+            btn.disabled = false;
         }
     }
 
-    // --- LOGICA SCANNER ---
-    function abrirScannerPallet(id, esLibre) {
-        let p = palletsGenerados.find(x => x.id === id);
-        iniciarScanner(p.items, esLibre, `Pallet #${id}`);
-    }
-    function abrirScannerGlobal(esLibre) {
-        iniciarScanner(itemsTotales, esLibre, "Global");
+    function buscarEanPorSku(sku) {
+        for (let ean in eanMap) {
+            if (eanMap[ean] === sku) return ean;
+        }
+        return '779' + Math.floor(1000000000 + Math.random() * 9000000000); // EAN temporal
     }
 
-    function iniciarScanner(itemsSource, esLibre, titulo) {
-        modoLibre = esLibre;
-        pendingItems = JSON.parse(JSON.stringify(itemsSource));
-        currentItemIndex = 0;
+    // LÓGICA VOLUMÉTRICA DE ARMADO DE PALLETS PM
+    function generarPalletsVolumetricos() {
+        palletsGenerados = [];
+        let pId = 1;
+
+        let currentPallet = {
+            id: `PM-${pId}`,
+            items: [],
+            cajasTotales: 0,
+            capacidadTotal: 80, // Capacidad estándar por defecto
+            porcentajeLlenado: 0
+        };
+
+        itemsSurtido.forEach(item => {
+            let capUnitaria = maestro[item.sku]?.cap || 60; // Si no hay maestro, asumir 60
+            let cajasRestantes = item.cantSolicitada;
+
+            while (cajasRestantes > 0) {
+                let espacioDisponible = currentPallet.capacidadTotal - currentPallet.cajasTotales;
+
+                if (espacioDisponible <= 0) {
+                    palletsGenerados.push(currentPallet);
+                    pId++;
+                    currentPallet = {
+                        id: `PM-${pId}`,
+                        items: [],
+                        cajasTotales: 0,
+                        capacidadTotal: capUnitaria,
+                        porcentajeLlenado: 0
+                    };
+                    espacioDisponible = capUnitaria;
+                }
+
+                let cajasAñadir = Math.min(cajasRestantes, espacioDisponible);
+                
+                currentPallet.items.push({
+                    itemId: item.id,
+                    sku: item.sku,
+                    cant: cajasAñadir
+                });
+
+                item.palletId = currentPallet.id;
+                currentPallet.cajasTotales += cajasAñadir;
+                cajasRestantes -= cajasAñadir;
+            }
+        });
+
+        if (currentPallet.items.length > 0) {
+            palletsGenerados.push(currentPallet);
+        }
+    }
+
+    // RENDERIZADO DE UI (PALLETS & TABLA)
+    function renderizarPallets() {
+        const grid = document.getElementById('vistaPallets');
+        grid.innerHTML = "";
+
+        palletsGenerados.forEach(p => {
+            const div = document.createElement('div');
+            div.className = "pallet-card";
+            
+            let htmlItems = p.items.map(i => {
+                let orig = itemsSurtido.find(it => it.id === i.itemId);
+                return `<li style="margin-bottom:6px; font-size:0.88em;">
+                    <b>SKU ${i.sku}</b> - ${i.cant} Cajas 
+                    <br><small style="color:#666;">Lote Stock: ${orig.loteSugerido} | Ubi: ${orig.ubiStock}</small>
+                </li>`;
+            }).join('');
+
+            div.innerHTML = `
+                <div class="pallet-header">
+                    <span>📦 Pallet ${p.id}</span>
+                    <span class="badge badge-pending">${p.cajasTotales} Cajas</span>
+                </div>
+                <div class="pallet-body">
+                    <ul style="padding-left:18px; margin-top:5px;">${htmlItems}</ul>
+                    <button class="btn btn-scanner" style="width:100%; margin-top:10px; font-size:0.85em;" onclick="abrirScannerPallet('${p.id}')">
+                        📱 PICKEAR ESTE PALLET
+                    </button>
+                </div>
+            `;
+            grid.appendChild(div);
+        });
+    }
+
+    function renderizarTablaSurtido() {
+        const tbody = document.getElementById('tablaSurtidoBody');
+        tbody.innerHTML = "";
+
+        itemsSurtido.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><b>${item.id}</b></td>
+                <td><b>${item.sku}</b></td>
+                <td>${item.ean}</td>
+                <td>${item.desc}</td>
+                <td>${item.cantSolicitada}</td>
+                <td><b style="color:var(--info);">${item.cantPickeada}</b></td>
+                <td><span class="badge ${item.estado === 'COMPLETADO' ? 'badge-completed' : (item.estado === 'PARCIAL' ? 'badge-partial' : 'badge-pending')}">${item.estado}</span></td>
+                <td><b>${item.palletId || 'N/A'}</b></td>
+                <td>${item.ubiStock}</td>
+                <td>${item.loteSugerido}</td>
+                <td>${item.loteEscaneado || '-'}</td>
+                <td>${item.fechaJulian || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function cambiarVista(vista) {
+        document.getElementById('vistaPallets').style.display = vista === 'pallets' ? 'grid' : 'none';
+        document.getElementById('vistaTabla').style.display = vista === 'tabla' ? 'block' : 'none';
         
-        document.getElementById('scannerModal').style.display = 'flex';
-        document.getElementById('scanModeTitle').innerText = `- ${titulo} ` + (esLibre ? "(Libre)" : "(Sugerido)");
-        document.getElementById('exceptionPanel').style.display = "none";
-
-        if(esLibre) {
-            document.getElementById('scanTargetBox').style.display = "none";
-            document.getElementById('scanEanInput').focus();
-        } else {
-            document.getElementById('scanTargetBox').style.display = "block";
-            cargarLineaSugerida();
-        }
-        actualizarTablaProgreso();
+        document.getElementById('tabPallets').className = `tab-btn ${vista === 'pallets' ? 'active' : ''}`;
+        document.getElementById('tabTabla').className = `tab-btn ${vista === 'tabla' ? 'active' : ''}`;
     }
 
-    function cerrarScanner() { document.getElementById('scannerModal').style.display = 'none'; hablar("Escáner cerrado"); }
+    // ==========================================
+    // SISTEMA ESCÁNER Y LÓGICA DE FECHA JULIANA
+    // ==========================================
+    function abrirScannerGlobal(esLibre) {
+        modoScannerLibre = esLibre;
+        palletScannerIdActual = null;
+        itemScannerIndex = 0;
+        
+        document.getElementById('modalTitle').innerText = esLibre ? "🔓 Escáner Modo Libre / Manual" : "📱 Escáner Guiado General";
+        document.getElementById('modalScanner').style.display = 'flex';
+        cargarSiguienteItemScanner();
+    }
 
-    function cargarLineaSugerida() {
-        if(currentItemIndex >= pendingItems.length) {
-            document.getElementById('scanTargetBox').innerHTML = `<h1 style="color:#2ecc71">✅ COMPLETADO</h1>`;
-            hablar("Completado");
+    function abrirScannerPallet(pId) {
+        modoScannerLibre = false;
+        palletScannerIdActual = pId;
+        itemScannerIndex = 0;
+
+        document.getElementById('modalTitle').innerText = `📱 Escáner Pallet ${pId}`;
+        document.getElementById('modalScanner').style.display = 'flex';
+        cargarSiguienteItemScanner();
+    }
+
+    function cerrarScanner() {
+        document.getElementById('modalScanner').style.display = 'none';
+    }
+
+    function cargarSiguienteItemScanner() {
+        let itemsFiltrados = itemsSurtido;
+        if (palletScannerIdActual) {
+            itemsFiltrados = itemsSurtido.filter(i => i.palletId === palletScannerIdActual);
+        }
+
+        if (itemScannerIndex >= itemsFiltrados.length) {
+            alert("🎉 ¡Completaste todos los ítems asignados para esta sesión!");
+            cerrarScanner();
             return;
         }
-        let item = pendingItems[currentItemIndex];
-        document.getElementById('scanTargetSku').innerText = `${item.sku} - ${item.desc}`;
-        document.getElementById('scanTargetUbi').innerText = item.ubi;
-        document.getElementById('scanTargetQty').innerText = item.cant;
-        limpiarInputs();
-        document.getElementById('scanEanInput').focus();
-        actualizarTablaProgreso();
-        hablar(`Preparar ${item.cant} cajas, SKU ${item.sku}`);
+
+        let itemActual = itemsFiltrados[itemScannerIndex];
+        
+        document.getElementById('lblSugerida').innerText = `${itemActual.sku} - ${itemActual.desc} (${itemActual.cantSolicitada} Cajas)`;
+        document.getElementById('lblUbiStock').innerText = itemActual.ubiStock;
+        document.getElementById('lblLoteStock').innerText = itemActual.loteSugerido;
+
+        document.getElementById('inputSku').value = "";
+        document.getElementById('inputLote').value = "";
+        document.getElementById('inputCantidad').value = itemActual.cantSolicitada - itemActual.cantPickeada;
+        document.getElementById('inputUbi').value = itemActual.ubiStock;
+
+        document.getElementById('inputSku').focus();
+        hablar(`Siguiente SKU: ${itemActual.sku}. Ubicación: ${itemActual.ubiStock}`);
+        actualizarProgresoScanner(itemsFiltrados);
     }
 
-    function limpiarInputs() {
-        document.getElementById('scanEanInput').value = '';
-        document.getElementById('scanLotJulian').value = '';
-        document.getElementById('scanLotTime').value = '';
-        document.getElementById('exceptionPanel').style.display = 'none';
+    function procesarLoteJulianInput() {
+        let loteStr = document.getElementById('inputLote').value.trim();
+        let detail = document.getElementById('txtJulianDetail');
+
+        if (loteStr.length >= 4) {
+            let parsed = parseJulianDate(loteStr);
+            if (parsed) {
+                detail.innerText = `Lote ${loteStr} -> Año: ${parsed.year}, Día del Año: ${parsed.dayOfYear} (${parsed.dateStr})`;
+            } else {
+                detail.innerText = `Lote ${loteStr} -> Formato estándar sin conversión requerida.`;
+            }
+        } else {
+            detail.innerText = "Esperando lectura...";
+        }
+    }
+
+    function parseJulianDate(lote) {
+        let match = lote.match(/(\d{2})(\d{3})/); // p.ej. 25210 -> Año 2025, Día 210
+        if (match) {
+            let year = 2000 + parseInt(match[1]);
+            let dayOfYear = parseInt(match[2]);
+            let date = new Date(year, 0, dayOfYear);
+            return {
+                year: year,
+                dayOfYear: dayOfYear,
+                dateStr: date.toLocaleDateString('es-AR')
+            };
+        }
+        return null;
     }
 
     function validarSkuBlur() {
-        if(modoLibre || currentItemIndex >= pendingItems.length) return;
-        let val = document.getElementById('scanEanInput').value.trim();
-        if(!val) return;
-        let item = pendingItems[currentItemIndex];
-        let skuScanned = eanMap[val] || val;
-        
-        if (skuScanned !== item.sku) {
-            hablar("SKU incorrecto");
-            alert(`❌ Error: Ingresó SKU ${skuScanned}. Se espera: ${item.sku}`);
-            document.getElementById('scanEanInput').value = "";
-            document.getElementById('scanEanInput').focus();
+        let inputVal = document.getElementById('inputSku').value.trim();
+        if (!inputVal) return;
+
+        let skuMatch = inputVal;
+        if (eanMap[inputVal]) skuMatch = eanMap[inputVal];
+
+        let itemActual = itemsSurtido[itemScannerIndex];
+        if (skuMatch !== itemActual.sku && !modoScannerLibre) {
+            alert(`⚠️ El SKU o EAN escaneado (${inputVal}) no coincide con el sugerido (${itemActual.sku}).`);
         }
     }
 
-    function confirmarLinea() {
-        let eanVal = document.getElementById('scanEanInput').value.trim();
-        let julianVal = document.getElementById('scanLotJulian').value.trim().toUpperCase();
-        let timeVal = document.getElementById('scanLotTime').value.trim();
-        let skuScanned = eanMap[eanVal] || eanVal;
+    function confirmarLecturaScanner() {
+        let inputSku = document.getElementById('inputSku').value.trim();
+        let inputLote = document.getElementById('inputLote').value.trim();
+        let cantConfirmada = parseInt(document.getElementById('inputCantidad').value) || 0;
 
-        if(!skuScanned || !julianVal) return alert("Complete SKU y Lote.");
-
-        // Determinar si es Lote Juliano Estándar (5 dígitos) o Especial (Lata/Spirits)
-        let loteCompleto = julianVal;
-        let esFormatoJuliano = /^\d{5}$/.test(julianVal);
-        let esLoteEspecial = timeVal === "" || !esFormatoJuliano;
-        
-        if (!esLoteEspecial) {
-            let h = parseInt(timeVal.length === 3 ? timeVal.substring(0,1) : timeVal.substring(0,2));
-            let turno = (h >= 0 && h <= 7) ? 'A' : (h >= 8 && h <= 15) ? 'B' : (h >= 16 && h <= 23) ? 'C' : '';
-            loteCompleto = julianVal + turno;
+        if (!inputSku || cantConfirmada <= 0) {
+            return alert("Por favor ingresá SKU/EAN válido y cantidad mayor a cero.");
         }
-        loteFisicoIngresado = loteCompleto;
 
-        let itemIndex = modoLibre ? pendingItems.findIndex(it => it.sku === skuScanned && !it.picked) : currentItemIndex;
-        if(itemIndex === -1) return alert(modoLibre ? "Ese SKU no está pendiente." : "Línea ya completada.");
+        let itemActual = itemsSurtido[itemScannerIndex];
+        itemActual.cantPickeada += cantConfirmada;
+        itemActual.loteEscaneado = inputLote || itemActual.loteSugerido;
         
-        let item = pendingItems[itemIndex];
-        let itemUbiClean = cleanUbi(item.ubi);
-        let zonaPicking = itemUbiClean.split('.')[0]; // Toma la primera parte ej. P0 o P014
+        let jul = parseJulianDate(inputLote);
+        if (jul) itemActual.fechaJulian = jul.dateStr;
 
-        console.log("--- BÚSQUEDA DE STOCK ---");
-        console.log("Buscando SKU:", item.sku);
-        console.log("Buscando Ubicación (Zona):", zonaPicking);
-        console.log("Lote ingresado/armado:", loteCompleto, "| Es especial?", esLoteEspecial);
-        
-        let lotesEnZona = stockInfo.filter(s => {
-            let matchSku = s.sku === item.sku;
-            let matchUbi = cleanUbi(s.ubi).startsWith(zonaPicking);
-            return matchSku && matchUbi;
+        if (itemActual.cantPickeada >= itemActual.cantSolicitada) {
+            itemActual.estado = 'COMPLETADO';
+        } else {
+            itemActual.estado = 'PARCIAL';
+        }
+
+        itemScannerIndex++;
+        renderizarTablaSurtido();
+        actualizarProgresoGeneral();
+
+        cargarSiguienteItemScanner();
+    }
+
+    function mostrarModalExcepcion() {
+        let motivo = prompt("Motivo de la No Conformidad / Reclasificación (ej: Lote Dañado, Faltante en Ubicación, Lote Incompleto):");
+        if (motivo) {
+            let itemActual = itemsSurtido[itemScannerIndex];
+            excepcionesLog.push({
+                sku: itemActual.sku,
+                desc: itemActual.desc,
+                solicitado: itemActual.cantSolicitada,
+                pickeado: itemActual.cantPickeada,
+                motivo: motivo,
+                fecha: new Date().toLocaleString()
+            });
+            alert("⚠️ Excepción registrada para el Reporte de Reclasificación.");
+        }
+    }
+
+    function actualizarProgresoScanner(lista) {
+        const tbody = document.getElementById('tablaProgresoScanner');
+        tbody.innerHTML = "";
+
+        lista.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><b>${item.sku}</b></td>
+                <td>${item.loteSugerido}</td>
+                <td>${item.cantSolicitada}</td>
+                <td><b>${item.cantPickeada}</b></td>
+                <td><span class="badge ${item.estado === 'COMPLETADO' ? 'badge-completed' : 'badge-pending'}">${item.estado}</span></td>
+            `;
+            tbody.appendChild(tr);
         });
-        
-        console.log("Lotes filtrados en zona para este SKU:", lotesEnZona);
+    }
 
-        let loteEncontrado = lotesEnZona.find(s => {
-            return esLoteEspecial ? s.lote.includes(loteCompleto) : s.lote.endsWith(loteCompleto);
+    function actualizarProgresoGeneral() {
+        let pickeados = itemsSurtido.reduce((acc, i) => acc + i.cantPickeada, 0);
+        let solicitados = itemsSurtido.reduce((acc, i) => acc + i.cantSolicitada, 0);
+        let pct = solicitados > 0 ? Math.round((pickeados / solicitados) * 100) : 0;
+
+        document.getElementById('mProgreso').innerText = `${pct}%`;
+    }
+
+    // ==========================================
+    // ASISTENTE DE VOZ (SPEECH SYNTHESIS & RECOGNITION)
+    // ==========================================
+    function hablar(texto) {
+        if ('speechSynthesis' in window) {
+            let utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-AR';
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    function inicializarReconocimientoVoz() {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recVoz = new SpeechRec();
+            recVoz.lang = 'es-AR';
+            recVoz.continuous = false;
+
+            recVoz.onresult = (e) => {
+                let transcript = e.results[0][0].transcript.toLowerCase();
+                console.log("Voz capturada:", transcript);
+
+                if (transcript.includes('siguiente') || transcript.includes('confirmar')) {
+                    confirmarLecturaScanner();
+                } else if (transcript.includes('cerrar')) {
+                    cerrarScanner();
+                } else {
+                    document.getElementById('inputSku').value = transcript;
+                }
+            };
+
+            recVoz.onend = () => {
+                escuchando = false;
+                document.getElementById('btnMic').classList.remove('listening');
+            };
+        }
+    }
+
+    function toggleReconocimientoVoz() {
+        if (!recVoz) return alert("El reconocimiento de voz no está soportado en este navegador.");
+        
+        if (escuchando) {
+            recVoz.stop();
+        } else {
+            recVoz.start();
+            escuchando = true;
+            document.getElementById('btnMic').classList.add('listening');
+            hablar("Escuchando comando...");
+        }
+    }
+
+    // ==========================================
+    // EXPORTACIÓN DE REPORTES (EXCEL, PDF, COPIAR)
+    // ==========================================
+    function copiarResumen() {
+        let t = "SKU\tEAN\tDescripcion\tSolicitado\tPickeado\tEstado\tPallet\tUbiStock\tLoteStock\n";
+        itemsSurtido.forEach(i => {
+            t += `${i.sku}\t${i.ean}\t${i.desc}\t${i.cantSolicitada}\t${i.cantPickeada}\t${i.estado}\t${i.palletId}\t${i.ubiStock}\t${i.loteSugerido}\n`;
         });
-
-        if(!loteEncontrado) {
-            mostrarExcepcion(lotesEnZona, item, "Lote no encontrado.");
-            return;
-        }
-        if(loteEncontrado.qty < item.cant) {
-            mostrarExcepcion(lotesEnZona, item, "Stock insuficiente en el sistema.");
-            return;
-        }
-
-        // Si lo encontró en otra ubicación de la misma zona, actualizamos la línea
-        if (cleanUbi(loteEncontrado.ubi) !== itemUbiClean) {
-            item.ubi = loteEncontrado.ubi; // Auto-corrección
-        }
-
-        item.picked = true;
-        hablar("Confirmado");
-        if(!modoLibre) currentItemIndex++;
-        
-        if(!modoLibre) cargarLineaSugerida();
-        else { limpiarInputs(); actualizarTablaProgreso(); }
+        navigator.clipboard.writeText(t).then(() => alert("📋 Datos copiados al portapapeles."));
     }
 
-    function mostrarExcepcion(lotesSys, item, msj) {
-        hablar("Atención. " + msj);
-        const panel = document.getElementById('exceptionPanel');
-        const ul = document.getElementById('sysLotsList');
-        
-        ul.innerHTML = lotesSys.length > 0 
-            ? lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b></li>`).join('') 
-            : "<li>No hay lotes en sistema para esta zona de picking.</li>";
-            
-        document.getElementById('partialPickDiv').style.display = lotesSys.length > 0 ? "block" : "none";
-        document.getElementById('partialQty').max = item.cant;
-        panel.style.display = "block";
+    function exportarExcel() {
+        const data = itemsSurtido.map(i => ({
+            "Línea": i.id,
+            "SKU": i.sku,
+            "EAN": i.ean,
+            "Descripción": i.desc,
+            "Cajas Solicitadas": i.cantSolicitada,
+            "Cajas Pickeadas": i.cantPickeada,
+            "Estado": i.estado,
+            "Pallet Asignado": i.palletId,
+            "Ubicación Stock": i.ubiStock,
+            "Lote Sugerido": i.loteSugerido,
+            "Lote Escaneado": i.loteEscaneado,
+            "Fecha Julián": i.fechaJulian
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Reporte_Picking");
+        XLSX.writeFile(wb, "Reporte_Picking_Pallets_M2.xlsx");
     }
 
-    function aplicarParcial() {
-        let inputQty = parseInt(document.getElementById('partialQty').value);
-        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
-        let item = pendingItems[idx];
-        if(!inputQty || inputQty >= item.cant || inputQty <= 0) return alert("Cantidad inválida.");
-        
-        item.cant -= inputQty;
-        hablar(`Parcial guardado.`);
-        limpiarInputs();
-        if(!modoLibre) cargarLineaSugerida();
-        else actualizarTablaProgreso();
-    }
+    function descargarPDFExcepciones() {
+        if (excepcionesLog.length === 0) {
+            return alert("No hay excepciones o novedades registradas para exportar.");
+        }
 
-    function solicitarReclasificacion() {
-        let idx = modoLibre ? pendingItems.findIndex(it => it.sku === (eanMap[document.getElementById('scanEanInput').value]||document.getElementById('scanEanInput').value) && !it.picked) : currentItemIndex;
-        let item = pendingItems[idx];
-        let lotesSys = stockInfo.filter(s => s.sku === item.sku && cleanUbi(s.ubi).startsWith(cleanUbi(item.ubi).substring(0,4)));
-        
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFontSize(16); doc.text("Reclasificacion", 20, 20);
-        doc.setFontSize(12); doc.text(`SKU: ${item.sku} | Ubi orig: ${item.ubi}`, 20, 40);
-        doc.text(`Fisico escaneado: ${loteFisicoIngresado}`, 20, 50);
-        doc.text(`Lotes en Sistema:`, 20, 70);
-        let y = 80;
-        lotesSys.forEach(l => { doc.text(`- Ubi: ${l.ubi} | Lote: ${l.lote} | Qty: ${l.qty}`, 25, y); y += 10; });
-        doc.save(`Reclasificacion_${item.sku}.pdf`);
-        limpiarInputs();
-    }
 
-    function actualizarTablaProgreso() {
-        const tbody = document.querySelector('#scanProgressTable tbody');
-        tbody.innerHTML = pendingItems.map((it, idx) => `
-            <tr style="background:${it.picked ? '#d4efdf' : (!modoLibre && idx === currentItemIndex ? '#fdebd0' : 'transparent')}">
-                <td>${it.picked ? '✅' : (!modoLibre && idx === currentItemIndex ? '➡️' : '⏳')}</td>
-                <td>${it.ubi}</td><td>${it.sku}</td><td>${it.cant}</td>
-            </tr>
-        `).join('');
-    }
-    
-    function abrirCamara() {
-        alert("La función de cámara será implementada próximamente.");
-    }
-    
-    function activarMicrofono() {
-        alert("La función de micrófono será implementada próximamente.");
+        doc.setFontSize(16);
+        doc.text("Reporte de Reclasificación y Excepciones de Picking", 14, 20);
+        doc.setFontSize(10);
+        doc.text(`Fecha de emisión: ${new Date().toLocaleString()}`, 14, 28);
+
+        let y = 40;
+        excepcionesLog.forEach((e, idx) => {
+            doc.text(`${idx + 1}. SKU: ${e.sku} - ${e.desc}`, 14, y);
+            doc.text(`   Solicitado: ${e.solicitado} | Pickeado: ${e.pickeado}`, 14, y + 6);
+            doc.text(`   Motivo Reclasificación: ${e.motivo}`, 14, y + 12);
+            y += 22;
+
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
+        });
+
+        doc.save("Reporte_Reclasificacion_Picking.pdf");
     }
 </script>
 </body>
