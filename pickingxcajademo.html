@@ -188,10 +188,14 @@
     document.getElementById('fileStock').onchange = async (e) => {
         let file = e.target.files[0];
         if(!file) return;
-        let data = await leerExcelComoMatriz(file);
-        stockData = procesarMatrizStock(data);
-        document.getElementById('statusStock').innerText = `✅ Stock cargado (${stockData.length} lotes)`;
-        document.getElementById('statusStock').style.color = "var(--success)";
+        try {
+            let data = await leerExcelComoMatriz(file);
+            stockData = procesarMatrizStock(data);
+            document.getElementById('statusStock').innerText = `✅ Stock cargado (${stockData.length} lotes)`;
+            document.getElementById('statusStock').style.color = "var(--success)";
+        } catch(err) {
+            alert("Error procesando stock: " + err.message);
+        }
     };
 
     document.getElementById('fileMaestro').onchange = async (e) => {
@@ -244,20 +248,119 @@
 
     async function leerExcelComoMatriz(file) {
         let wb = await leerWorkbook(file);
-        return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+        // Busca hoja de stock por nombre o toma la primera
+        const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('legacy vstockpt') || n.toLowerCase().includes('vstock')) || wb.SheetNames[0];
+        return XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1});
     }
 
+    // --- FUNCIÓN ROBUSTA DE LECTURA DE STOCK JDE ---
     function procesarMatrizStock(data) {
         let res = [];
-        data.forEach(r => {
-            if(r.length >= 3) {
-                let ubi = String(r[1] || "").trim().toUpperCase().replace(/\./g, '');
-                let lote = String(r[3] || r[2] || "").trim().toUpperCase();
-                let sku = String(r[12] || r[4] || "").trim();
-                let qty = parseFloat(String(r[5] || 0).replace(',', '.')) || 0;
-                if(ubi && lote) res.push({ ubi, lote, sku, qty });
+        let keyUbi = -1, keyLote = -1, keyCant = -1, keySku = -1;
+        let startRow = 0;
+
+        const norm = (str) => String(str || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+
+        // 1. Escanear encabezados en las primeras 25 filas (Flexible)
+        for (let i = 0; i < Math.min(25, data.length); i++) {
+            let row = data[i];
+            if (!row || row.length === 0) continue;
+
+            row.forEach((cell, index) => {
+                let val = norm(cell);
+                if (!val) return;
+                
+                if (keyUbi === -1 && (val.includes('ubicacio') || val.includes('location') || val.includes('posic') || val.includes('ubi') || val.includes('loc'))) keyUbi = index;
+                if (keyLote === -1 && (val.includes('lote') || val.includes('lot') || val.includes('batch') || val.includes('nroldelote'))) keyLote = index;
+                if (keyCant === -1 && (val.includes('cant') || val.includes('qty') || val.includes('disp') || val.includes('mano') || val.includes('saldo') || val.includes('stock'))) keyCant = index;
+                if (keySku === -1 && (val.includes('articulo') || val.includes('sku') || val.includes('item') || val.includes('codigo') || val.includes('prod') || val.includes('short'))) keySku = index;
+            });
+
+            if (keyUbi !== -1 || keyLote !== -1 || keySku !== -1 || keyCant !== -1) {
+                startRow = i + 1;
             }
-        });
+        }
+
+        // 2. Fallbacks inteligentes si la cabecera no se detectó por texto (índices comunes de JDE: B=1, C=2, D=3, F=5)
+        if (keyUbi === -1) keyUbi = 1;
+        if (keyLote === -1) keyLote = 3;
+        if (keySku === -1) keySku = 2; // O a veces la 4 o 12 dependiendo del formato
+        if (keyCant === -1) keyCant = 5;
+
+        if (startRow === 0) startRow = 1;
+
+        // 3. Recorrer celdas basándose en las posiciones encontradas
+        for (let i = startRow; i < data.length; i++) {
+            let r = data[i];
+            if (!r || r.length === 0) continue;
+
+            let ubiVal = String(r[keyUbi] || "").trim().toUpperCase().replace(/\./g, '');
+            let loteVal = String(r[keyLote] || "").trim().toUpperCase();
+            let skuVal = String(r[keySku] || "").trim();
+            
+            // Búsqueda auxiliar si la columna principal de SKU estaba vacía
+            if (!skuVal || skuVal.length < 2) {
+                [2, 12, 4, 1, 0].forEach(col => {
+                    let pot = String(r[col] || "").trim();
+                    if (pot && pot.length >= 3 && !pot.toLowerCase().includes('lote') && !pot.toLowerCase().includes('ubi')) {
+                        skuVal = pot;
+                    }
+                });
+            }
+
+            let qtyVal = 0;
+            if (keyCant !== -1 && r[keyCant] !== undefined && r[keyCant] !== "") {
+                qtyVal = parseFloat(String(r[keyCant]).replace(',', '.')) || 0;
+            }
+
+            // Búsqueda auxiliar de cantidad numérica
+            if (qtyVal <= 0) {
+                [5, 6, 7, 8, 4].forEach(col => {
+                    let num = parseFloat(String(r[col] || "").replace(',', '.'));
+                    if (!isNaN(num) && num > 0 && num < 999999) {
+                        qtyVal = num;
+                    }
+                });
+            }
+
+            if (skuVal && skuVal.toUpperCase() !== "SKU" && skuVal.toUpperCase() !== "ARTICULO") {
+                res.push({
+                    ubi: ubiVal || "S/U",
+                    lote: (loteVal && loteVal !== "LOTE") ? loteVal : "ESTANDAR",
+                    qty: qtyVal > 0 ? qtyVal : 999,
+                    sku: skuVal
+                });
+            }
+        }
+
+        // 4. Fallback Extremo: Búsqueda Heurística Celda por Celda
+        if (res.length === 0) {
+            for (let i = 1; i < data.length; i++) {
+                let row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                let posibleSku = "";
+                let posibleLote = "";
+                let posibleCant = 1;
+
+                row.forEach(cell => {
+                    let cStr = String(cell || "").trim();
+                    if (cStr.length >= 4 && !posibleSku && !isNaN(cStr)) posibleSku = cStr;
+                    else if (cStr.length >= 3 && !posibleLote && cStr.toUpperCase().includes('L')) posibleLote = cStr;
+                    else if (!isNaN(cell) && cell > 0 && cell < 10000) posibleCant = parseFloat(cell);
+                });
+
+                if (posibleSku) {
+                    res.push({
+                        ubi: "GENERAL",
+                        lote: posibleLote || "S/LOTE",
+                        qty: posibleCant,
+                        sku: posibleSku
+                    });
+                }
+            }
+        }
+        
         return res;
     }
 
