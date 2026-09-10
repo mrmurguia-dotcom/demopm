@@ -39,7 +39,6 @@
         th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }
         th { background: var(--primary); color: white; }
         tr:nth-child(even) { background: #f8fafc; }
-
         /* Modal del Escáner y Cámara */
         #scannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 9999; color: white; flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .scan-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 20px; }
@@ -57,13 +56,11 @@
         .fab-mic { position: fixed; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 70px; height: 70px; font-size: 2em; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; display: flex; justify-content: center; align-items: center; z-index: 10000; transition: 0.3s; }
         .fab-mic.listening { background: #c0392b; animation: pulse 1s infinite; transform: scale(1.1); }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
-
         #cameraContainer { display: none; position: relative; width: 100%; max-width: 400px; margin: 10px auto; background: #000; border-radius: 8px; overflow: hidden; }
         #cameraPreview { width: 100%; height: auto; display: block; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <h2 class="section-title">📦 Picking JDE v.PRO - PM Surtido Mixto</h2>
     
@@ -87,10 +84,8 @@
             <small id="statusSurtido" style="color:#7f8c8d; display:block; margin-top:5px;">Pendiente de carga...</small>
         </div>
     </div>
-
     <button class="btn btn-gen" onclick="procesarFuentesYGenerarPallets()">⚡ EXTRAER MIXTOS Y GENERAR PALLETS</button>
 </div>
-
 <!-- ÁREA DE RESULTADOS -->
 <div id="resArea" class="container" style="display:none; margin-top:20px;">
     <button id="btnToggleView" class="btn btn-toggle" onclick="toggleVista()">Ver Listado General de Surtido</button>
@@ -99,7 +94,6 @@
         <div id="tabs" class="pm-nav"></div>
         <div id="pallets"></div>
     </div>
-
     <div id="vistaGeneral" style="display:none;">
         <h3>📋 Listado Completo de Surtido (Solo PM Mixto)</h3>
         <div class="button-group">
@@ -112,7 +106,6 @@
         </table>
     </div>
 </div>
-
 <!-- MODO SCANNER & CÁMARA & VOZ (Oculto por defecto) -->
 <div id="scannerModal">
     <div class="scan-header">
@@ -126,24 +119,19 @@
         <div>Ubicación: <strong id="scanTargetUbi" style="font-size:1.4em; color:#f1c40f;"></strong></div>
         <h1><span id="scanTargetQty"></span> Cajas</h1>
     </div>
-
     <div id="cameraContainer">
         <video id="cameraPreview" autoplay playsinline></video>
         <button onclick="cerrarCamara()" style="background:#e74c3c; color:white; border:none; width:100%; padding:8px; cursor:pointer;">Apagar Cámara</button>
     </div>
-
     <div class="input-row">
         <input type="text" id="scanEanInput" class="scan-input" placeholder="EAN o SKU..." onblur="validarSkuBlur()">
         <button class="btn-cam" onclick="toggleCamara()" title="Escanear con Cámara">📷</button>
     </div>
-
     <div class="input-row">
-        <input type="text" id="scanLotJulian" class="scan-input" placeholder="Lote (Ej: 25210)">
-        <input type="text" id="scanLotTime" class="scan-input" placeholder="Hora (Opcional)">
+        <input type="text" id="scanLotJulian" class="scan-input" placeholder="Lote (Ej: 318)">
+        <input type="text" id="scanLotTime" class="scan-input" placeholder="Hora (Ej: 14:30)">
     </div>
-
     <button class="btn-confirm" onclick="confirmarLinea()">✅ CONFIRMAR LÍNEA</button>
-
     <div id="exceptionPanel">
         <h3 style="margin-top:0;">⚠️ Lote no encontrado o stock insuficiente</h3>
         <p>Lotes sugeridos en zona de picking:</p>
@@ -155,7 +143,6 @@
         </div>
         <button class="btn-exception" onclick="solicitarReclasificacion()">📄 Solicitar Reclasificación (PDF)</button>
     </div>
-
     <div style="background:white; color:#000; padding:15px; border-radius:5px; margin-top:20px; max-height:220px; overflow-y:auto;">
         <h3 style="margin-top:0;">📋 Progreso de Sesión</h3>
         <table id="scanProgressTable">
@@ -166,13 +153,12 @@
     
     <button id="fabMic" class="fab-mic" onclick="activarMicrofono()" title="Control por Voz">🎙️</button>
 </div>
-
 <script>
     // Variables Globales
     let stockData = [];       
     let maestroData = {};     
     let eanMapData = {};      
-    let surtidoData = [];     // Ahora usamos array parseado por SheetJS
+    let surtidoData = [];     
     
     let itemsTotales = [];
     let palletsGenerados = [];
@@ -180,6 +166,27 @@
     let currentItemIndex = 0;
     let modoLibre = false;
     let mediaStream = null;
+
+    // --- LÓGICA OFICIAL DE TURNOS SEGÚN MANUAL (PRODUCCIÓN- Lotestiba.v2.pdf) ---
+    // A - 00:00 a 07:59
+    // B - 08:00 a 15:59
+    // C - 16:00 a 23:59
+    function obtenerLetraTurno(horaStr) {
+        if (!horaStr) return '';
+        let partes = horaStr.trim().split(':');
+        let hora = parseInt(partes[0]);
+        let min = partes[1] ? parseInt(partes[1]) : 0;
+        if (isNaN(hora)) return '';
+        
+        let minutosTotales = hora * 60 + min;
+        if (minutosTotales >= 0 && minutosTotales < 480) { // 00:00 a 07:59
+            return 'A';
+        } else if (minutosTotales >= 480 && minutosTotales < 960) { // 08:00 a 15:59
+            return 'B';
+        } else { // 16:00 a 23:59
+            return 'C';
+        }
+    }
 
     // --- CARGA DE ARCHIVOS ---
     document.getElementById('fileStock').onchange = async (e) => {
@@ -194,7 +201,6 @@
             alert("Error procesando stock: " + err.message);
         }
     };
-
     document.getElementById('fileMaestro').onchange = async (e) => {
         let file = e.target.files[0];
         if(!file) return;
@@ -220,8 +226,6 @@
         document.getElementById('statusMaestro').innerText = `✅ Maestro cargado (${Object.keys(maestroData).length} SKUs)`;
         document.getElementById('statusMaestro').style.color = "var(--success)";
     };
-
-    // NUEVA CARGA DE SURTIDO (Usando SheetJS también para extraer data del Excel)
     document.getElementById('fileSurtido').onchange = async (e) => {
         let file = e.target.files[0];
         if(!file) return;
@@ -233,7 +237,6 @@
             alert("Error procesando surtido: " + err.message);
         }
     };
-
     function leerWorkbook(file) {
         return new Promise((resolve) => {
             let reader = new FileReader();
@@ -244,21 +247,16 @@
             reader.readAsArrayBuffer(file);
         });
     }
-
     async function leerExcelComoMatriz(file) {
         let wb = await leerWorkbook(file);
-        // Si es el Excel JDE normal, tomamos la hoja que se llame vStock, si no, la primera
         const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('vstock')) || wb.SheetNames[0];
         return XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1});
     }
-
-    // --- PROCESAMIENTO ROBUSTO DE STOCK ---
     function procesarMatrizStock(data) {
         let res = [];
         let keyUbi = -1, keyLote = -1, keyCant = -1, keySku = -1;
         let startRow = 1;
         const norm = (str) => String(str || "").toLowerCase().replace(/[^a-z0-9]/g, '');
-
         for (let i = 0; i < Math.min(25, data.length); i++) {
             let row = data[i];
             if (!row || row.length === 0) continue;
@@ -272,10 +270,8 @@
             });
             if (keyUbi !== -1 || keyLote !== -1) { startRow = i + 1; break; }
         }
-
         if (keyUbi === -1) keyUbi = 1; if (keyLote === -1) keyLote = 3;
         if (keySku === -1) keySku = 2; if (keyCant === -1) keyCant = 5;
-
         for (let i = startRow; i < data.length; i++) {
             let r = data[i];
             if (!r || r.length === 0) continue;
@@ -283,83 +279,62 @@
             let loteVal = String(r[keyLote] || "").trim().toUpperCase();
             let skuVal = String(r[keySku] || "").trim();
             let qtyVal = parseFloat(String(r[keyCant] || "").replace(',', '.')) || 0;
-
             if (skuVal && skuVal.toUpperCase() !== "SKU" && skuVal.toUpperCase() !== "ARTICULO") {
                 res.push({ ubi: ubiVal || "S/U", lote: (loteVal && loteVal !== "LOTE") ? loteVal : "ESTANDAR", qty: qtyVal > 0 ? qtyVal : 999, sku: skuVal });
             }
         }
         return res;
     }
-
-    // --- LÓGICA PRINCIPAL: EXTRACCIÓN SOLO MIXTOS Y VALIDACIÓN TOTAL ---
     function procesarFuentesYGenerarPallets() {
         if(stockData.length === 0) return alert("⚠️ Falta cargar el Archivo 1 (Stock JDE).");
         if(Object.keys(maestroData).length === 0) return alert("⚠️ Falta cargar el Archivo 2 (Maestro / Capacidades).");
         if(surtidoData.length === 0) return alert("⚠️ Falta cargar el Archivo 3 (Reporte Surtido).");
-
         let itemsRaw = [];
         let enZonaMixtos = false;
         let expectedTotal = 0;
         let cajasMixtasExtraidas = 0;
-
         for (let i = 0; i < surtidoData.length; i++) {
             let row = surtidoData[i];
             if (!row || row.length === 0) continue;
             
             let rowStr = row.join(" ").toUpperCase();
-
-            // 1. Detectar inicio/fin de la sección "PM Pallet Mixto"
             if (rowStr.includes("AREA SURTIDO") && rowStr.includes("PALLET MIXTO")) {
                 enZonaMixtos = true;
-                continue; // Saltamos la línea del título
+                continue;
             } else if (rowStr.includes("AREA SURTIDO") && !rowStr.includes("PALLET MIXTO")) {
-                // Entramos a otra área (Ej: Pallet Completo), apagamos la extracción
                 enZonaMixtos = false; 
             }
-
-            // 2. Extraer el Gran Total para Validación
             if (rowStr.includes("CANTIDAD POR UNIDAD DE MEDIDA")) {
-                // Revisar la línea actual y las 2 siguientes para cazar el número 
                 let bloque = [...row, ...(surtidoData[i+1] || []), ...(surtidoData[i+2] || [])];
                 bloque.forEach(cell => {
                     let num = parseFloat(String(cell));
-                    // El número de cajas total suele ser el valor numérico más alto en esta zona
                     if (!isNaN(num) && num > 0 && num > expectedTotal) {
                         expectedTotal = num;
                     }
                 });
             }
-
-            // 3. Extraer solo líneas de Picking si estamos en la zona correcta
             if (enZonaMixtos) {
                 let ubi = String(row[0] || "").trim();
-                
-                // Si la ubicación parece válida (Ej: P0.02.035.1)
                 if (ubi.includes(".") && ubi.length > 6 && !ubi.includes(" ")) {
                     let sku = String(row[1] || "").trim();
                     let desc = String(row[4] || row[3] || "").trim();
-                    
                     let qty = 0;
-                    // Buscar la cantidad buscando "CA" de derecha a izquierda
                     for (let c = row.length - 1; c >= 2; c--) {
                         let cellVal = String(row[c] || "").trim().toUpperCase();
                         if (cellVal === "CA") {
-                            qty = parseFloat(row[c-1]); // La celda anterior tiene el número
+                            qty = parseFloat(row[c-1]);
                             break;
                         } else if (cellVal.includes(" CA") || cellVal.includes("CA")) {
-                            qty = parseFloat(cellVal.replace("CA", "").trim()); // El número y CA están juntos en la celda
+                            qty = parseFloat(cellVal.replace("CA", "").trim());
                             break;
                         }
                     }
-
-                    // Fallback si "CA" no se leyó bien
                     if (isNaN(qty) || qty === 0) {
                         for(let c = row.length - 1; c >= 2; c--) {
                             let num = parseFloat(row[c]);
                             if(!isNaN(num) && num > 0 && num < 10000) { qty = num; break; }
                         }
                     }
-
                     if (qty > 0 && sku && !isNaN(parseInt(sku))) {
                         let info = maestroData[sku] || { cap: 84 };
                         itemsRaw.push({
@@ -371,28 +346,23 @@
                 }
             }
         }
-
         if (itemsRaw.length === 0) {
-            return alert("❌ No se encontraron líneas de picking en la sección 'PM Pallet Mixto'. Verificá que el archivo contenga esta área.");
+            return alert("❌ No se encontraron líneas de picking en la sección 'PM Pallet Mixto'.");
         }
-
-        // VALIDACIÓN
         let mensajeExito = `✅ ÉXITO: Se extrajeron ${cajasMixtasExtraidas} cajas correspondientes ÚNICAMENTE a Pallets Mixtos.`;
         if (expectedTotal > 0) {
             if (cajasMixtasExtraidas === expectedTotal) {
                 alert(`${mensajeExito}\n\n✔️ TOTAL VALIDADO PERFECTO: Coincide con el reporte final de ${expectedTotal} Cajas.`);
             } else {
-                alert(`${mensajeExito}\n\n⚠️ ADVERTENCIA: El total final del documento marca ${expectedTotal} Cajas. (Nota: Esto es normal si tu reporte consolida en el total final tanto Mixtos como Homogéneos).`);
+                alert(`${mensajeExito}\n\n⚠️ ADVERTENCIA: El total final del documento marca ${expectedTotal} Cajas.`);
             }
         } else {
-            alert(`${mensajeExito}\n\n(No se pudo detectar el número total al final para cruzar datos).`);
+            alert(mensajeExito);
         }
-
         itemsRaw.sort((a,b) => a.orden - b.orden);
         itemsTotales = itemsRaw;
         armarLogicaVolumetrica(itemsRaw);
     }
-
     function armarLogicaVolumetrica(items) {
         palletsGenerados = []; 
         let cont = 1;
@@ -419,14 +389,11 @@
         renderPallets(); 
         renderTablaGeneral();
     }
-
-    // --- RENDERIZADO Y UI ---
     function renderPallets() {
         document.getElementById('resArea').style.display = "block";
         const tabs = document.getElementById('tabs'); 
         const cont = document.getElementById('pallets');
         tabs.innerHTML = ""; cont.innerHTML = "";
-
         palletsGenerados.forEach((p, i) => {
             const btn = document.createElement('div');
             btn.className = `pm-tab ${i===0?'active':''}`;
@@ -437,7 +404,6 @@
                 document.getElementById('pc-'+p.id).classList.add('active'); 
             };
             tabs.appendChild(btn);
-
             const card = document.createElement('div');
             card.id = 'pc-'+p.id; card.className = `pallet-card ${i===0?'active':''}`;
             card.innerHTML = `
@@ -454,12 +420,10 @@
             cont.appendChild(card);
         });
     }
-
     function renderTablaGeneral() {
         const tbody = document.querySelector('#tablaGeneral tbody');
         tbody.innerHTML = itemsTotales.map(it => `<tr><td>${it.dep}</td><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td>${it.cant}</td></tr>`).join('');
     }
-
     function toggleVista() {
         const vp = document.getElementById('vistaPallets');
         const vg = document.getElementById('vistaGeneral');
@@ -472,8 +436,6 @@
             btn.innerText = "Ver Vista de Pallets Sugeridos";
         }
     }
-
-    // --- MÓDULO SCANNER, CÁMARA Y VOZ ---
     function abrirScannerPallet(id, esLibre) {
         let p = palletsGenerados.find(x => x.id === id);
         iniciarScanner(p.items, esLibre, `Pallet #${id}`);
@@ -481,7 +443,6 @@
     function abrirScannerGlobal(esLibre) {
         iniciarScanner(itemsTotales, esLibre, "Global");
     }
-
     function iniciarScanner(itemsSource, esLibre, titulo) {
         modoLibre = esLibre;
         pendingItems = JSON.parse(JSON.stringify(itemsSource));
@@ -490,7 +451,6 @@
         document.getElementById('scannerModal').style.display = 'flex';
         document.getElementById('scanModeTitle').innerText = `- ${titulo} ` + (esLibre ? "(Libre)" : "(Sugerido)");
         document.getElementById('exceptionPanel').style.display = "none";
-
         if(esLibre) {
             document.getElementById('scanTargetBox').style.display = "none";
             document.getElementById('scanEanInput').focus();
@@ -500,12 +460,10 @@
         }
         actualizarTablaProgreso();
     }
-
     function cerrarScanner() { 
         document.getElementById('scannerModal').style.display = 'none'; 
         cerrarCamara();
     }
-
     function cargarLineaSugerida() {
         if(currentItemIndex >= pendingItems.length) {
             document.getElementById('scanTargetBox').innerHTML = `<h1 style="color:#2ecc71">✅ COMPLETADO</h1>`;
@@ -521,14 +479,12 @@
         actualizarTablaProgreso();
         hablar(`Preparar ${item.cant} cajas de SKU ${item.sku}`);
     }
-
     function limpiarInputs() {
         document.getElementById('scanEanInput').value = '';
         document.getElementById('scanLotJulian').value = '';
         document.getElementById('scanLotTime').value = '';
         document.getElementById('exceptionPanel').style.display = 'none';
     }
-
     function validarSkuBlur() {
         if(modoLibre || currentItemIndex >= pendingItems.length) return;
         let val = document.getElementById('scanEanInput').value.trim();
@@ -543,7 +499,6 @@
             document.getElementById('scanEanInput').focus();
         }
     }
-
     async function toggleCamara() {
         let container = document.getElementById('cameraContainer');
         if (container.style.display === "block") {
@@ -559,7 +514,6 @@
             }
         }
     }
-
     function cerrarCamara() {
         if (mediaStream) {
             mediaStream.getTracks().forEach(track => track.stop());
@@ -567,18 +521,15 @@
         }
         document.getElementById('cameraContainer').style.display = "none";
     }
-
     const synth = window.speechSynthesis;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = SpeechRecognition ? new SpeechRecognition() : null;
     if(recognition) recognition.lang = 'es-AR';
-
     function hablar(texto) {
         if(synth.speaking) synth.cancel();
         const utter = new SpeechSynthesisUtterance(texto);
         utter.lang = 'es-AR'; synth.speak(utter);
     }
-
     function activarMicrofono() {
         if(!recognition) return alert("El reconocimiento de voz no está soportado en este navegador.");
         recognition.start();
@@ -595,13 +546,17 @@
             document.getElementById('fabMic').classList.remove('listening');
         };
     }
-
     function confirmarLinea() {
         let eanVal = document.getElementById('scanEanInput').value.trim();
         let julianVal = document.getElementById('scanLotJulian').value.trim().toUpperCase();
+        let timeVal = document.getElementById('scanLotTime').value.trim();
         let skuScanned = eanMapData[eanVal] || eanVal;
-
-        if(!skuScanned || !julianVal) return alert("Complete SKU y Lote Juliano.");
+        
+        if(!skuScanned || !julianVal) return alert("Complete SKU y Día Juliano.");
+        
+        // Asignación y validación automática de la letra de turno según el horario ingresado (Manual oficial)
+        let letraTurno = obtenerLetraTurno(timeVal);
+        let sufijoBuscado = julianVal + letraTurno; // Ej: "318" + "C" = "318C"
 
         let itemIndex = modoLibre ? pendingItems.findIndex(it => it.sku === skuScanned && !it.picked) : currentItemIndex;
         if(itemIndex === -1) return alert("SKU no encontrado o ya procesado.");
@@ -609,13 +564,22 @@
         let item = pendingItems[itemIndex];
         let zonaPicking = item.ubi.split('.')[0];
 
-        let loteEncontrado = stockData.find(s => s.sku === item.sku && s.lote.endsWith(julianVal) && s.ubi.startsWith(zonaPicking));
+        // Validamos que el lote en stock contenga el día juliano y la letra correspondiente al turno
+        let loteEncontrado = stockData.find(s => {
+            if (s.sku !== item.sku || !s.ubi.startsWith(zonaPicking)) return false;
+            let loteUp = s.lote.toUpperCase();
+            if (letraTurno) {
+                return loteUp.includes(sufijoBuscado);
+            } else {
+                return loteUp.includes(julianVal);
+            }
+        });
 
         if(!loteEncontrado) {
-            mostrarExcepcion(stockData.filter(s => s.sku === item.sku), item, "Lote no encontrado en zona.");
+            mostrarExcepcion(stockData.filter(s => s.sku === item.sku), item, `Lote no encontrado para el turno correspondiente (${letraTurno || 'Sin hora'}).`);
             return;
         }
-
+        
         item.picked = true;
         hablar("Confirmado");
         if(!modoLibre) {
@@ -626,7 +590,6 @@
             actualizarTablaProgreso();
         }
     }
-
     function mostrarExcepcion(lotesSys, item, msj) {
         hablar("Atención: " + msj);
         document.getElementById('exceptionPanel').style.display = "block";
@@ -634,7 +597,6 @@
         document.getElementById('partialPickDiv').style.display = "block";
         document.getElementById('partialQty').max = item.cant;
     }
-
     function aplicarParcial() {
         let inputQty = parseInt(document.getElementById('partialQty').value);
         if(!inputQty || inputQty <= 0) return alert("Cantidad parcial inválida.");
@@ -644,7 +606,6 @@
         limpiarInputs();
         if(!modoLibre) cargarLineaSugerida();
     }
-
     function solicitarReclasificacion() {
         let item = pendingItems[currentItemIndex];
         const { jsPDF } = window.jspdf;
@@ -655,7 +616,6 @@
         doc.text(`Ubicación Original: ${item.ubi}`, 20, 45);
         doc.save(`Reclasificacion_${item.sku}.pdf`);
     }
-
     function actualizarTablaProgreso() {
         const tbody = document.querySelector('#scanProgressTable tbody');
         tbody.innerHTML = pendingItems.map((it, idx) => `
