@@ -1,630 +1,2138 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Picking JDE v.PRO - Surtido Mixto Validado</title>
-    <!-- SheetJS para lectura de Excel -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <!-- jsPDF para generación de Reportes y Reclasificación -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-        :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --warning: #f39c12; --dark: #1a252f; --info: #3498db; --accent: #8e44ad; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; margin: 0; color: #333; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .section-title { color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 0; }
-        
-        .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .box { border: 2px dashed #cbd5e1; padding: 15px; border-radius: 8px; background: #fafafa; transition: 0.3s; }
-        .box:hover { border-color: var(--info); background: #f0f4f8; }
-        .box label { font-weight: bold; display: block; margin-bottom: 8px; color: var(--primary); font-size: 0.9em; }
-        
-        .btn { border: none; padding: 12px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1em; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-gen { background: var(--success); width: 100%; font-size: 1.1em; padding: 15px; margin-top: 10px; }
-        .btn-scan-sug { background: var(--warning); color: #000; flex: 1; }
-        .btn-scan-lib { background: var(--info); flex: 1; }
-        .btn-toggle { background: var(--primary); width: 100%; padding: 15px; font-size: 1.1em; margin-bottom: 20px; }
-        
-        .button-group { display: flex; gap: 10px; margin: 15px 0; }
-        
-        .pm-nav { display: flex; gap: 5px; margin: 20px 0; overflow-x: auto; padding-bottom: 5px; }
-        .pm-tab { background: #e2e8f0; padding: 10px 18px; border-radius: 4px; cursor: pointer; border: 1px solid #cbd5e1; font-weight: bold; white-space: nowrap; }
-        .pm-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
-        .pallet-card { display: none; border: 2px solid var(--primary); padding: 20px; border-radius: 8px; margin-bottom: 20px; background: #fff; }
-        .pallet-card.active { display: block; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
-        th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }
-        th { background: var(--primary); color: white; }
-        tr:nth-child(even) { background: #f8fafc; }
-        /* Modal del Escáner y Cámara */
-        #scannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 9999; color: white; flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .scan-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 20px; }
-        .scan-target { background: #2c3e50; padding: 20px; border-radius: 10px; border: 2px solid var(--info); margin-bottom: 20px; text-align: center; }
-        .scan-target h1 { margin: 0; font-size: 2.5em; color: #2ecc71; }
-        
-        .input-row { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; justify-content: center; flex-wrap: wrap; }
-        .scan-input { padding: 12px; font-size: 1.1em; border-radius: 5px; border: none; outline: none; text-align: center; flex: 1; max-width: 280px; }
-        .btn-cam { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1.3em; }
-        .btn-confirm { background: var(--success); color: white; border: none; padding: 15px; font-size: 1.2em; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; max-width: 580px; margin: 0 auto; display: block; }
-        
-        #exceptionPanel { display: none; background: #c0392b; padding: 15px; border-radius: 8px; margin: 15px auto; max-width: 580px; }
-        .btn-exception { background: white; color: #c0392b; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; width: 100%; }
-        
-        .fab-mic { position: fixed; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 70px; height: 70px; font-size: 2em; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; display: flex; justify-content: center; align-items: center; z-index: 10000; transition: 0.3s; }
-        .fab-mic.listening { background: #c0392b; animation: pulse 1s infinite; transform: scale(1.1); }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
-        #cameraContainer { display: none; position: relative; width: 100%; max-width: 400px; margin: 10px auto; background: #000; border-radius: 8px; overflow: hidden; }
-        #cameraPreview { width: 100%; height: auto; display: block; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Picking JDE v.PRO - Surtido Mixto Validado</title>
+
+<!-- Excel -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+<!-- PDF de reclasificación -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Lector de códigos de barras -->
+<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js"></script>
+
+<style>
+:root{
+  --primary:#1e3a5f;
+  --primary2:#294f7d;
+  --success:#198754;
+  --danger:#dc3545;
+  --warning:#f59e0b;
+  --info:#0d6efd;
+  --dark:#17212b;
+  --muted:#64748b;
+  --bg:#f3f6fa;
+  --white:#fff;
+  --border:#dbe3ec;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  padding:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:var(--bg);
+  color:#1f2937;
+}
+
+body{min-height:100vh}
+
+button,input{
+  font:inherit;
+}
+
+button{cursor:pointer}
+
+.app{
+  width:100%;
+  max-width:1100px;
+  margin:0 auto;
+  padding:12px;
+}
+
+.header{
+  background:var(--primary);
+  color:#fff;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:12px;
+  box-shadow:0 4px 14px rgba(30,58,95,.16);
+}
+
+.header h1{
+  margin:0;
+  font-size:1.15rem;
+}
+
+.header p{
+  margin:5px 0 0;
+  opacity:.9;
+  font-size:.85rem;
+}
+
+.card{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:12px;
+  box-shadow:0 2px 8px rgba(15,23,42,.05);
+}
+
+.section-title{
+  margin:0 0 10px;
+  font-size:1rem;
+  color:var(--primary);
+}
+
+.load-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+
+.load-box{
+  border:1px dashed #b9c7d8;
+  border-radius:12px;
+  padding:11px;
+  background:#fbfdff;
+}
+
+.load-box label{
+  display:block;
+  font-weight:700;
+  font-size:.82rem;
+  margin-bottom:7px;
+}
+
+.file-input{
+  width:100%;
+  font-size:.78rem;
+}
+
+.status{
+  display:block;
+  margin-top:6px;
+  color:var(--muted);
+  font-size:.75rem;
+}
+
+.btn{
+  border:none;
+  border-radius:11px;
+  min-height:48px;
+  padding:11px 14px;
+  font-weight:700;
+  color:#fff;
+  width:100%;
+}
+
+.btn-generate{background:var(--success);margin-top:12px;font-size:1rem}
+.btn-secondary{background:var(--primary)}
+.btn-close{background:var(--danger)}
+.btn-suggested{background:var(--warning);color:#111}
+.btn-free{background:var(--info)}
+.btn-scan{background:var(--primary);font-size:1.05rem;min-height:56px}
+.btn-ok{background:var(--success);font-size:1.05rem}
+.btn-danger{background:var(--danger)}
+.btn-light{
+  background:#edf2f7;
+  color:#253447;
+  border:1px solid #d5dee8;
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+
+.summary-box{
+  border:1px solid var(--border);
+  border-radius:11px;
+  padding:10px;
+  text-align:center;
+  background:#fff;
+}
+
+.summary-box .n{
+  font-size:1.25rem;
+  font-weight:800;
+  color:var(--primary);
+}
+
+.summary-box .l{
+  font-size:.72rem;
+  color:var(--muted);
+}
+
+.pallet-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.pallet-card{
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  background:#fff;
+}
+
+.pallet-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.pallet-name{
+  font-size:1rem;
+  font-weight:800;
+  color:var(--primary);
+}
+
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  border-radius:999px;
+  padding:5px 9px;
+  font-size:.72rem;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.status-pending{background:#f1f5f9;color:#475569}
+.status-working{background:#fff7e0;color:#8a5800}
+.status-done{background:#e8f7ef;color:#146c43}
+
+.pallet-progress{
+  margin-top:10px;
+  height:9px;
+  background:#e9eef4;
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.pallet-progress > div{
+  height:100%;
+  width:0;
+  background:var(--success);
+  transition:width .2s ease;
+}
+
+.pallet-count{
+  display:flex;
+  justify-content:space-between;
+  font-size:.8rem;
+  margin-top:6px;
+  color:var(--muted);
+}
+
+.mode-buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:11px;
+}
+
+.detail-toggle{
+  margin-top:9px;
+  width:100%;
+  min-height:42px;
+}
+
+.details{
+  display:none;
+  margin-top:9px;
+  border-top:1px solid var(--border);
+  padding-top:9px;
+}
+
+.details.open{display:block}
+
+.line-row{
+  display:grid;
+  grid-template-columns:1.25fr .9fr .65fr;
+  gap:6px;
+  padding:8px 0;
+  border-bottom:1px solid #edf1f5;
+  font-size:.74rem;
+}
+
+.line-row:last-child{border-bottom:none}
+
+.line-row .title{
+  font-weight:700;
+}
+
+.line-row .muted{
+  color:var(--muted);
+}
+
+.line-done{
+  opacity:.6;
+}
+
+.hidden{display:none!important}
+
+/* Scanner */
+#scannerModal{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:#0f1720;
+  color:#fff;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.scanner-wrap{
+  width:100%;
+  max-width:620px;
+  margin:0 auto;
+  padding:10px 10px 24px;
+}
+
+.scanner-top{
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:#0f1720;
+  padding-bottom:8px;
+}
+
+.scanner-top-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.scanner-title{
+  font-weight:800;
+  font-size:1rem;
+}
+
+.mode-mini{
+  margin-top:3px;
+  font-size:.72rem;
+  color:#aab8c7;
+}
+
+.scanner-close{
+  width:auto;
+  min-height:40px;
+  padding:8px 12px;
+}
+
+.scan-summary{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:7px;
+  margin:9px 0;
+}
+
+.scan-stat{
+  background:#182536;
+  border:1px solid #2c4056;
+  border-radius:11px;
+  padding:8px;
+  text-align:center;
+}
+
+.scan-stat .big{
+  display:block;
+  font-size:1.15rem;
+  font-weight:800;
+}
+
+.scan-stat .small{
+  display:block;
+  font-size:.65rem;
+  color:#aab8c7;
+  margin-top:2px;
+}
+
+.target-card{
+  background:#172535;
+  border:2px solid #2b79b9;
+  border-radius:14px;
+  padding:14px;
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.target-caption{
+  font-size:.72rem;
+  color:#aab8c7;
+  font-weight:700;
+}
+
+.target-sku{
+  margin:7px 0 3px;
+  font-size:1.15rem;
+  font-weight:800;
+}
+
+.target-ubi{
+  font-size:.9rem;
+  color:#fbbf24;
+  font-weight:800;
+}
+
+.target-qty{
+  margin-top:8px;
+  font-size:1.75rem;
+  font-weight:900;
+}
+
+.target-qty small{
+  font-size:.7rem;
+  color:#aab8c7;
+  font-weight:700;
+}
+
+.free-target{
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.camera-box{
+  display:none;
+  border-radius:14px;
+  overflow:hidden;
+  background:#000;
+  border:1px solid #2f4358;
+  margin-bottom:10px;
+}
+
+#cameraPreview{
+  width:100%;
+  display:block;
+  background:#000;
+  min-height:230px;
+  object-fit:cover;
+}
+
+.camera-toolbar{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+  padding:8px;
+  background:#111a24;
+}
+
+.manual-card{
+  background:#17212b;
+  border:1px solid #2c4056;
+  border-radius:14px;
+  padding:10px;
+  margin-bottom:10px;
+}
+
+.manual-label{
+  display:block;
+  font-size:.72rem;
+  font-weight:700;
+  color:#aab8c7;
+  margin-bottom:7px;
+}
+
+.input{
+  width:100%;
+  min-height:50px;
+  border-radius:11px;
+  border:none;
+  outline:none;
+  padding:10px 12px;
+  font-size:1rem;
+  text-align:center;
+  margin-bottom:8px;
+}
+
+.two-inputs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.step-title{
+  font-size:.85rem;
+  font-weight:800;
+  margin:0 0 7px;
+}
+
+.validation{
+  display:none;
+  border-radius:14px;
+  padding:14px;
+  margin:10px 0;
+  text-align:center;
+}
+
+.validation.ok{
+  display:block;
+  background:#0e3320;
+  border:2px solid #28b463;
+}
+
+.validation.err{
+  display:block;
+  background:#3a1216;
+  border:2px solid #ef4444;
+}
+
+.validation .icon{
+  font-size:2rem;
+}
+
+.validation .main{
+  font-size:1.05rem;
+  font-weight:900;
+  margin-top:2px;
+}
+
+.validation .sub{
+  font-size:.75rem;
+  color:#c9d3de;
+  margin-top:4px;
+}
+
+.scan-actions{
+  display:grid;
+  gap:8px;
+}
+
+.progress-card{
+  background:#fff;
+  color:#1f2937;
+  border-radius:14px;
+  margin-top:10px;
+  overflow:hidden;
+}
+
+.progress-head{
+  padding:11px 12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #e8edf3;
+}
+
+.progress-head strong{font-size:.86rem}
+
+.progress-body{
+  max-height:38vh;
+  overflow:auto;
+}
+
+.progress-item{
+  display:grid;
+  grid-template-columns:1.35fr .75fr .6fr;
+  gap:5px;
+  padding:9px 12px;
+  border-bottom:1px solid #edf1f5;
+  font-size:.72rem;
+}
+
+.progress-item:last-child{border-bottom:none}
+
+.progress-item.done{background:#effaf4}
+.progress-item.current{background:#fff7e0}
+.progress-item .a{font-weight:800}
+.progress-item .b{color:#64748b}
+
+.exception{
+  display:none;
+  background:#3d151a;
+  border:2px solid #ef4444;
+  border-radius:14px;
+  padding:12px;
+  margin-top:10px;
+}
+
+.exception h3{
+  margin:0 0 7px;
+  font-size:.95rem;
+}
+
+.exception ul{
+  padding-left:18px;
+  margin:8px 0;
+  font-size:.73rem;
+  line-height:1.45;
+}
+
+.voice{
+  position:fixed;
+  right:14px;
+  bottom:14px;
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  border:none;
+  background:#ef4444;
+  color:#fff;
+  font-size:1.45rem;
+  z-index:10001;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
+}
+
+.voice.listening{
+  animation:pulse 1s infinite;
+  background:#198754;
+}
+
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(25,135,84,.7)}
+  70%{box-shadow:0 0 0 18px rgba(25,135,84,0)}
+  100%{box-shadow:0 0 0 0 rgba(25,135,84,0)}
+}
+
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:84px;
+  transform:translateX(-50%);
+  background:#111827;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:10px;
+  font-size:.78rem;
+  z-index:10002;
+  display:none;
+  max-width:88vw;
+  text-align:center;
+}
+
+@media (max-width:760px){
+  .app{padding:8px}
+  .load-grid{grid-template-columns:1fr}
+  .header{padding:13px}
+  .header h1{font-size:1rem}
+  .card{padding:11px}
+  .summary{grid-template-columns:repeat(3,1fr)}
+  .mode-buttons{grid-template-columns:1fr}
+  .line-row{grid-template-columns:1.2fr .8fr .6fr}
+  .target-qty{font-size:1.55rem}
+  .scanner-wrap{padding:8px 8px 22px}
+}
+
+@media (min-width:761px){
+  .scanner-wrap{padding-top:14px}
+}
+</style>
 </head>
+
 <body>
-<div class="container">
-    <h2 class="section-title">📦 Picking JDE v.PRO - PM Surtido Mixto</h2>
-    
-    <div class="grid-inputs">
-        <!-- ARCHIVO 1 -->
-        <div class="box">
-            <label>1. Maestro Stock JDE (Excel vStockPT)</label>
-            <input type="file" id="fileStock" accept=".xlsx, .xls">
-            <small id="statusStock" style="color:#7f8c8d; display:block; margin-top:5px;">Pendiente de carga...</small>
-        </div>
-        <!-- ARCHIVO 2 -->
-        <div class="box">
-            <label>2. Maestro de Productos / Capacidades</label>
-            <input type="file" id="fileMaestro" accept=".xlsx, .xls">
-            <small id="statusMaestro" style="color:#7f8c8d; display:block; margin-top:5px;">Pendiente de carga...</small>
-        </div>
-        <!-- ARCHIVO 3 -->
-        <div class="box" style="grid-column: 1 / -1;">
-            <label>3. Reporte de Surtido Final (Excel JDE)</label>
-            <input type="file" id="fileSurtido" accept=".xls, .xlsx, .html, .htm">
-            <small id="statusSurtido" style="color:#7f8c8d; display:block; margin-top:5px;">Pendiente de carga...</small>
-        </div>
+
+<div class="app">
+  <div class="header">
+    <h1>Picking JDE v.PRO</h1>
+    <p>Surtido mixto validado por lote físico</p>
+  </div>
+
+  <div class="card">
+    <h2 class="section-title">Carga de archivos</h2>
+
+    <div class="load-grid">
+      <div class="load-box">
+        <label>1. Maestro Stock JDE</label>
+        <input class="file-input" type="file" id="fileStock" accept=".xlsx,.xls">
+        <small id="statusStock" class="status">Pendiente de carga...</small>
+      </div>
+
+      <div class="load-box">
+        <label>2. Maestro Productos / Capacidades</label>
+        <input class="file-input" type="file" id="fileMaestro" accept=".xlsx,.xls">
+        <small id="statusMaestro" class="status">Pendiente de carga...</small>
+      </div>
+
+      <div class="load-box">
+        <label>3. Reporte Surtido Final JDE</label>
+        <input class="file-input" type="file" id="fileSurtido" accept=".xls,.xlsx,.html,.htm">
+        <small id="statusSurtido" class="status">Pendiente de carga...</small>
+      </div>
     </div>
-    <button class="btn btn-gen" onclick="procesarFuentesYGenerarPallets()">⚡ EXTRAER MIXTOS Y GENERAR PALLETS</button>
+
+    <button class="btn btn-generate" onclick="procesarFuentesYGenerarPallets()">
+      GENERAR PALLETS DE PICKING
+    </button>
+  </div>
+
+  <div id="resArea" class="hidden">
+    <div class="card">
+      <h2 class="section-title">Pallets de picking</h2>
+
+      <div class="summary">
+        <div class="summary-box">
+          <div class="n" id="summaryPallets">0</div>
+          <div class="l">Pallets</div>
+        </div>
+        <div class="summary-box">
+          <div class="n" id="summaryPrepared">0</div>
+          <div class="l">Preparadas</div>
+        </div>
+        <div class="summary-box">
+          <div class="n" id="summaryPending">0</div>
+          <div class="l">Pendientes</div>
+        </div>
+      </div>
+
+      <div id="pallets" class="pallet-list"></div>
+    </div>
+  </div>
 </div>
-<!-- ÁREA DE RESULTADOS -->
-<div id="resArea" class="container" style="display:none; margin-top:20px;">
-    <button id="btnToggleView" class="btn btn-toggle" onclick="toggleVista()">Ver Listado General de Surtido</button>
-    
-    <div id="vistaPallets">
-        <div id="tabs" class="pm-nav"></div>
-        <div id="pallets"></div>
-    </div>
-    <div id="vistaGeneral" style="display:none;">
-        <h3>📋 Listado Completo de Surtido (Solo PM Mixto)</h3>
-        <div class="button-group">
-            <button class="btn btn-scan-sug" onclick="abrirScannerGlobal(false)">🛠️ Armar TODO Sugerido</button>
-            <button class="btn btn-scan-lib" onclick="abrirScannerGlobal(true)">🔓 Armar TODO Libre</button>
-        </div>
-        <table id="tablaGeneral">
-            <thead><tr><th>Dep.</th><th>Ubicación</th><th>SKU</th><th>Descripción</th><th>Cant</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
-<!-- MODO SCANNER & CÁMARA & VOZ (Oculto por defecto) -->
+
+<!-- SCANNER -->
 <div id="scannerModal">
-    <div class="scan-header">
-        <h2 style="margin:0;">📲 MODO SCANNER <span id="scanModeTitle"></span></h2>
-        <button onclick="cerrarScanner()" style="background:#e74c3c; color:white; border:none; padding:10px 20px; font-size:1.1em; border-radius:5px; cursor:pointer;">Cerrar</button>
-    </div>
-    
-    <div class="scan-target" id="scanTargetBox">
-        <div style="font-size:1.1em; color:#bdc3c7;">PRÓXIMA LÍNEA A PREPARAR</div>
-        <h2 id="scanTargetSku">SKU / Desc</h2>
-        <div>Ubicación: <strong id="scanTargetUbi" style="font-size:1.4em; color:#f1c40f;"></strong></div>
-        <h1><span id="scanTargetQty"></span> Cajas</h1>
-    </div>
-    <div id="cameraContainer">
-        <video id="cameraPreview" autoplay playsinline></video>
-        <button onclick="cerrarCamara()" style="background:#e74c3c; color:white; border:none; width:100%; padding:8px; cursor:pointer;">Apagar Cámara</button>
-    </div>
-    <div class="input-row">
-        <input type="text" id="scanEanInput" class="scan-input" placeholder="EAN o SKU..." onblur="validarSkuBlur()">
-        <button class="btn-cam" onclick="toggleCamara()" title="Escanear con Cámara">📷</button>
-    </div>
-    <div class="input-row">
-        <input type="text" id="scanLotJulian" class="scan-input" placeholder="Lote (Ej: 318)">
-        <input type="text" id="scanLotTime" class="scan-input" placeholder="Hora (Ej: 14:30)">
-    </div>
-    <button class="btn-confirm" onclick="confirmarLinea()">✅ CONFIRMAR LÍNEA</button>
-    <div id="exceptionPanel">
-        <h3 style="margin-top:0;">⚠️ Lote no encontrado o stock insuficiente</h3>
-        <p>Lotes sugeridos en zona de picking:</p>
-        <ul id="sysLotsList" style="text-align:left;"></ul>
-        <div id="partialPickDiv" style="display:none; margin-top:10px;">
-            <label>Preparar cantidad parcial:</label>
-            <input type="number" id="partialQty" class="scan-input" style="width:120px; display:inline-block;" min="1">
-            <button class="btn-exception" onclick="aplicarParcial()">Aceptar Cantidad Parcial</button>
+  <div class="scanner-wrap">
+
+    <div class="scanner-top">
+      <div class="scanner-top-row">
+        <div>
+          <div class="scanner-title" id="scanModeTitle">Picking</div>
+          <div class="mode-mini" id="scanModeMini"></div>
         </div>
-        <button class="btn-exception" onclick="solicitarReclasificacion()">📄 Solicitar Reclasificación (PDF)</button>
+        <button class="btn btn-close scanner-close" onclick="cerrarScanner()">Cerrar</button>
+      </div>
+
+      <div class="scan-summary">
+        <div class="scan-stat">
+          <span class="big" id="scanPrepared">0</span>
+          <span class="small">Preparadas</span>
+        </div>
+        <div class="scan-stat">
+          <span class="big" id="scanPending">0</span>
+          <span class="small">Pendientes</span>
+        </div>
+        <div class="scan-stat">
+          <span class="big" id="scanCapacity">0</span>
+          <span class="small">Capacidad</span>
+        </div>
+      </div>
     </div>
-    <div style="background:white; color:#000; padding:15px; border-radius:5px; margin-top:20px; max-height:220px; overflow-y:auto;">
-        <h3 style="margin-top:0;">📋 Progreso de Sesión</h3>
-        <table id="scanProgressTable">
-            <thead><tr><th>Est.</th><th>Ubicación</th><th>SKU</th><th>Cant</th></tr></thead>
-            <tbody></tbody>
-        </table>
+
+    <!-- SUGERIDO -->
+    <div id="suggestedTarget" class="target-card">
+      <div class="target-caption">SIGUIENTE A PREPARAR</div>
+      <div class="target-sku" id="scanTargetSku">SKU</div>
+      <div class="target-ubi">📍 <span id="scanTargetUbi">UBICACIÓN</span></div>
+      <div class="target-qty">
+        <span id="scanTargetRemaining">0</span>
+        <small>CAJAS PENDIENTES DE ESTA LÍNEA</small>
+      </div>
     </div>
-    
-    <button id="fabMic" class="fab-mic" onclick="activarMicrofono()" title="Control por Voz">🎙️</button>
+
+    <!-- LIBRE -->
+    <div id="freeTarget" class="target-card hidden">
+      <div class="target-caption">PICKING LIBRE</div>
+      <div class="target-sku">Elegí cualquier caja pendiente</div>
+      <div class="target-qty" style="font-size:1.1rem">
+        Escaneá el código de la caja
+      </div>
+    </div>
+
+    <!-- CAMERA -->
+    <div id="cameraContainer" class="camera-box">
+      <video id="cameraPreview" autoplay playsinline muted></video>
+      <div class="camera-toolbar">
+        <button class="btn btn-light" onclick="detenerScannerCamara()">Cerrar cámara</button>
+        <button class="btn btn-secondary" onclick="reiniciarScannerCamara()">Reintentar</button>
+      </div>
+    </div>
+
+    <!-- SCAN INPUT -->
+    <div class="manual-card">
+      <div class="step-title">1. Código de la caja</div>
+      <label class="manual-label">EAN / ITF / SKU</label>
+      <input
+        id="scanEanInput"
+        class="input"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="Escanear o escribir"
+        oninput="normalizarEanInput()"
+        onblur="validarSkuActual()"
+      >
+
+      <button class="btn btn-scan" onclick="toggleCamara()">
+        📷 ESCANEAR CÓDIGO
+      </button>
+    </div>
+
+    <!-- LOT -->
+    <div class="manual-card">
+      <div class="step-title">2. Datos impresos en la caja</div>
+
+      <div class="two-inputs">
+        <div>
+          <label class="manual-label">Lote / Juliano</label>
+          <input
+            id="scanLotJulian"
+            class="input"
+            inputmode="text"
+            autocomplete="off"
+            placeholder="Ej. C25163"
+          >
+        </div>
+
+        <div>
+          <label class="manual-label">Hora</label>
+          <input
+            id="scanLotTime"
+            class="input"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Ej. 18:22"
+          >
+        </div>
+      </div>
+
+      <div id="derivedLotBox" style="display:none; text-align:center; background:#243447; border-radius:11px; padding:10px;">
+        <div style="font-size:.7rem;color:#aab8c7;">VALIDACIÓN</div>
+        <div id="derivedLot" style="font-size:1.5rem;font-weight:900;margin-top:2px;"></div>
+      </div>
+    </div>
+
+    <div id="validationBox" class="validation">
+      <div class="icon" id="validationIcon">✅</div>
+      <div class="main" id="validationMain"></div>
+      <div class="sub" id="validationSub"></div>
+    </div>
+
+    <div id="exceptionPanel" class="exception">
+      <h3>❌ No se encontró coincidencia</h3>
+      <div id="exceptionMessage" style="font-size:.78rem;"></div>
+      <ul id="sysLotsList"></ul>
+
+      <div style="margin-top:8px">
+        <label class="manual-label">Cantidad parcial</label>
+        <input type="number" id="partialQty" class="input" min="1" style="margin-bottom:7px;">
+        <button class="btn btn-light" onclick="aplicarParcial()">APLICAR CANTIDAD PARCIAL</button>
+      </div>
+
+      <button class="btn btn-danger" style="margin-top:8px" onclick="solicitarReclasificacion()">
+        SOLICITAR RECLASIFICACIÓN (PDF)
+      </button>
+    </div>
+
+    <div class="scan-actions">
+      <button id="btnConfirmarCaja" class="btn btn-ok" onclick="confirmarLinea()">
+        ✅ VALIDAR Y AGREGAR CAJA
+      </button>
+
+      <button class="btn btn-light" onclick="limpiarScannerInputs()">
+        LIMPIAR
+      </button>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="progress-card">
+      <div class="progress-head">
+        <strong>Progreso del pallet</strong>
+        <span id="progressSummary" style="font-size:.72rem;color:#64748b">0 / 0</span>
+      </div>
+      <div id="scanProgressBody" class="progress-body"></div>
+    </div>
+
+  </div>
+
+  <button id="fabMic" class="voice" onclick="activarMicrofono()" title="Ingreso por voz">🎤</button>
+  <div id="toast" class="toast"></div>
 </div>
+
 <script>
-    // Variables Globales
-    let stockData = [];       
-    let maestroData = {};     
-    let eanMapData = {};      
-    let surtidoData = [];     
-    
-    let itemsTotales = [];
-    let palletsGenerados = [];
-    let pendingItems = [];
-    let currentItemIndex = 0;
-    let modoLibre = false;
-    let mediaStream = null;
+/* ============================================================
+   VARIABLES GLOBALES
+============================================================ */
+let stockData = [];
+let maestroData = {};
+let eanMapData = {};
+let surtidoData = [];
 
-    // --- LÓGICA OFICIAL DE TURNOS SEGÚN MANUAL (PRODUCCIÓN- Lotestiba.v2.pdf) ---
-    // A - 00:00 a 07:59
-    // B - 08:00 a 15:59
-    // C - 16:00 a 23:59
-    function obtenerLetraTurno(horaStr) {
-        if (!horaStr) return '';
-        let partes = horaStr.trim().split(':');
-        let hora = parseInt(partes[0]);
-        let min = partes[1] ? parseInt(partes[1]) : 0;
-        if (isNaN(hora)) return '';
-        
-        let minutosTotales = hora * 60 + min;
-        if (minutosTotales >= 0 && minutosTotales < 480) { // 00:00 a 07:59
-            return 'A';
-        } else if (minutosTotales >= 480 && minutosTotales < 960) { // 08:00 a 15:59
-            return 'B';
-        } else { // 16:00 a 23:59
-            return 'C';
+let itemsTotales = [];
+let palletsGenerados = [];
+
+let pendingItems = [];
+let currentItemIndex = 0;
+
+let modoLibre = false;
+let currentPalletId = null;
+
+let mediaStream = null;
+let barcodeReader = null;
+let barcodeControls = null;
+
+const synth = window.speechSynthesis;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+/* ============================================================
+   UTILIDADES
+============================================================ */
+function esc(v){
+  return String(v ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function mostrarToast(texto){
+  const el = document.getElementById("toast");
+  el.textContent = texto;
+  el.style.display = "block";
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => el.style.display = "none", 2200);
+}
+
+function hablar(texto){
+  if(!synth) return;
+  try{
+    if(synth.speaking) synth.cancel();
+    const utter = new SpeechSynthesisUtterance(texto);
+    utter.lang = "es-AR";
+    synth.speak(utter);
+  }catch(e){}
+}
+
+/* ============================================================
+   TURNOS
+============================================================ */
+function obtenerLetraTurno(horaStr){
+  if(!horaStr) return "";
+
+  let h = String(horaStr).trim().replace(".", ":");
+  if(/^\d{4}$/.test(h)) h = h.slice(0,2) + ":" + h.slice(2);
+
+  const partes = h.split(":");
+  const hora = parseInt(partes[0],10);
+  const min = partes[1] ? parseInt(partes[1],10) : 0;
+
+  if(isNaN(hora) || isNaN(min) || hora < 0 || hora > 23 || min < 0 || min > 59){
+    return "";
+  }
+
+  const total = hora * 60 + min;
+  if(total < 480) return "A";
+  if(total < 960) return "B";
+  return "C";
+}
+
+function normalizarHora(horaStr){
+  let h = String(horaStr || "").trim().replace(".", ":");
+  if(/^\d{4}$/.test(h)) h = h.slice(0,2) + ":" + h.slice(2);
+
+  const m = h.match(/^(\d{1,2}):(\d{1,2})$/);
+  if(!m) return "";
+
+  const hh = String(parseInt(m[1],10)).padStart(2,"0");
+  const mm = String(parseInt(m[2],10)).padStart(2,"0");
+
+  if(parseInt(hh) > 23 || parseInt(mm) > 59) return "";
+  return `${hh}:${mm}`;
+}
+
+/* ============================================================
+   JULIANO
+   Admite ejemplos como:
+   C 25163  -> 163
+   L 26 140 -> 140
+   163      -> 163
+============================================================ */
+function extraerJuliano(valor){
+  const txt = String(valor || "").trim().toUpperCase();
+
+  const grupos = txt.match(/\d{3}/g);
+  if(!grupos || grupos.length === 0) return "";
+
+  return grupos[grupos.length - 1];
+}
+
+function calcularValidacionLote(){
+  const rawLot = document.getElementById("scanLotJulian").value.trim();
+  const rawTime = document.getElementById("scanLotTime").value.trim();
+
+  const julian = extraerJuliano(rawLot);
+  const hora = normalizarHora(rawTime);
+  const turno = obtenerLetraTurno(hora);
+
+  const box = document.getElementById("derivedLotBox");
+  const val = document.getElementById("derivedLot");
+
+  if(julian && turno){
+    val.textContent = julian + turno;
+    box.style.display = "block";
+    return { julian, hora, turno, sufijo: julian + turno };
+  }
+
+  box.style.display = "none";
+  return { julian, hora, turno, sufijo: julian || "" };
+}
+
+document.getElementById("scanLotJulian").addEventListener("input", calcularValidacionLote);
+document.getElementById("scanLotTime").addEventListener("input", calcularValidacionLote);
+
+/* ============================================================
+   CARGA DE ARCHIVOS
+============================================================ */
+document.getElementById("fileStock").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+
+  try{
+    const data = await leerExcelComoMatriz(file);
+    stockData = procesarMatrizStock(data);
+
+    document.getElementById("statusStock").textContent =
+      `✅ Stock cargado (${stockData.length} registros)`;
+    document.getElementById("statusStock").style.color = "var(--success)";
+  }catch(err){
+    alert("Error procesando stock: " + err.message);
+  }
+});
+
+document.getElementById("fileMaestro").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+
+  try{
+    const wb = await leerWorkbook(file);
+
+    maestroData = {};
+
+    if(wb.SheetNames[0]){
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet,{header:1});
+
+      json.slice(1).forEach(r=>{
+        const sku = String(r[1] || "").trim();
+        if(sku){
+          maestroData[sku] = {
+            cap: (parseInt(r[5],10)||21) * (parseInt(r[6],10)||4)
+          };
         }
+      });
     }
 
-    // --- CARGA DE ARCHIVOS ---
-    document.getElementById('fileStock').onchange = async (e) => {
-        let file = e.target.files[0];
-        if(!file) return;
-        try {
-            let data = await leerExcelComoMatriz(file);
-            stockData = procesarMatrizStock(data);
-            document.getElementById('statusStock').innerText = `✅ Stock cargado (${stockData.length} lotes)`;
-            document.getElementById('statusStock').style.color = "var(--success)";
-        } catch(err) {
-            alert("Error procesando stock: " + err.message);
+    if(wb.SheetNames.includes("MST Producto")){
+      const jsonMst = XLSX.utils.sheet_to_json(
+        wb.Sheets["MST Producto"],
+        {header:1}
+      );
+
+      eanMapData = {};
+
+      jsonMst.slice(1).forEach(r=>{
+        const sku = String(r[1] || "").trim();
+        const ean = String(r[9] || "").trim();
+
+        if(sku && ean){
+          eanMapData[ean] = sku;
         }
+      });
+    }
+
+    document.getElementById("statusMaestro").textContent =
+      `✅ Maestro cargado (${Object.keys(maestroData).length} SKUs)`;
+    document.getElementById("statusMaestro").style.color = "var(--success)";
+  }catch(err){
+    alert("Error procesando maestro: " + err.message);
+  }
+});
+
+document.getElementById("fileSurtido").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+
+  try{
+    surtidoData = await leerExcelComoMatriz(file);
+
+    document.getElementById("statusSurtido").textContent =
+      `✅ Surtido listo (${surtidoData.length} filas analizadas)`;
+    document.getElementById("statusSurtido").style.color = "var(--success)";
+  }catch(err){
+    alert("Error procesando surtido: " + err.message);
+  }
+});
+
+function leerWorkbook(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+
+    reader.onload = e=>{
+      try{
+        const wb = XLSX.read(
+          new Uint8Array(e.target.result),
+          {type:"array"}
+        );
+        resolve(wb);
+      }catch(err){
+        reject(err);
+      }
     };
-    document.getElementById('fileMaestro').onchange = async (e) => {
-        let file = e.target.files[0];
-        if(!file) return;
-        let wb = await leerWorkbook(file);
-        if(wb.SheetNames[0]) {
-            let sheet = wb.Sheets[wb.SheetNames[0]];
-            let json = XLSX.utils.sheet_to_json(sheet, {header:1});
-            maestroData = {};
-            json.slice(1).forEach(r => {
-                let sku = String(r[1] || "").trim();
-                if(sku) maestroData[sku] = { cap: (parseInt(r[5])||21)*(parseInt(r[6])||4) };
-            });
-        }
-        if(wb.SheetNames.includes('MST Producto')) {
-            let jsonMst = XLSX.utils.sheet_to_json(wb.Sheets['MST Producto'], {header:1});
-            eanMapData = {};
-            jsonMst.slice(1).forEach(r => {
-                let sku = String(r[1] || "").trim();
-                let ean = String(r[9] || "").trim();
-                if(sku && ean) eanMapData[ean] = sku;
-            });
-        }
-        document.getElementById('statusMaestro').innerText = `✅ Maestro cargado (${Object.keys(maestroData).length} SKUs)`;
-        document.getElementById('statusMaestro').style.color = "var(--success)";
-    };
-    document.getElementById('fileSurtido').onchange = async (e) => {
-        let file = e.target.files[0];
-        if(!file) return;
-        try {
-            surtidoData = await leerExcelComoMatriz(file);
-            document.getElementById('statusSurtido').innerText = `✅ Surtido listo (${surtidoData.length} filas analizadas)`;
-            document.getElementById('statusSurtido').style.color = "var(--success)";
-        } catch(err) {
-            alert("Error procesando surtido: " + err.message);
-        }
-    };
-    function leerWorkbook(file) {
-        return new Promise((resolve) => {
-            let reader = new FileReader();
-            reader.onload = (e) => {
-                let wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-                resolve(wb);
-            };
-            reader.readAsArrayBuffer(file);
-        });
+
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function leerExcelComoMatriz(file){
+  const wb = await leerWorkbook(file);
+  const sheetName =
+    wb.SheetNames.find(n => n.toLowerCase().includes("vstock")) ||
+    wb.SheetNames[0];
+
+  return XLSX.utils.sheet_to_json(
+    wb.Sheets[sheetName],
+    {header:1}
+  );
+}
+
+/* ============================================================
+   STOCK
+============================================================ */
+function procesarMatrizStock(data){
+  const res = [];
+
+  let keyUbi = -1;
+  let keyLote = -1;
+  let keyCant = -1;
+  let keySku = -1;
+  let startRow = 1;
+
+  const norm = str =>
+    String(str || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g,"");
+
+  for(let i=0;i<Math.min(25,data.length);i++){
+    const row = data[i];
+    if(!row || row.length===0) continue;
+
+    row.forEach((cell,index)=>{
+      const val = norm(cell);
+      if(!val) return;
+
+      if(keyUbi===-1 && (val.includes("ubicacio") || val.includes("posic"))){
+        keyUbi=index;
+      }
+
+      if(keyLote===-1 && (val.includes("lote") || val.includes("batch"))){
+        keyLote=index;
+      }
+
+      if(keyCant===-1 && (val.includes("cant") || val.includes("disp"))){
+        keyCant=index;
+      }
+
+      if(keySku===-1 && (val.includes("articulo") || val.includes("sku"))){
+        keySku=index;
+      }
+    });
+
+    if(keyUbi!==-1 || keyLote!==-1){
+      startRow=i+1;
+      break;
     }
-    async function leerExcelComoMatriz(file) {
-        let wb = await leerWorkbook(file);
-        const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('vstock')) || wb.SheetNames[0];
-        return XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1});
+  }
+
+  if(keyUbi===-1) keyUbi=1;
+  if(keyLote===-1) keyLote=3;
+  if(keySku===-1) keySku=2;
+  if(keyCant===-1) keyCant=5;
+
+  for(let i=startRow;i<data.length;i++){
+    const r = data[i];
+    if(!r || r.length===0) continue;
+
+    const ubiVal = String(r[keyUbi] || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\./g,"");
+
+    const loteVal = String(r[keyLote] || "")
+      .trim()
+      .toUpperCase();
+
+    const skuVal = String(r[keySku] || "").trim();
+
+    const qtyVal =
+      parseFloat(String(r[keyCant] || "").replace(",",".")) || 0;
+
+    if(
+      skuVal &&
+      skuVal.toUpperCase()!=="SKU" &&
+      skuVal.toUpperCase()!=="ARTICULO"
+    ){
+      res.push({
+        ubi: ubiVal || "S/U",
+        lote: (loteVal && loteVal!=="LOTE") ? loteVal : "ESTANDAR",
+        qty: qtyVal > 0 ? qtyVal : 999,
+        sku: skuVal
+      });
     }
-    function procesarMatrizStock(data) {
-        let res = [];
-        let keyUbi = -1, keyLote = -1, keyCant = -1, keySku = -1;
-        let startRow = 1;
-        const norm = (str) => String(str || "").toLowerCase().replace(/[^a-z0-9]/g, '');
-        for (let i = 0; i < Math.min(25, data.length); i++) {
-            let row = data[i];
-            if (!row || row.length === 0) continue;
-            row.forEach((cell, index) => {
-                let val = norm(cell);
-                if (!val) return;
-                if (keyUbi === -1 && (val.includes('ubicacio') || val.includes('posic'))) keyUbi = index;
-                if (keyLote === -1 && (val.includes('lote') || val.includes('batch'))) keyLote = index;
-                if (keyCant === -1 && (val.includes('cant') || val.includes('disp'))) keyCant = index;
-                if (keySku === -1 && (val.includes('articulo') || val.includes('sku'))) keySku = index;
-            });
-            if (keyUbi !== -1 || keyLote !== -1) { startRow = i + 1; break; }
+  }
+
+  return res;
+}
+
+/* ============================================================
+   GENERACIÓN DE PALLETS
+============================================================ */
+function procesarFuentesYGenerarPallets(){
+  if(stockData.length===0){
+    alert("Falta cargar el Archivo 1 (Stock JDE).");
+    return;
+  }
+
+  if(Object.keys(maestroData).length===0){
+    alert("Falta cargar el Archivo 2 (Maestro / Capacidades).");
+    return;
+  }
+
+  if(surtidoData.length===0){
+    alert("Falta cargar el Archivo 3 (Reporte Surtido).");
+    return;
+  }
+
+  const itemsRaw = [];
+  let enZonaMixtos = false;
+  let expectedTotal = 0;
+  let cajasMixtasExtraidas = 0;
+
+  for(let i=0;i<surtidoData.length;i++){
+    const row = surtidoData[i];
+    if(!row || row.length===0) continue;
+
+    const rowStr = row.join(" ").toUpperCase();
+
+    if(
+      rowStr.includes("AREA SURTIDO") &&
+      rowStr.includes("PALLET MIXTO")
+    ){
+      enZonaMixtos=true;
+      continue;
+    }
+
+    if(
+      rowStr.includes("AREA SURTIDO") &&
+      !rowStr.includes("PALLET MIXTO")
+    ){
+      enZonaMixtos=false;
+    }
+
+    if(rowStr.includes("CANTIDAD POR UNIDAD DE MEDIDA")){
+      const bloque = [
+        ...row,
+        ...(surtidoData[i+1] || []),
+        ...(surtidoData[i+2] || [])
+      ];
+
+      bloque.forEach(cell=>{
+        const num = parseFloat(String(cell));
+        if(!isNaN(num) && num>0 && num>expectedTotal){
+          expectedTotal=num;
         }
-        if (keyUbi === -1) keyUbi = 1; if (keyLote === -1) keyLote = 3;
-        if (keySku === -1) keySku = 2; if (keyCant === -1) keyCant = 5;
-        for (let i = startRow; i < data.length; i++) {
-            let r = data[i];
-            if (!r || r.length === 0) continue;
-            let ubiVal = String(r[keyUbi] || "").trim().toUpperCase().replace(/\./g, '');
-            let loteVal = String(r[keyLote] || "").trim().toUpperCase();
-            let skuVal = String(r[keySku] || "").trim();
-            let qtyVal = parseFloat(String(r[keyCant] || "").replace(',', '.')) || 0;
-            if (skuVal && skuVal.toUpperCase() !== "SKU" && skuVal.toUpperCase() !== "ARTICULO") {
-                res.push({ ubi: ubiVal || "S/U", lote: (loteVal && loteVal !== "LOTE") ? loteVal : "ESTANDAR", qty: qtyVal > 0 ? qtyVal : 999, sku: skuVal });
+      });
+    }
+
+    if(enZonaMixtos){
+      const ubi = String(row[0] || "").trim();
+
+      if(
+        ubi.includes(".") &&
+        ubi.length>6 &&
+        !ubi.includes(" ")
+      ){
+        const sku = String(row[1] || "").trim();
+        const desc = String(row[4] || row[3] || "").trim();
+
+        let qty = 0;
+
+        for(let c=row.length-1;c>=2;c--){
+          const cellVal = String(row[c] || "").trim().toUpperCase();
+
+          if(cellVal==="CA"){
+            qty = parseFloat(row[c-1]);
+            break;
+          }
+
+          if(cellVal.includes(" CA") || cellVal.includes("CA")){
+            qty = parseFloat(cellVal.replace("CA","").trim());
+            break;
+          }
+        }
+
+        if(isNaN(qty) || qty===0){
+          for(let c=row.length-1;c>=2;c--){
+            const num = parseFloat(row[c]);
+            if(!isNaN(num) && num>0 && num<10000){
+              qty=num;
+              break;
             }
+          }
         }
-        return res;
-    }
-    function procesarFuentesYGenerarPallets() {
-        if(stockData.length === 0) return alert("⚠️ Falta cargar el Archivo 1 (Stock JDE).");
-        if(Object.keys(maestroData).length === 0) return alert("⚠️ Falta cargar el Archivo 2 (Maestro / Capacidades).");
-        if(surtidoData.length === 0) return alert("⚠️ Falta cargar el Archivo 3 (Reporte Surtido).");
-        let itemsRaw = [];
-        let enZonaMixtos = false;
-        let expectedTotal = 0;
-        let cajasMixtasExtraidas = 0;
-        for (let i = 0; i < surtidoData.length; i++) {
-            let row = surtidoData[i];
-            if (!row || row.length === 0) continue;
-            
-            let rowStr = row.join(" ").toUpperCase();
-            if (rowStr.includes("AREA SURTIDO") && rowStr.includes("PALLET MIXTO")) {
-                enZonaMixtos = true;
-                continue;
-            } else if (rowStr.includes("AREA SURTIDO") && !rowStr.includes("PALLET MIXTO")) {
-                enZonaMixtos = false; 
-            }
-            if (rowStr.includes("CANTIDAD POR UNIDAD DE MEDIDA")) {
-                let bloque = [...row, ...(surtidoData[i+1] || []), ...(surtidoData[i+2] || [])];
-                bloque.forEach(cell => {
-                    let num = parseFloat(String(cell));
-                    if (!isNaN(num) && num > 0 && num > expectedTotal) {
-                        expectedTotal = num;
-                    }
-                });
-            }
-            if (enZonaMixtos) {
-                let ubi = String(row[0] || "").trim();
-                if (ubi.includes(".") && ubi.length > 6 && !ubi.includes(" ")) {
-                    let sku = String(row[1] || "").trim();
-                    let desc = String(row[4] || row[3] || "").trim();
-                    let qty = 0;
-                    for (let c = row.length - 1; c >= 2; c--) {
-                        let cellVal = String(row[c] || "").trim().toUpperCase();
-                        if (cellVal === "CA") {
-                            qty = parseFloat(row[c-1]);
-                            break;
-                        } else if (cellVal.includes(" CA") || cellVal.includes("CA")) {
-                            qty = parseFloat(cellVal.replace("CA", "").trim());
-                            break;
-                        }
-                    }
-                    if (isNaN(qty) || qty === 0) {
-                        for(let c = row.length - 1; c >= 2; c--) {
-                            let num = parseFloat(row[c]);
-                            if(!isNaN(num) && num > 0 && num < 10000) { qty = num; break; }
-                        }
-                    }
-                    if (qty > 0 && sku && !isNaN(parseInt(sku))) {
-                        let info = maestroData[sku] || { cap: 84 };
-                        itemsRaw.push({
-                            ubi: ubi, sku: sku, desc: desc, orden: parseInt(row[6] || 0), cant: qty,
-                            dep: ubi.substring(0, 4) || "P001", picked: false, capFull: info.cap
-                        });
-                        cajasMixtasExtraidas += qty;
-                    }
-                }
-            }
+
+        if(qty>0 && sku && !isNaN(parseInt(sku,10))){
+          const info = maestroData[sku] || {cap:84};
+
+          itemsRaw.push({
+            ubi,
+            sku,
+            desc,
+            orden:parseInt(row[6] || 0,10),
+            cant:qty,
+            dep:ubi.substring(0,4) || "P001",
+            pickedQty:0,
+            capFull:info.cap
+          });
+
+          cajasMixtasExtraidas += qty;
         }
-        if (itemsRaw.length === 0) {
-            return alert("❌ No se encontraron líneas de picking en la sección 'PM Pallet Mixto'.");
-        }
-        let mensajeExito = `✅ ÉXITO: Se extrajeron ${cajasMixtasExtraidas} cajas correspondientes ÚNICAMENTE a Pallets Mixtos.`;
-        if (expectedTotal > 0) {
-            if (cajasMixtasExtraidas === expectedTotal) {
-                alert(`${mensajeExito}\n\n✔️ TOTAL VALIDADO PERFECTO: Coincide con el reporte final de ${expectedTotal} Cajas.`);
-            } else {
-                alert(`${mensajeExito}\n\n⚠️ ADVERTENCIA: El total final del documento marca ${expectedTotal} Cajas.`);
-            }
-        } else {
-            alert(mensajeExito);
-        }
-        itemsRaw.sort((a,b) => a.orden - b.orden);
-        itemsTotales = itemsRaw;
-        armarLogicaVolumetrica(itemsRaw);
+      }
     }
-    function armarLogicaVolumetrica(items) {
-        palletsGenerados = []; 
-        let cont = 1;
-        let p = { id: cont, items: [], cantTotal: 0 };
-        
-        items.forEach(it => {
-            let qty = it.cant;
-            let capMax = it.capFull || 84;
-            
-            while(qty > 0) {
-                if(p.cantTotal === capMax) {
-                    palletsGenerados.push(p);
-                    cont++;
-                    p = { id: cont, items: [], cantTotal: 0 };
-                }
-                let espacioDisp = capMax - p.cantTotal;
-                let tomar = Math.min(qty, espacioDisp);
-                p.items.push({...it, cant: tomar});
-                p.cantTotal += tomar;
-                qty -= tomar;
-            }
-        });
-        if(p.items.length > 0) palletsGenerados.push(p);
-        renderPallets(); 
-        renderTablaGeneral();
-    }
-    function renderPallets() {
-        document.getElementById('resArea').style.display = "block";
-        const tabs = document.getElementById('tabs'); 
-        const cont = document.getElementById('pallets');
-        tabs.innerHTML = ""; cont.innerHTML = "";
-        palletsGenerados.forEach((p, i) => {
-            const btn = document.createElement('div');
-            btn.className = `pm-tab ${i===0?'active':''}`;
-            btn.innerText = `PM #${p.id}`;
-            btn.onclick = () => { 
-                document.querySelectorAll('.pm-tab, .pallet-card').forEach(el=>el.classList.remove('active')); 
-                btn.classList.add('active'); 
-                document.getElementById('pc-'+p.id).classList.add('active'); 
-            };
-            tabs.appendChild(btn);
-            const card = document.createElement('div');
-            card.id = 'pc-'+p.id; card.className = `pallet-card ${i===0?'active':''}`;
-            card.innerHTML = `
-                <h2>Pallet #${p.id} (Cajas: ${p.cantTotal})</h2>
-                <div class="button-group">
-                    <button class="btn btn-scan-sug" onclick="abrirScannerPallet(${p.id}, false)">🛠️ Armar PM sugerido</button>
-                    <button class="btn btn-scan-lib" onclick="abrirScannerPallet(${p.id}, true)">🔓 Armar PM libre</button>
-                </div>
-                <table>
-                    <thead><tr><th>Ubicación</th><th>SKU</th><th>Cant</th></tr></thead>
-                    <tbody>${p.items.map(it => `<tr><td>${it.ubi}</td><td>${it.sku}</td><td>${it.cant}</td></tr>`).join('')}</tbody>
-                </table>
-            `;
-            cont.appendChild(card);
-        });
-    }
-    function renderTablaGeneral() {
-        const tbody = document.querySelector('#tablaGeneral tbody');
-        tbody.innerHTML = itemsTotales.map(it => `<tr><td>${it.dep}</td><td>${it.ubi}</td><td>${it.sku}</td><td>${it.desc}</td><td>${it.cant}</td></tr>`).join('');
-    }
-    function toggleVista() {
-        const vp = document.getElementById('vistaPallets');
-        const vg = document.getElementById('vistaGeneral');
-        const btn = document.getElementById('btnToggleView');
-        if(vp.style.display === "none") {
-            vp.style.display = "block"; vg.style.display = "none";
-            btn.innerText = "Ver Listado General de Surtido";
-        } else {
-            vp.style.display = "none"; vg.style.display = "block";
-            btn.innerText = "Ver Vista de Pallets Sugeridos";
-        }
-    }
-    function abrirScannerPallet(id, esLibre) {
-        let p = palletsGenerados.find(x => x.id === id);
-        iniciarScanner(p.items, esLibre, `Pallet #${id}`);
-    }
-    function abrirScannerGlobal(esLibre) {
-        iniciarScanner(itemsTotales, esLibre, "Global");
-    }
-    function iniciarScanner(itemsSource, esLibre, titulo) {
-        modoLibre = esLibre;
-        pendingItems = JSON.parse(JSON.stringify(itemsSource));
-        currentItemIndex = 0;
-        
-        document.getElementById('scannerModal').style.display = 'flex';
-        document.getElementById('scanModeTitle').innerText = `- ${titulo} ` + (esLibre ? "(Libre)" : "(Sugerido)");
-        document.getElementById('exceptionPanel').style.display = "none";
-        if(esLibre) {
-            document.getElementById('scanTargetBox').style.display = "none";
-            document.getElementById('scanEanInput').focus();
-        } else {
-            document.getElementById('scanTargetBox').style.display = "block";
-            cargarLineaSugerida();
-        }
-        actualizarTablaProgreso();
-    }
-    function cerrarScanner() { 
-        document.getElementById('scannerModal').style.display = 'none'; 
-        cerrarCamara();
-    }
-    function cargarLineaSugerida() {
-        if(currentItemIndex >= pendingItems.length) {
-            document.getElementById('scanTargetBox').innerHTML = `<h1 style="color:#2ecc71">✅ COMPLETADO</h1>`;
-            hablar("Completado con éxito");
-            return;
-        }
-        let item = pendingItems[currentItemIndex];
-        document.getElementById('scanTargetSku').innerText = `${item.sku} - ${item.desc}`;
-        document.getElementById('scanTargetUbi').innerText = item.ubi;
-        document.getElementById('scanTargetQty').innerText = item.cant;
-        limpiarInputs();
-        document.getElementById('scanEanInput').focus();
-        actualizarTablaProgreso();
-        hablar(`Preparar ${item.cant} cajas de SKU ${item.sku}`);
-    }
-    function limpiarInputs() {
-        document.getElementById('scanEanInput').value = '';
-        document.getElementById('scanLotJulian').value = '';
-        document.getElementById('scanLotTime').value = '';
-        document.getElementById('exceptionPanel').style.display = 'none';
-    }
-    function validarSkuBlur() {
-        if(modoLibre || currentItemIndex >= pendingItems.length) return;
-        let val = document.getElementById('scanEanInput').value.trim();
-        if(!val) return;
-        let item = pendingItems[currentItemIndex];
-        let skuScanned = eanMapData[val] || val;
-        
-        if (skuScanned !== item.sku) {
-            hablar("SKU incorrecto");
-            alert(`❌ Error: Ingresó SKU ${skuScanned}. Se espera: ${item.sku}`);
-            document.getElementById('scanEanInput').value = "";
-            document.getElementById('scanEanInput').focus();
-        }
-    }
-    async function toggleCamara() {
-        let container = document.getElementById('cameraContainer');
-        if (container.style.display === "block") {
-            cerrarCamara();
-        } else {
-            container.style.display = "block";
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                document.getElementById('cameraPreview').srcObject = mediaStream;
-            } catch (err) {
-                alert("No se pudo acceder a la cámara: " + err.message);
-                container.style.display = "none";
-            }
-        }
-    }
-    function cerrarCamara() {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-            mediaStream = null;
-        }
-        document.getElementById('cameraContainer').style.display = "none";
-    }
-    const synth = window.speechSynthesis;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = SpeechRecognition ? new SpeechRecognition() : null;
-    if(recognition) recognition.lang = 'es-AR';
-    function hablar(texto) {
-        if(synth.speaking) synth.cancel();
-        const utter = new SpeechSynthesisUtterance(texto);
-        utter.lang = 'es-AR'; synth.speak(utter);
-    }
-    function activarMicrofono() {
-        if(!recognition) return alert("El reconocimiento de voz no está soportado en este navegador.");
-        recognition.start();
-        document.getElementById('fabMic').classList.add('listening');
-        hablar("Escuchando...");
-        
-        recognition.onresult = (event) => {
-            let said = event.results[0][0].transcript;
-            document.getElementById('scanEanInput').value = said;
-            document.getElementById('fabMic').classList.remove('listening');
-            validarSkuBlur();
+  }
+
+  if(itemsRaw.length===0){
+    alert("No se encontraron líneas de picking en la sección 'PM Pallet Mixto'.");
+    return;
+  }
+
+  if(expectedTotal>0 && cajasMixtasExtraidas!==expectedTotal){
+    alert(
+      `Se extrajeron ${cajasMixtasExtraidas} cajas.\n\n` +
+      `El reporte final indica ${expectedTotal} cajas.`
+    );
+  }else{
+    alert(`Se extrajeron ${cajasMixtasExtraidas} cajas de PM Mixto.`);
+  }
+
+  itemsRaw.sort((a,b)=>a.orden-b.orden);
+
+  itemsTotales = itemsRaw;
+  armarLogicaVolumetrica(itemsRaw);
+}
+
+function armarLogicaVolumetrica(items){
+  palletsGenerados=[];
+
+  let cont=1;
+  let p={
+    id:cont,
+    items:[],
+    cantTotal:0,
+    preparedQty:0
+  };
+
+  items.forEach(it=>{
+    let qty=it.cant;
+    const capMax=it.capFull || 84;
+
+    while(qty>0){
+      if(p.cantTotal===capMax){
+        palletsGenerados.push(p);
+
+        cont++;
+        p={
+          id:cont,
+          items:[],
+          cantTotal:0,
+          preparedQty:0
         };
-        recognition.onerror = () => {
-            document.getElementById('fabMic').classList.remove('listening');
-        };
+      }
+
+      const espacioDisp = capMax - p.cantTotal;
+      const tomar = Math.min(qty,espacioDisp);
+
+      p.items.push({
+        ...it,
+        cant:tomar,
+        pickedQty:0
+      });
+
+      p.cantTotal += tomar;
+      qty -= tomar;
     }
-    function confirmarLinea() {
-        let eanVal = document.getElementById('scanEanInput').value.trim();
-        let julianVal = document.getElementById('scanLotJulian').value.trim().toUpperCase();
-        let timeVal = document.getElementById('scanLotTime').value.trim();
-        let skuScanned = eanMapData[eanVal] || eanVal;
-        
-        if(!skuScanned || !julianVal) return alert("Complete SKU y Día Juliano.");
-        
-        // Asignación y validación automática de la letra de turno según el horario ingresado (Manual oficial)
-        let letraTurno = obtenerLetraTurno(timeVal);
-        let sufijoBuscado = julianVal + letraTurno; // Ej: "318" + "C" = "318C"
+  });
 
-        let itemIndex = modoLibre ? pendingItems.findIndex(it => it.sku === skuScanned && !it.picked) : currentItemIndex;
-        if(itemIndex === -1) return alert("SKU no encontrado o ya procesado.");
-        
-        let item = pendingItems[itemIndex];
-        let zonaPicking = item.ubi.split('.')[0];
+  if(p.items.length>0) palletsGenerados.push(p);
 
-        // Validamos que el lote en stock contenga el día juliano y la letra correspondiente al turno
-        let loteEncontrado = stockData.find(s => {
-            if (s.sku !== item.sku || !s.ubi.startsWith(zonaPicking)) return false;
-            let loteUp = s.lote.toUpperCase();
-            if (letraTurno) {
-                return loteUp.includes(sufijoBuscado);
-            } else {
-                return loteUp.includes(julianVal);
-            }
-        });
+  renderPallets();
+}
 
-        if(!loteEncontrado) {
-            mostrarExcepcion(stockData.filter(s => s.sku === item.sku), item, `Lote no encontrado para el turno correspondiente (${letraTurno || 'Sin hora'}).`);
-            return;
+/* ============================================================
+   VISTA PRINCIPAL
+============================================================ */
+function palletPrepared(p){
+  return p.items.reduce(
+    (acc,it)=>acc+(it.pickedQty || 0),
+    0
+  );
+}
+
+function palletPending(p){
+  return Math.max(
+    0,
+    p.cantTotal-palletPrepared(p)
+  );
+}
+
+function palletStatus(p){
+  const prepared=palletPrepared(p);
+
+  if(prepared>=p.cantTotal) return {
+    text:"COMPLETO",
+    cls:"status-done"
+  };
+
+  if(prepared>0) return {
+    text:"EN PREPARACIÓN",
+    cls:"status-working"
+  };
+
+  return {
+    text:"PENDIENTE",
+    cls:"status-pending"
+  };
+}
+
+function renderPallets(){
+  document.getElementById("resArea").classList.remove("hidden");
+
+  const cont=document.getElementById("pallets");
+  cont.innerHTML="";
+
+  palletsGenerados.forEach(p=>{
+    const prepared=palletPrepared(p);
+    const pending=palletPending(p);
+    const pct=p.cantTotal ? Math.round(prepared/p.cantTotal*100) : 0;
+    const status=palletStatus(p);
+
+    const card=document.createElement("div");
+    card.className="pallet-card";
+
+    const detailId="detail-pallet-"+p.id;
+
+    card.innerHTML=`
+      <div class="pallet-head">
+        <div class="pallet-name">Pallet #${p.id}</div>
+        <div class="status-pill ${status.cls}">${status.text}</div>
+      </div>
+
+      <div class="pallet-progress">
+        <div style="width:${pct}%"></div>
+      </div>
+
+      <div class="pallet-count">
+        <span><strong>${prepared}</strong> preparadas</span>
+        <span><strong>${pending}</strong> pendientes</span>
+      </div>
+
+      <div class="mode-buttons">
+        <button class="btn btn-suggested"
+          onclick="abrirScannerPallet(${p.id},false)">
+          📋 PICKING SUGERIDO
+        </button>
+
+        <button class="btn btn-free"
+          onclick="abrirScannerPallet(${p.id},true)">
+          ➕ PICKING LIBRE
+        </button>
+      </div>
+
+      <button class="btn btn-light detail-toggle"
+        onclick="toggleDetalle('${detailId}',this)">
+        VER DETALLE
+      </button>
+
+      <div id="${detailId}" class="details">
+        ${p.items.map((it)=>{
+          const q=it.cant;
+          const pr=it.pickedQty || 0;
+          const pend=Math.max(0,q-pr);
+
+          return `
+            <div class="line-row ${pend===0?'line-done':''}">
+              <div>
+                <div class="title">${esc(it.sku)}</div>
+                <div class="muted">${esc(it.desc || "")}</div>
+              </div>
+              <div>
+                <div class="muted">Ubic.</div>
+                <div>${esc(it.ubi)}</div>
+              </div>
+              <div>
+                <div class="muted">Prep.</div>
+                <div><strong>${pr}</strong> / ${q}</div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+
+    cont.appendChild(card);
+  });
+
+  actualizarResumenGeneral();
+}
+
+function toggleDetalle(id,btn){
+  const el=document.getElementById(id);
+  if(!el) return;
+
+  el.classList.toggle("open");
+  btn.textContent=el.classList.contains("open")
+    ? "OCULTAR DETALLE"
+    : "VER DETALLE";
+}
+
+function actualizarResumenGeneral(){
+  const totalPallets=palletsGenerados.length;
+  const prepared=palletsGenerados.reduce(
+    (acc,p)=>acc+palletPrepared(p),
+    0
+  );
+  const pending=palletsGenerados.reduce(
+    (acc,p)=>acc+palletPending(p),
+    0
+  );
+
+  document.getElementById("summaryPallets").textContent=totalPallets;
+  document.getElementById("summaryPrepared").textContent=prepared;
+  document.getElementById("summaryPending").textContent=pending;
+}
+
+/* ============================================================
+   ABRIR PICKING
+============================================================ */
+function abrirScannerPallet(id,esLibre){
+  const p=palletsGenerados.find(x=>x.id===id);
+  if(!p) return;
+
+  currentPalletId=id;
+  modoLibre=esLibre;
+
+  // IMPORTANTE:
+  // Trabajamos sobre los mismos objetos del pallet para que
+  // el progreso quede guardado cuando se cierre y se vuelva a entrar.
+  pendingItems=p.items;
+  currentItemIndex=0;
+
+  document.getElementById("scannerModal").style.display="block";
+
+  document.getElementById("scanModeTitle").textContent=
+    `Pallet #${id}`;
+
+  document.getElementById("scanModeMini").textContent=
+    esLibre ? "PICKING LIBRE" : "PICKING SUGERIDO";
+
+  document.getElementById("suggestedTarget").classList.toggle("hidden",esLibre);
+  document.getElementById("freeTarget").classList.toggle("hidden",!esLibre);
+
+  document.getElementById("exceptionPanel").style.display="none";
+  limpiarScannerInputs();
+
+  buscarSiguientePendienteSugerido();
+
+  actualizarPanelScanner();
+  actualizarProgresoScanner();
+
+  if(esLibre){
+    document.getElementById("scanEanInput").focus();
+  }
+}
+
+function cerrarScanner(){
+  detenerScannerCamara();
+
+  document.getElementById("scannerModal").style.display="none";
+
+  actualizarResumenGeneral();
+  renderPallets();
+
+  hablar("");
+}
+
+function buscarSiguientePendienteSugerido(){
+  currentItemIndex=pendingItems.findIndex(
+    it=>(it.pickedQty || 0) < it.cant
+  );
+
+  if(currentItemIndex===-1){
+    mostrarCompletado();
+    return null;
+  }
+
+  const item=pendingItems[currentItemIndex];
+
+  document.getElementById("scanTargetSku").textContent=
+    `${item.sku} - ${item.desc || ""}`;
+
+  document.getElementById("scanTargetUbi").textContent=item.ubi;
+
+  document.getElementById("scanTargetRemaining").textContent=
+    Math.max(0,item.cant-(item.pickedQty || 0));
+
+  return item;
+}
+
+function actualizarPanelScanner(){
+  const p=palletsGenerados.find(x=>x.id===currentPalletId);
+  if(!p) return;
+
+  const prepared=palletPrepared(p);
+  const pending=palletPending(p);
+
+  document.getElementById("scanPrepared").textContent=prepared;
+  document.getElementById("scanPending").textContent=pending;
+  document.getElementById("scanCapacity").textContent=p.cantTotal;
+  document.getElementById("progressSummary").textContent=
+    `${prepared} / ${p.cantTotal}`;
+
+  if(modoLibre){
+    document.getElementById("freeTarget").classList.remove("hidden");
+  }else{
+    buscarSiguientePendienteSugerido();
+  }
+}
+
+function mostrarCompletado(){
+  document.getElementById("suggestedTarget").innerHTML=`
+    <div style="font-size:2.2rem">✅</div>
+    <div style="font-size:1.15rem;font-weight:900;margin-top:5px">
+      PALLET COMPLETO
+    </div>
+    <div style="font-size:.78rem;color:#aab8c7;margin-top:5px">
+      Ya no quedan cajas pendientes
+    </div>
+  `;
+
+  document.getElementById("btnConfirmarCaja").style.display="none";
+
+  hablar("Pallet completo");
+}
+
+function restaurarTargetNormal(){
+  const target=document.getElementById("suggestedTarget");
+
+  target.innerHTML=`
+    <div class="target-caption">SIGUIENTE A PREPARAR</div>
+    <div class="target-sku" id="scanTargetSku">SKU</div>
+    <div class="target-ubi">📍 <span id="scanTargetUbi">UBICACIÓN</span></div>
+    <div class="target-qty">
+      <span id="scanTargetRemaining">0</span>
+      <small>CAJAS PENDIENTES DE ESTA LÍNEA</small>
+    </div>
+  `;
+
+  document.getElementById("btnConfirmarCaja").style.display="block";
+}
+
+/* ============================================================
+   INPUTS / VALIDACIÓN VISUAL
+============================================================ */
+function normalizarEanInput(){
+  const el=document.getElementById("scanEanInput");
+  el.value=el.value.replace(/\s/g,"");
+}
+
+function limpiarScannerInputs(){
+  document.getElementById("scanEanInput").value="";
+  document.getElementById("scanLotJulian").value="";
+  document.getElementById("scanLotTime").value="";
+  document.getElementById("validationBox").className="validation";
+  document.getElementById("validationMain").textContent="";
+  document.getElementById("validationSub").textContent="";
+  document.getElementById("derivedLotBox").style.display="none";
+  document.getElementById("exceptionPanel").style.display="none";
+  document.getElementById("partialQty").value="";
+  document.getElementById("btnConfirmarCaja").disabled=false;
+}
+
+function validarSkuActual(){
+  const val=document.getElementById("scanEanInput").value.trim();
+  if(!val) return "";
+
+  const sku=eanMapData[val] || val;
+
+  if(!modoLibre && currentItemIndex>=0){
+    const item=pendingItems[currentItemIndex];
+
+    if(item && sku!==String(item.sku)){
+      mostrarValidacion(false,
+        "SKU INCORRECTO",
+        `La caja es ${sku}. Se espera ${item.sku}.`
+      );
+      hablar("SKU incorrecto");
+      return "";
+    }
+  }
+
+  return sku;
+}
+
+function mostrarValidacion(ok,main,sub){
+  const box=document.getElementById("validationBox");
+  const icon=document.getElementById("validationIcon");
+
+  box.className="validation " + (ok ? "ok" : "err");
+  icon.textContent=ok ? "✅" : "❌";
+  document.getElementById("validationMain").textContent=main;
+  document.getElementById("validationSub").textContent=sub || "";
+}
+
+/* ============================================================
+   BUSQUEDA DE LOTE EN STOCK
+============================================================ */
+function buscarLoteEnStock(sku,item,sufijo){
+  const zonaPicking=String(item.ubi || "").split(".")[0];
+
+  return stockData.find(s=>{
+    if(String(s.sku)!==String(sku)) return false;
+
+    const ubi=String(s.ubi || "").toUpperCase();
+    if(!ubi.startsWith(zonaPicking.toUpperCase())) return false;
+
+    const cantidad=Number(s.qty)||0;
+    if(cantidad<=0) return false;
+
+    const lote=String(s.lote || "").toUpperCase();
+
+    return lote.includes(String(sufijo).toUpperCase());
+  }) || null;
+}
+
+function listarLotesDisponibles(sku){
+  return stockData.filter(s=>{
+    return String(s.sku)===String(sku) && (Number(s.qty)||0)>0;
+  });
+}
+
+/* ============================================================
+   CONFIRMAR CAJA
+============================================================ */
+function confirmarLinea(){
+  const eanVal=document.getElementById("scanEanInput").value.trim();
+  const rawLot=document.getElementById("scanLotJulian").value.trim();
+  const rawTime=document.getElementById("scanLotTime").value.trim();
+
+  const skuScanned=eanMapData[eanVal] || eanVal;
+  const datosLote=calcularValidacionLote();
+
+  if(!skuScanned){
+    mostrarValidacion(false,"FALTA CÓDIGO","Escaneá la caja primero.");
+    return;
+  }
+
+  if(!datosLote.julian){
+    mostrarValidacion(false,"FALTA LOTE","Ingresá el lote/juliano de la caja.");
+    return;
+  }
+
+  if(!datosLote.turno){
+    mostrarValidacion(false,"HORA INVÁLIDA","Ingresá la hora, por ejemplo 18:22.");
+    return;
+  }
+
+  let itemIndex=-1;
+
+  if(modoLibre){
+    itemIndex=pendingItems.findIndex(it=>{
+      return String(it.sku)===String(skuScanned) &&
+        (it.pickedQty || 0) < it.cant;
+    });
+  }else{
+    itemIndex=pendingItems.findIndex(it=>{
+      return (it.pickedQty || 0) < it.cant;
+    });
+  }
+
+  if(itemIndex===-1){
+    mostrarValidacion(
+      false,
+      "SIN PENDIENTES",
+      "No queda ninguna línea pendiente para esta caja."
+    );
+    return;
+  }
+
+  const item=pendingItems[itemIndex];
+
+  // En sugerido, además del SKU, validamos que sea la línea esperada.
+  if(!modoLibre && String(item.sku)!==String(skuScanned)){
+    mostrarValidacion(
+      false,
+      "SKU INCORRECTO",
+      `Se esperaba ${item.sku} y la caja es ${skuScanned}.`
+    );
+    return;
+  }
+
+  const sufijo=datosLote.sufijo;
+
+  const loteEncontrado=buscarLoteEnStock(
+    skuScanned,
+    item,
+    sufijo
+  );
+
+  if(!loteEncontrado){
+    mostrarValidacion(
+      false,
+      "LOTE NO COINCIDE",
+      `Caja ${sufijo}. No se encontró coincidencia en stock.`
+    );
+
+    mostrarExcepcion(
+      listarLotesDisponibles(skuScanned),
+      item,
+      `No se encontró ${sufijo} para ${skuScanned} en la zona de picking.`
+    );
+
+    hablar("Lote no coincide");
+    return;
+  }
+
+  // Consumimos una caja de ese registro de stock para evitar duplicar
+  // validaciones sobre una cantidad que ya fue utilizada.
+  loteEncontrado.qty = Math.max(
+    0,
+    (Number(loteEncontrado.qty)||0)-1
+  );
+
+  item.pickedQty=(item.pickedQty || 0)+1;
+
+  mostrarValidacion(
+    true,
+    "CAJA AGREGADA",
+    `${sufijo} coincide con ${loteEncontrado.lote}`
+  );
+
+  hablar("Caja confirmada");
+
+  document.getElementById("exceptionPanel").style.display="none";
+
+  actualizarPanelScanner();
+  actualizarProgresoScanner();
+
+  const p=palletsGenerados.find(x=>x.id===currentPalletId);
+
+  if(p && palletPending(p)<=0){
+    document.getElementById("btnConfirmarCaja").style.display="none";
+    hablar("Pallet completo");
+    return;
+  }
+
+  // Si es sugerido, avanza automáticamente a la línea correspondiente.
+  if(!modoLibre){
+    restaurarTargetNormal();
+
+    setTimeout(()=>{
+      const next=buscarSiguientePendienteSugerido();
+      if(next){
+        limpiarInputsPreservandoMensaje();
+        document.getElementById("scanEanInput").focus();
+      }
+    },350);
+  }else{
+    setTimeout(()=>{
+      limpiarInputsPreservandoMensaje();
+      document.getElementById("scanEanInput").focus();
+    },350);
+  }
+}
+
+function limpiarInputsPreservandoMensaje(){
+  document.getElementById("scanEanInput").value="";
+  document.getElementById("scanLotJulian").value="";
+  document.getElementById("scanLotTime").value="";
+  document.getElementById("derivedLotBox").style.display="none";
+  document.getElementById("exceptionPanel").style.display="none";
+}
+
+/* ============================================================
+   EXCEPCIONES
+============================================================ */
+function mostrarExcepcion(lotesSys,item,msj){
+  const panel=document.getElementById("exceptionPanel");
+
+  panel.style.display="block";
+
+  document.getElementById("exceptionMessage").textContent=msj;
+
+  document.getElementById("sysLotsList").innerHTML =
+    lotesSys.length
+    ? lotesSys.map(l=>`
+        <li>
+          Ubi: <b>${esc(l.ubi)}</b><br>
+          Lote: <b>${esc(l.lote)}</b><br>
+          Stock disponible: <b>${esc(l.qty)}</b>
+        </li>
+      `).join("")
+    : "<li>No hay stock disponible para este SKU.</li>";
+
+  document.getElementById("partialQty").max =
+    Math.max(1,item.cant-(item.pickedQty || 0));
+}
+
+function aplicarParcial(){
+  const qty=parseInt(
+    document.getElementById("partialQty").value,
+    10
+  );
+
+  if(!qty || qty<=0){
+    alert("Cantidad parcial inválida.");
+    return;
+  }
+
+  if(!modoLibre && currentItemIndex>=0){
+    const item=pendingItems[currentItemIndex];
+    const pendiente=Math.max(0,item.cant-(item.pickedQty || 0));
+
+    if(qty>pendiente){
+      alert(`La cantidad parcial no puede superar ${pendiente}.`);
+      return;
+    }
+
+    item.pickedQty += qty;
+
+    mostrarValidacion(
+      true,
+      "CANTIDAD PARCIAL APLICADA",
+      `${qty} cajas marcadas como preparadas`
+    );
+
+    document.getElementById("exceptionPanel").style.display="none";
+
+    actualizarPanelScanner();
+    actualizarProgresoScanner();
+
+    if(item.pickedQty>=item.cant){
+      setTimeout(()=>{
+        restaurarTargetNormal();
+        buscarSiguientePendienteSugerido();
+      },350);
+    }
+  }
+}
+
+function solicitarReclasificacion(){
+  if(currentItemIndex<0 || currentItemIndex>=pendingItems.length){
+    alert("No hay una línea seleccionada.");
+    return;
+  }
+
+  const item=pendingItems[currentItemIndex];
+
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF();
+
+    doc.setFontSize(14);
+    doc.text("Solicitud de Reclasificación de Stock",20,20);
+    doc.setFontSize(10);
+    doc.text(`SKU: ${item.sku} - ${item.desc || ""}`,20,35);
+    doc.text(`Ubicación Original: ${item.ubi}`,20,45);
+
+    doc.save(`Reclasificacion_${item.sku}.pdf`);
+  }catch(err){
+    alert("No se pudo generar el PDF.");
+  }
+}
+
+/* ============================================================
+   PROGRESO DEL SCANNER
+============================================================ */
+function actualizarProgresoScanner(){
+  const body=document.getElementById("scanProgressBody");
+
+  body.innerHTML=pendingItems.map((it,idx)=>{
+    const prepared=it.pickedQty || 0;
+    const pending=Math.max(0,it.cant-prepared);
+
+    let cls="";
+    if(pending===0) cls="done";
+    else if(!modoLibre && idx===currentItemIndex) cls="current";
+
+    return `
+      <div class="progress-item ${cls}">
+        <div class="a">${esc(it.sku)}<br><span class="b">${esc(it.ubi)}</span></div>
+        <div>${prepared} / ${it.cant}<br><span class="b">prep.</span></div>
+        <div>${pending}<br><span class="b">pend.</span></div>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ============================================================
+   CÁMARA / BARCODE
+============================================================ */
+async function toggleCamara(){
+  const box=document.getElementById("cameraContainer");
+
+  if(box.style.display==="block"){
+    detenerScannerCamara();
+    return;
+  }
+
+  await iniciarScannerCamara();
+}
+
+async function iniciarScannerCamara(){
+  const box=document.getElementById("cameraContainer");
+  const video=document.getElementById("cameraPreview");
+
+  box.style.display="block";
+
+  if(!window.ZXing || !ZXing.BrowserMultiFormatReader){
+    alert(
+      "No se pudo cargar el lector de códigos de barras. " +
+      "Podés ingresar el EAN/SKU manualmente."
+    );
+    return;
+  }
+
+  try{
+    if(barcodeReader){
+      detenerScannerCamara();
+    }
+
+    barcodeReader=new ZXing.BrowserMultiFormatReader();
+
+    barcodeControls=await barcodeReader.decodeFromConstraints(
+      {
+        video:{
+          facingMode:{ideal:"environment"},
+          width:{ideal:1280},
+          height:{ideal:720}
         }
-        
-        item.picked = true;
-        hablar("Confirmado");
-        if(!modoLibre) {
-            currentItemIndex++;
-            cargarLineaSugerida();
-        } else {
-            limpiarInputs();
-            actualizarTablaProgreso();
+      },
+      video,
+      (result,error,controls)=>{
+        if(result){
+          const texto=result.getText();
+
+          document.getElementById("scanEanInput").value=texto;
+          validarSkuActual();
+
+          mostrarToast("Código leído: " + texto);
+
+          detenerScannerCamara();
+
+          setTimeout(()=>{
+            document.getElementById("scanLotJulian").focus();
+          },150);
         }
+      }
+    );
+
+  }catch(err){
+    console.error(err);
+    alert(
+      "No se pudo abrir la cámara.\n\n" +
+      "Verificá que el sitio tenga permiso para usarla."
+    );
+    box.style.display="none";
+  }
+}
+
+function detenerScannerCamara(){
+  try{
+    if(barcodeControls && barcodeControls.stop){
+      barcodeControls.stop();
     }
-    function mostrarExcepcion(lotesSys, item, msj) {
-        hablar("Atención: " + msj);
-        document.getElementById('exceptionPanel').style.display = "block";
-        document.getElementById('sysLotsList').innerHTML = lotesSys.map(l => `<li>Ubi: <b>${l.ubi}</b> | Lote: <b>${l.lote}</b> | Stock: <b>${l.qty}</b></li>`).join('');
-        document.getElementById('partialPickDiv').style.display = "block";
-        document.getElementById('partialQty').max = item.cant;
+  }catch(e){}
+
+  barcodeControls=null;
+
+  try{
+    if(barcodeReader && barcodeReader.reset){
+      barcodeReader.reset();
     }
-    function aplicarParcial() {
-        let inputQty = parseInt(document.getElementById('partialQty').value);
-        if(!inputQty || inputQty <= 0) return alert("Cantidad parcial inválida.");
-        let item = pendingItems[currentItemIndex];
-        item.cant -= inputQty;
-        hablar("Cantidad parcial aplicada");
-        limpiarInputs();
-        if(!modoLibre) cargarLineaSugerida();
-    }
-    function solicitarReclasificacion() {
-        let item = pendingItems[currentItemIndex];
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(14);
-        doc.text("Solicitud de Reclasificación de Stock", 20, 20);
-        doc.text(`SKU: ${item.sku} - ${item.desc}`, 20, 35);
-        doc.text(`Ubicación Original: ${item.ubi}`, 20, 45);
-        doc.save(`Reclasificacion_${item.sku}.pdf`);
-    }
-    function actualizarTablaProgreso() {
-        const tbody = document.querySelector('#scanProgressTable tbody');
-        tbody.innerHTML = pendingItems.map((it, idx) => `
-            <tr style="background:${it.picked ? '#d4efdf' : (!modoLibre && idx === currentItemIndex ? '#fdebd0' : 'transparent')}">
-                <td>${it.picked ? '✅' : (!modoLibre && idx === currentItemIndex ? '➡️' : '⏳')}</td>
-                <td>${it.ubi}</td><td>${it.sku}</td><td>${it.cant}</td>
-            </tr>
-        `).join('');
-    }
+  }catch(e){}
+
+  barcodeReader=null;
+
+  if(mediaStream){
+    try{
+      mediaStream.getTracks().forEach(track=>track.stop());
+    }catch(e){}
+    mediaStream=null;
+  }
+
+  const video=document.getElementById("cameraPreview");
+  if(video){
+    try{ video.srcObject=null; }catch(e){}
+  }
+
+  document.getElementById("cameraContainer").style.display="none";
+}
+
+function reiniciarScannerCamara(){
+  detenerScannerCamara();
+  iniciarScannerCamara();
+}
+
+/* ============================================================
+   VOZ
+============================================================ */
+if(recognition){
+  recognition.lang="es-AR";
+  recognition.interimResults=false;
+  recognition.continuous=false;
+}
+
+function activarMicrofono(){
+  if(!recognition){
+    alert("El reconocimiento de voz no está disponible en este navegador.");
+    return;
+  }
+
+  try{
+    recognition.start();
+    document.getElementById("fabMic").classList.add("listening");
+  }catch(e){}
+
+  recognition.onresult=(event)=>{
+    const said=event.results[0][0].transcript.trim();
+
+    document.getElementById("scanEanInput").value=
+      said.replace(/\s/g,"");
+
+    document.getElementById("fabMic").classList.remove("listening");
+
+    validarSkuActual();
+  };
+
+  recognition.onerror=()=>{
+    document.getElementById("fabMic").classList.remove("listening");
+  };
+
+  recognition.onend=()=>{
+    document.getElementById("fabMic").classList.remove("listening");
+  };
+}
+
+/* ============================================================
+   INICIO
+============================================================ */
+document.addEventListener("DOMContentLoaded",()=>{
+  // Nada más al cargar.
+});
 </script>
+
 </body>
 </html>
