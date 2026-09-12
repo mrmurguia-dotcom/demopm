@@ -688,6 +688,15 @@ button{cursor:pointer}
       </div>
 
       <div id="pallets" class="pallet-list"></div>
+
+      <button id="btnDetalleCompleto" class="btn btn-light detail-toggle"
+        onclick="toggleDetalleCompleto()">
+        VER DETALLE COMPLETO DEL PICKING
+      </button>
+
+      <div id="detalleCompleto" class="details">
+        <div id="detalleCompletoBody"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -775,13 +784,13 @@ button{cursor:pointer}
 
       <div class="two-inputs">
         <div>
-          <label class="manual-label">Lote / Juliano</label>
+          <label class="manual-label">Juliano (últimos 3 dígitos)</label>
           <input
             id="scanLotJulian"
             class="input"
             inputmode="text"
             autocomplete="off"
-            placeholder="Ej. C25163"
+            placeholder="Últimos 3 dígitos (ej. 163)"
           >
         </div>
 
@@ -864,6 +873,8 @@ let palletsGenerados = [];
 
 let pendingItems = [];
 let currentItemIndex = 0;
+
+let zonasPickingPermitidas = [];
 
 let modoLibre = false;
 let currentPalletId = null;
@@ -953,10 +964,12 @@ function normalizarHora(horaStr){
 function extraerJuliano(valor){
   const txt = String(valor || "").trim().toUpperCase();
 
-  const grupos = txt.match(/\d{3}/g);
-  if(!grupos || grupos.length === 0) return "";
+  // Para evitar confusiones con formatos como C 25163 o L 26 140,
+  // tomamos exclusivamente los ÚLTIMOS 3 DÍGITOS escritos.
+  const digitos = txt.replace(/\D/g,"");
 
-  return grupos[grupos.length - 1];
+  if(digitos.length < 3) return "";
+  return digitos.slice(-3);
 }
 
 function calcularValidacionLote(){
@@ -1170,6 +1183,11 @@ function procesarMatrizStock(data){
     const qtyVal =
       parseFloat(String(r[keyCant] || "").replace(",",".")) || 0;
 
+    // Puede venir "OBS", "OBSERVADO", etc. en el lote o en otra columna.
+    const observado = r.some(cell =>
+      /\bOBS\b|OBSERVAD/i.test(String(cell || ""))
+    );
+
     if(
       skuVal &&
       skuVal.toUpperCase()!=="SKU" &&
@@ -1179,7 +1197,8 @@ function procesarMatrizStock(data){
         ubi: ubiVal || "S/U",
         lote: (loteVal && loteVal!=="LOTE") ? loteVal : "ESTANDAR",
         qty: qtyVal > 0 ? qtyVal : 999,
-        sku: skuVal
+        sku: skuVal,
+        observado
       });
     }
   }
@@ -1288,6 +1307,7 @@ function procesarFuentesYGenerarPallets(){
           const info = maestroData[sku] || {cap:84};
 
           itemsRaw.push({
+            lineId: "L" + (itemsRaw.length + 1),
             ubi,
             sku,
             desc,
@@ -1295,6 +1315,7 @@ function procesarFuentesYGenerarPallets(){
             cant:qty,
             dep:ubi.substring(0,4) || "P001",
             pickedQty:0,
+            pickedTotal:0,
             capFull:info.cap
           });
 
@@ -1320,6 +1341,16 @@ function procesarFuentesYGenerarPallets(){
 
   itemsRaw.sort((a,b)=>a.orden-b.orden);
 
+  // Los sectores habilitados para excepciones salen de las ubicaciones
+  // que realmente participan del armado de los pallets sugeridos.
+  zonasPickingPermitidas = [
+    ...new Set(
+      itemsRaw
+        .map(it => String(it.dep || "").trim().toUpperCase())
+        .filter(z => z && z !== "ST000000" && !z.startsWith("ST"))
+    )
+  ];
+
   itemsTotales = itemsRaw;
   armarLogicaVolumetrica(itemsRaw);
 }
@@ -1332,7 +1363,8 @@ function armarLogicaVolumetrica(items){
     id:cont,
     items:[],
     cantTotal:0,
-    preparedQty:0
+    preparedQty:0,
+    preparedByLine:{}
   };
 
   items.forEach(it=>{
@@ -1348,7 +1380,8 @@ function armarLogicaVolumetrica(items){
           id:cont,
           items:[],
           cantTotal:0,
-          preparedQty:0
+          preparedQty:0,
+          preparedByLine:{}
         };
       }
 
@@ -1369,14 +1402,19 @@ function armarLogicaVolumetrica(items){
   if(p.items.length>0) palletsGenerados.push(p);
 
   renderPallets();
+  renderDetalleCompleto();
 }
 
 /* ============================================================
    VISTA PRINCIPAL
 ============================================================ */
 function palletPrepared(p){
-  return p.items.reduce(
-    (acc,it)=>acc+(it.pickedQty || 0),
+  return Number(p.preparedQty || 0);
+}
+
+function getPalletLinePrepared(p, lineId){
+  return Number(
+    p?.preparedByLine?.[lineId] ||
     0
   );
 }
@@ -1457,28 +1495,33 @@ function renderPallets(){
       </button>
 
       <div id="${detailId}" class="details">
-        ${p.items.map((it)=>{
-          const q=it.cant;
-          const pr=it.pickedQty || 0;
-          const pend=Math.max(0,q-pr);
+        ${[...p.items]
+          .sort((a,b)=>
+            (Number(b.cant)||0)-(Number(a.cant)||0) ||
+            String(a.ubi||"").localeCompare(String(b.ubi||""))
+          )
+          .map((it)=>{
+            const q=it.cant;
+            const pr=getPalletLinePrepared(p,it.lineId);
+            const pend=Math.max(0,q-pr);
 
-          return `
-            <div class="line-row ${pend===0?'line-done':''}">
-              <div>
-                <div class="title">${esc(it.sku)}</div>
-                <div class="muted">${esc(it.desc || "")}</div>
+            return `
+              <div class="line-row ${pend===0?'line-done':''}">
+                <div>
+                  <div class="title">${esc(it.sku)}</div>
+                  <div class="muted">${esc(it.desc || "")}</div>
+                </div>
+                <div>
+                  <div class="muted">Ubic.</div>
+                  <div>${esc(it.ubi)}</div>
+                </div>
+                <div>
+                  <div class="muted">Prep.</div>
+                  <div><strong>${pr}</strong> / ${q}</div>
+                </div>
               </div>
-              <div>
-                <div class="muted">Ubic.</div>
-                <div>${esc(it.ubi)}</div>
-              </div>
-              <div>
-                <div class="muted">Prep.</div>
-                <div><strong>${pr}</strong> / ${q}</div>
-              </div>
-            </div>
-          `;
-        }).join("")}
+            `;
+          }).join("")}
       </div>
     `;
 
@@ -1514,6 +1557,58 @@ function actualizarResumenGeneral(){
   document.getElementById("summaryPending").textContent=pending;
 }
 
+function ordenarLineasDetalleCompleto(){
+  return [...itemsTotales].sort((a,b)=>{
+    return (
+      String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"})
+      ||
+      (Number(b.cant)||0)-(Number(a.cant)||0)
+    );
+  });
+}
+
+function renderDetalleCompleto(){
+  const body=document.getElementById("detalleCompletoBody");
+
+  body.innerHTML = ordenarLineasDetalleCompleto().map(it=>{
+    const total=Number(it.cant)||0;
+    const prep=Number(it.pickedTotal)||0;
+    const pendiente=Math.max(0,total-prep);
+    const pct=total ? Math.round(prep/total*100) : 0;
+
+    return `
+      <div class="line-row ${pendiente===0?'line-done':''}" style="grid-template-columns:1.35fr .8fr .75fr;">
+        <div>
+          <div class="title">${esc(it.ubi)}</div>
+          <div class="muted">${esc(it.sku)} - ${esc(it.desc || "")}</div>
+        </div>
+        <div>
+          <div class="muted">Preparado</div>
+          <div><strong>${prep}/${total}</strong></div>
+        </div>
+        <div>
+          <div class="muted">Pend.</div>
+          <div><strong>${pendiente}</strong> (${pct}%)</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function toggleDetalleCompleto(){
+  const el=document.getElementById("detalleCompleto");
+  const btn=document.getElementById("btnDetalleCompleto");
+
+  el.classList.toggle("open");
+  btn.textContent=el.classList.contains("open")
+    ? "OCULTAR DETALLE COMPLETO"
+    : "VER DETALLE COMPLETO DEL PICKING";
+
+  if(el.classList.contains("open")){
+    renderDetalleCompleto();
+  }
+}
+
 /* ============================================================
    ABRIR PICKING
 ============================================================ */
@@ -1524,10 +1619,9 @@ function abrirScannerPallet(id,esLibre){
   currentPalletId=id;
   modoLibre=esLibre;
 
-  // IMPORTANTE:
-  // Trabajamos sobre los mismos objetos del pallet para que
-  // el progreso quede guardado cuando se cierre y se vuelva a entrar.
-  pendingItems=p.items;
+  // En sugerido mostramos solo las líneas de ese pallet.
+  // En libre mostramos TODAS las líneas del picking.
+  pendingItems = esLibre ? itemsTotales : p.items;
   currentItemIndex=0;
 
   document.getElementById("scannerModal").style.display="block";
@@ -1536,7 +1630,9 @@ function abrirScannerPallet(id,esLibre){
     `Pallet #${id}`;
 
   document.getElementById("scanModeMini").textContent=
-    esLibre ? "PICKING LIBRE" : "PICKING SUGERIDO";
+    esLibre
+      ? "PICKING LIBRE · TODAS LAS LÍNEAS"
+      : "PICKING SUGERIDO · LÍNEAS DEL PALLET";
 
   document.getElementById("suggestedTarget").classList.toggle("hidden",esLibre);
   document.getElementById("freeTarget").classList.toggle("hidden",!esLibre);
@@ -1544,14 +1640,17 @@ function abrirScannerPallet(id,esLibre){
   document.getElementById("exceptionPanel").style.display="none";
   limpiarScannerInputs();
 
-  buscarSiguientePendienteSugerido();
+  if(!esLibre){
+    ordenarYSeleccionarPrimeraSugerida();
+  }else{
+    ordenarYSeleccionarPrimeraLibre();
+  }
 
+  restaurarTargetNormal();
   actualizarPanelScanner();
   actualizarProgresoScanner();
 
-  if(esLibre){
-    document.getElementById("scanEanInput").focus();
-  }
+  document.getElementById("scanEanInput").focus();
 }
 
 function cerrarScanner(){
@@ -1565,9 +1664,35 @@ function cerrarScanner(){
   hablar("");
 }
 
-function buscarSiguientePendienteSugerido(){
+function preparedForCurrentItem(item){
+  const p=palletsGenerados.find(x=>x.id===currentPalletId);
+
+  if(!p || !item) return 0;
+
+  if(modoLibre){
+    return Number(item.pickedTotal || 0);
+  }
+
+  return getPalletLinePrepared(p,item.lineId);
+}
+
+function remainingForCurrentItem(item){
+  return Math.max(
+    0,
+    (Number(item.cant)||0) - preparedForCurrentItem(item)
+  );
+}
+
+function ordenarYSeleccionarPrimeraSugerida(){
+  pendingItems.sort((a,b)=>{
+    return (
+      (Number(b.cant)||0)-(Number(a.cant)||0) ||
+      String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"})
+    );
+  });
+
   currentItemIndex=pendingItems.findIndex(
-    it=>(it.pickedQty || 0) < it.cant
+    it=>remainingForCurrentItem(it)>0
   );
 
   if(currentItemIndex===-1){
@@ -1575,7 +1700,44 @@ function buscarSiguientePendienteSugerido(){
     return null;
   }
 
-  const item=pendingItems[currentItemIndex];
+  return seleccionarLineaScanner(currentItemIndex,false);
+}
+
+function ordenarYSeleccionarPrimeraLibre(){
+  pendingItems.sort((a,b)=>{
+    return (
+      String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"}) ||
+      (Number(b.cant)||0)-(Number(a.cant)||0)
+    );
+  });
+
+  currentItemIndex=pendingItems.findIndex(
+    it=>remainingForCurrentItem(it)>0
+  );
+
+  return seleccionarLineaScanner(
+    currentItemIndex>=0 ? currentItemIndex : 0,
+    false
+  );
+}
+
+function buscarSiguientePendienteSugerido(){
+  return ordenarYSeleccionarPrimeraSugerida();
+}
+
+function seleccionarLineaScanner(index,hablarLinea=true){
+  if(index<0 || index>=pendingItems.length) return null;
+
+  const item=pendingItems[index];
+
+  if(remainingForCurrentItem(item)<=0){
+    mostrarToast("Esa línea ya está completa.");
+    return null;
+  }
+
+  currentItemIndex=index;
+
+  restaurarTargetNormal();
 
   document.getElementById("scanTargetSku").textContent=
     `${item.sku} - ${item.desc || ""}`;
@@ -1583,8 +1745,13 @@ function buscarSiguientePendienteSugerido(){
   document.getElementById("scanTargetUbi").textContent=item.ubi;
 
   document.getElementById("scanTargetRemaining").textContent=
-    Math.max(0,item.cant-(item.pickedQty || 0));
+    remainingForCurrentItem(item);
 
+  if(!modoLibre && hablarLinea){
+    hablar(`Preparar ${remainingForCurrentItem(item)} cajas de SKU ${item.sku}`);
+  }
+
+  actualizarProgresoScanner();
   return item;
 }
 
@@ -1601,10 +1768,16 @@ function actualizarPanelScanner(){
   document.getElementById("progressSummary").textContent=
     `${prepared} / ${p.cantTotal}`;
 
+  document.querySelectorAll(".scan-stat .small")[0].textContent="Preparadas";
+  document.querySelectorAll(".scan-stat .small")[1].textContent="Pendientes";
+  document.querySelectorAll(".scan-stat .small")[2].textContent="Total a preparar";
+
   if(modoLibre){
     document.getElementById("freeTarget").classList.remove("hidden");
   }else{
-    buscarSiguientePendienteSugerido();
+    document.getElementById("suggestedTarget").classList.remove("hidden");
+    const item=pendingItems[currentItemIndex];
+    if(item) seleccionarLineaScanner(currentItemIndex,false);
   }
 }
 
@@ -1696,14 +1869,40 @@ function mostrarValidacion(ok,main,sub){
 /* ============================================================
    BUSQUEDA DE LOTE EN STOCK
 ============================================================ */
-function buscarLoteEnStock(sku,item,sufijo){
-  const zonaPicking=String(item.ubi || "").split(".")[0];
+function esZonaPicking(ubi){
+  const u=String(ubi || "").toUpperCase().trim();
 
+  if(!u || u==="ST000000" || u.startsWith("ST")){
+    return false;
+  }
+
+  if(!zonasPickingPermitidas.length){
+    return false;
+  }
+
+  return zonasPickingPermitidas.some(z=>
+    u.startsWith(String(z).toUpperCase())
+  );
+}
+
+function capacidadPalletSKU(sku){
+  return Number(maestroData[String(sku)]?.cap || 0);
+}
+
+function esPalletAbierto(row){
+  const cap=capacidadPalletSKU(row.sku);
+  const qty=Number(row.qty)||0;
+
+  if(!cap || !qty) return false;
+
+  return qty % cap !== 0;
+}
+
+function buscarLoteEnStock(sku,item,sufijo){
   return stockData.find(s=>{
     if(String(s.sku)!==String(sku)) return false;
-
-    const ubi=String(s.ubi || "").toUpperCase();
-    if(!ubi.startsWith(zonaPicking.toUpperCase())) return false;
+    if(!esZonaPicking(s.ubi)) return false;
+    if(s.observado) return false;
 
     const cantidad=Number(s.qty)||0;
     if(cantidad<=0) return false;
@@ -1715,9 +1914,43 @@ function buscarLoteEnStock(sku,item,sufijo){
 }
 
 function listarLotesDisponibles(sku){
-  return stockData.filter(s=>{
-    return String(s.sku)===String(sku) && (Number(s.qty)||0)>0;
-  });
+  return stockData
+    .filter(s=>{
+      return (
+        String(s.sku)===String(sku) &&
+        (Number(s.qty)||0)>0 &&
+        esZonaPicking(s.ubi)
+      );
+    })
+    .sort((a,b)=>{
+      const obsA=a.observado ? 1 : 0;
+      const obsB=b.observado ? 1 : 0;
+      const openA=esPalletAbierto(a) ? 1 : 0;
+      const openB=esPalletAbierto(b) ? 1 : 0;
+
+      return (
+        obsB-obsA ||
+        openB-openA ||
+        String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"})
+      );
+    });
+}
+
+function descripcionStock(row){
+  const cap=capacidadPalletSKU(row.sku);
+  const qty=Number(row.qty)||0;
+
+  let estado="";
+  if(row.observado){
+    estado=" ⚠️ OBSERVADO";
+  }else if(cap && qty % cap !== 0){
+    const resto=qty % cap;
+    estado=` · PALLET ABIERTO (resto ${resto} CA)`;
+  }else if(cap){
+    estado=" · PALLET CERRADO COMPLETO";
+  }
+
+  return `${qty} CA${cap ? ` · Palletizado ${cap} CA` : ""}${estado}`;
 }
 
 /* ============================================================
@@ -1746,36 +1979,67 @@ function confirmarLinea(){
     return;
   }
 
+  const p=palletsGenerados.find(x=>x.id===currentPalletId);
+  if(!p) return;
+
+  if(palletPending(p)<=0){
+    mostrarValidacion(
+      false,
+      "PALLET COMPLETO",
+      "No hay capacidad pendiente en este pallet."
+    );
+    return;
+  }
+
   let itemIndex=-1;
 
   if(modoLibre){
     itemIndex=pendingItems.findIndex(it=>{
       return String(it.sku)===String(skuScanned) &&
-        (it.pickedQty || 0) < it.cant;
+        remainingForCurrentItem(it)>0;
     });
+
+    // Si el SKU aparece en varias líneas, respeta la línea seleccionada
+    // cuando coincide con el SKU.
+    if(
+      currentItemIndex>=0 &&
+      pendingItems[currentItemIndex] &&
+      String(pendingItems[currentItemIndex].sku)===String(skuScanned) &&
+      remainingForCurrentItem(pendingItems[currentItemIndex])>0
+    ){
+      itemIndex=currentItemIndex;
+    }
   }else{
-    itemIndex=pendingItems.findIndex(it=>{
-      return (it.pickedQty || 0) < it.cant;
-    });
+    itemIndex=currentItemIndex;
   }
 
   if(itemIndex===-1){
     mostrarValidacion(
       false,
-      "SIN PENDIENTES",
-      "No queda ninguna línea pendiente para esta caja."
+      "SKU SIN PENDIENTE",
+      "No queda cantidad pendiente para este SKU."
     );
     return;
   }
 
   const item=pendingItems[itemIndex];
 
-  // En sugerido, además del SKU, validamos que sea la línea esperada.
-  if(!modoLibre && String(item.sku)!==String(skuScanned)){
+  if(remainingForCurrentItem(item)<=0){
+    mostrarValidacion(
+      false,
+      "LÍNEA COMPLETA",
+      "Elegí otra línea pendiente."
+    );
+    return;
+  }
+
+  // En sugerido, la línea seleccionada puede ser cualquiera del listado,
+  // pero el SKU de la caja debe coincidir con esa línea.
+  if(String(item.sku)!==String(skuScanned)){
     mostrarValidacion(
       false,
       "SKU INCORRECTO",
-      `Se esperaba ${item.sku} y la caja es ${skuScanned}.`
+      `La línea seleccionada es ${item.sku} y la caja es ${skuScanned}.`
     );
     return;
   }
@@ -1805,14 +2069,32 @@ function confirmarLinea(){
     return;
   }
 
-  // Consumimos una caja de ese registro de stock para evitar duplicar
-  // validaciones sobre una cantidad que ya fue utilizada.
+  // Consumimos una caja del registro validado.
   loteEncontrado.qty = Math.max(
     0,
     (Number(loteEncontrado.qty)||0)-1
   );
 
-  item.pickedQty=(item.pickedQty || 0)+1;
+  // Actualizamos preparado de la línea y del pallet.
+  // itemsTotales conserva el total preparado global de cada línea.
+  const baseItem = itemsTotales.find(x=>String(x.lineId)===String(item.lineId));
+  if(baseItem){
+    baseItem.pickedTotal = Number(baseItem.pickedTotal || 0) + 1;
+  }
+
+  item.pickedTotal = Number(item.pickedTotal || 0) + 1;
+
+  if(!p.preparedByLine) p.preparedByLine = {};
+
+  p.preparedByLine[item.lineId] =
+    Number(p.preparedByLine[item.lineId] || 0) + 1;
+
+  p.preparedQty = Number(p.preparedQty || 0) + 1;
+
+  // En sugerido también mantenemos la marca local de la línea del pallet.
+  if(!modoLibre){
+    item.pickedQty = Number(item.pickedQty || 0) + 1;
+  }
 
   mostrarValidacion(
     true,
@@ -1826,32 +2108,37 @@ function confirmarLinea(){
 
   actualizarPanelScanner();
   actualizarProgresoScanner();
+  actualizarResumenGeneral();
+  renderDetalleCompleto();
 
-  const p=palletsGenerados.find(x=>x.id===currentPalletId);
-
-  if(p && palletPending(p)<=0){
+  if(palletPending(p)<=0){
     document.getElementById("btnConfirmarCaja").style.display="none";
     hablar("Pallet completo");
     return;
   }
 
-  // Si es sugerido, avanza automáticamente a la línea correspondiente.
-  if(!modoLibre){
-    restaurarTargetNormal();
+  document.getElementById("btnConfirmarCaja").style.display="block";
 
-    setTimeout(()=>{
-      const next=buscarSiguientePendienteSugerido();
-      if(next){
-        limpiarInputsPreservandoMensaje();
-        document.getElementById("scanEanInput").focus();
-      }
-    },350);
+  limpiarInputsPreservandoMensaje();
+
+  // En sugerido NO obliga a seguir el orden: conserva la línea
+  // seleccionada mientras tenga pendiente. Si se completó, selecciona
+  // la siguiente línea pendiente por cantidad mayor.
+  if(!modoLibre){
+    if(remainingForCurrentItem(item)>0){
+      seleccionarLineaScanner(itemIndex,false);
+    }else{
+      ordenarYSeleccionarPrimeraSugerida();
+    }
   }else{
-    setTimeout(()=>{
-      limpiarInputsPreservandoMensaje();
-      document.getElementById("scanEanInput").focus();
-    },350);
+    // En libre la lista completa queda disponible.
+    seleccionarLineaScanner(
+      pendingItems.findIndex(it=>remainingForCurrentItem(it)>0),
+      false
+    );
   }
+
+  document.getElementById("scanEanInput").focus();
 }
 
 function limpiarInputsPreservandoMensaje(){
@@ -1874,17 +2161,31 @@ function mostrarExcepcion(lotesSys,item,msj){
 
   document.getElementById("sysLotsList").innerHTML =
     lotesSys.length
-    ? lotesSys.map(l=>`
-        <li>
-          Ubi: <b>${esc(l.ubi)}</b><br>
-          Lote: <b>${esc(l.lote)}</b><br>
-          Stock disponible: <b>${esc(l.qty)}</b>
-        </li>
-      `).join("")
-    : "<li>No hay stock disponible para este SKU.</li>";
+    ? lotesSys.map(l=>{
+        const estado=l.observado
+          ? '<span style="color:#ffb3b3;font-weight:800;">⚠️ OBSERVADO</span>'
+          : (esPalletAbierto(l)
+              ? '<span style="color:#ffd166;font-weight:800;">🟡 PALLET ABIERTO</span>'
+              : '<span style="color:#9fe3b1;">Pallet cerrado completo</span>');
 
-  document.getElementById("partialQty").max =
-    Math.max(1,item.cant-(item.pickedQty || 0));
+        return `
+          <li>
+            <b>${esc(l.ubi)}</b> · Lote <b>${esc(l.lote)}</b><br>
+            ${esc(descripcionStock(l))}<br>
+            ${estado}
+          </li>
+        `;
+      }).join("")
+    : "<li>No hay stock disponible del SKU en los sectores de picking habilitados.</li>";
+
+  const pendiente = modoLibre
+    ? Math.max(1,item.cant-(item.pickedTotal || 0))
+    : Math.max(1,item.cant-getPalletLinePrepared(
+        palletsGenerados.find(x=>x.id===currentPalletId),
+        item.lineId
+      ));
+
+  document.getElementById("partialQty").max = pendiente;
 }
 
 function aplicarParcial(){
@@ -1898,16 +2199,38 @@ function aplicarParcial(){
     return;
   }
 
-  if(!modoLibre && currentItemIndex>=0){
+  if(currentItemIndex>=0){
     const item=pendingItems[currentItemIndex];
-    const pendiente=Math.max(0,item.cant-(item.pickedQty || 0));
+    const p=palletsGenerados.find(x=>x.id===currentPalletId);
+    if(!item || !p) return;
+
+    const pendiente=Math.min(
+      Math.max(0,item.cant-getPalletLinePrepared(p,item.lineId)),
+      palletPending(p)
+    );
 
     if(qty>pendiente){
       alert(`La cantidad parcial no puede superar ${pendiente}.`);
       return;
     }
 
-    item.pickedQty += qty;
+    const baseItem = itemsTotales.find(x=>String(x.lineId)===String(item.lineId));
+    if(baseItem){
+      baseItem.pickedTotal = Number(baseItem.pickedTotal || 0) + qty;
+    }
+
+    item.pickedTotal = Number(item.pickedTotal || 0) + qty;
+
+    if(!p.preparedByLine) p.preparedByLine={};
+
+    p.preparedByLine[item.lineId] =
+      Number(p.preparedByLine[item.lineId] || 0) + qty;
+
+    p.preparedQty = Number(p.preparedQty || 0) + qty;
+
+    if(!modoLibre){
+      item.pickedQty = Number(item.pickedQty || 0) + qty;
+    }
 
     mostrarValidacion(
       true,
@@ -1919,12 +2242,19 @@ function aplicarParcial(){
 
     actualizarPanelScanner();
     actualizarProgresoScanner();
+    actualizarResumenGeneral();
+    renderDetalleCompleto();
 
-    if(item.pickedQty>=item.cant){
-      setTimeout(()=>{
-        restaurarTargetNormal();
-        buscarSiguientePendienteSugerido();
-      },350);
+    if(palletPending(p)<=0){
+      document.getElementById("btnConfirmarCaja").style.display="none";
+      hablar("Pallet completo");
+      return;
+    }
+
+    if(remainingForCurrentItem(item)<=0){
+      if(!modoLibre) ordenarYSeleccionarPrimeraSugerida();
+    }else{
+      seleccionarLineaScanner(currentItemIndex,false);
     }
   }
 }
@@ -1958,23 +2288,71 @@ function solicitarReclasificacion(){
 ============================================================ */
 function actualizarProgresoScanner(){
   const body=document.getElementById("scanProgressBody");
+  const p=palletsGenerados.find(x=>x.id===currentPalletId);
 
-  body.innerHTML=pendingItems.map((it,idx)=>{
-    const prepared=it.pickedQty || 0;
-    const pending=Math.max(0,it.cant-prepared);
+  const ordered=[...pendingItems].sort((a,b)=>{
+    if(modoLibre){
+      return (
+        String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"}) ||
+        (Number(b.cant)||0)-(Number(a.cant)||0)
+      );
+    }
+
+    return (
+      (Number(b.cant)||0)-(Number(a.cant)||0) ||
+      String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"})
+    );
+  });
+
+  body.innerHTML=ordered.map((it)=>{
+    const prepared = p
+      ? (
+          modoLibre
+            ? getPalletLinePrepared(p,it.lineId)
+            : getPalletLinePrepared(p,it.lineId)
+        )
+      : 0;
+
+    const pending=Math.max(0,Number(it.cant||0)-prepared);
 
     let cls="";
     if(pending===0) cls="done";
-    else if(!modoLibre && idx===currentItemIndex) cls="current";
+    else if(it===pendingItems[currentItemIndex]) cls="current";
 
     return `
-      <div class="progress-item ${cls}">
-        <div class="a">${esc(it.sku)}<br><span class="b">${esc(it.ubi)}</span></div>
-        <div>${prepared} / ${it.cant}<br><span class="b">prep.</span></div>
-        <div>${pending}<br><span class="b">pend.</span></div>
-      </div>
+      <button
+        type="button"
+        class="progress-item ${cls}"
+        style="width:100%;border:none;text-align:left;cursor:${pending>0?'pointer':'default'};display:grid;"
+        onclick="${pending>0 ? `seleccionarLineaPorId('${esc(it.lineId)}')` : ''}"
+      >
+        <div class="a">
+          ${esc(it.sku)}<br>
+          <span class="b">${esc(it.ubi)}</span>
+        </div>
+        <div>
+          ${prepared} / ${it.cant}<br>
+          <span class="b">prep.</span>
+        </div>
+        <div>
+          ${pending}<br>
+          <span class="b">pend.</span>
+        </div>
+      </button>
     `;
   }).join("");
+}
+
+function seleccionarLineaPorId(lineId){
+  const idx=pendingItems.findIndex(it=>String(it.lineId)===String(lineId));
+
+  if(idx<0) return;
+
+  const item=seleccionarLineaScanner(idx,true);
+
+  if(item){
+    mostrarToast(`Seleccionado: ${item.sku}`);
+  }
 }
 
 /* ============================================================
