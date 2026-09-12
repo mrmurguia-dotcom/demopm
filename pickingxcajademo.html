@@ -242,6 +242,51 @@ button{cursor:pointer}
   margin-top:11px;
 }
 
+.mode-choice{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+
+.mode-choice .btn{
+  min-height:62px;
+  font-size:1rem;
+}
+
+.view-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.view-bar .btn{
+  width:auto;
+  min-height:42px;
+  padding:8px 12px;
+}
+
+.free-overview{
+  display:none;
+}
+
+.free-line{
+  display:grid;
+  grid-template-columns:1.25fr .9fr .6fr;
+  gap:7px;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid #edf1f5;
+  font-size:.76rem;
+}
+
+.free-line:last-child{border-bottom:none}
+
+.free-line .title{font-weight:800}
+.free-line .muted{color:var(--muted)}
+
 .detail-toggle{
   margin-top:9px;
   width:100%;
@@ -670,32 +715,80 @@ button{cursor:pointer}
 
   <div id="resArea" class="hidden">
     <div class="card">
-      <h2 class="section-title">Pallets de picking</h2>
+      <h2 class="section-title">¿Qué tipo de picking vas a realizar?</h2>
 
-      <div class="summary">
-        <div class="summary-box">
-          <div class="n" id="summaryPallets">0</div>
-          <div class="l">Pallets</div>
+      <div id="initialModeButtons" class="mode-choice">
+        <button class="btn btn-suggested" onclick="mostrarModoSugerido()">
+          📋 PICKING SUGERIDO
+        </button>
+        <button class="btn btn-free" onclick="mostrarModoLibre()">
+          ➕ PICKING LIBRE
+        </button>
+      </div>
+    </div>
+
+    <div id="vistaSugerida" style="display:none;">
+      <div class="card">
+        <div class="view-bar">
+          <h2 class="section-title" style="margin:0">Pallets de picking sugerido</h2>
+          <button class="btn btn-light" onclick="volverSeleccionModo()">Cambiar</button>
         </div>
-        <div class="summary-box">
-          <div class="n" id="summaryPrepared">0</div>
-          <div class="l">Preparadas</div>
+
+        <div class="summary">
+          <div class="summary-box">
+            <div class="n" id="summaryPallets">0</div>
+            <div class="l">Pallets</div>
+          </div>
+          <div class="summary-box">
+            <div class="n" id="summaryPrepared">0</div>
+            <div class="l">Preparadas</div>
+          </div>
+          <div class="summary-box">
+            <div class="n" id="summaryPending">0</div>
+            <div class="l">Pendientes</div>
+          </div>
         </div>
-        <div class="summary-box">
-          <div class="n" id="summaryPending">0</div>
-          <div class="l">Pendientes</div>
+
+        <div id="pallets" class="pallet-list"></div>
+
+        <button id="btnDetalleCompleto" class="btn btn-light detail-toggle"
+          onclick="toggleDetalleCompleto()">
+          VER DETALLE COMPLETO DEL PICKING
+        </button>
+
+        <div id="detalleCompleto" class="details">
+          <div id="detalleCompletoBody"></div>
         </div>
       </div>
+    </div>
 
-      <div id="pallets" class="pallet-list"></div>
+    <div id="vistaLibre" class="free-overview">
+      <div class="card">
+        <div class="view-bar">
+          <h2 class="section-title" style="margin:0">Picking libre</h2>
+          <button class="btn btn-light" onclick="volverSeleccionModo()">Cambiar</button>
+        </div>
 
-      <button id="btnDetalleCompleto" class="btn btn-light detail-toggle"
-        onclick="toggleDetalleCompleto()">
-        VER DETALLE COMPLETO DEL PICKING
-      </button>
+        <div class="summary">
+          <div class="summary-box">
+            <div class="n" id="freeSummaryPrepared">0</div>
+            <div class="l">Preparadas</div>
+          </div>
+          <div class="summary-box">
+            <div class="n" id="freeSummaryPending">0</div>
+            <div class="l">Pendientes</div>
+          </div>
+          <div class="summary-box">
+            <div class="n" id="freeSummaryTotal">0</div>
+            <div class="l">Total</div>
+          </div>
+        </div>
 
-      <div id="detalleCompleto" class="details">
-        <div id="detalleCompletoBody"></div>
+        <button class="btn btn-free" onclick="abrirPickingLibreGlobal()" style="margin-bottom:10px;">
+          ➕ COMENZAR PICKING LIBRE
+        </button>
+
+        <div id="freeOverviewBody"></div>
       </div>
     </div>
   </div>
@@ -824,14 +917,22 @@ button{cursor:pointer}
       <ul id="sysLotsList"></ul>
 
       <div style="margin-top:8px">
-        <label class="manual-label">Cantidad parcial</label>
-        <input type="number" id="partialQty" class="input" min="1" style="margin-bottom:7px;">
-        <button class="btn btn-light" onclick="aplicarParcial()">APLICAR CANTIDAD PARCIAL</button>
+        <label class="manual-label">Cantidad disponible del lote seleccionado</label>
+        <div id="partialAvailable" style="background:#17212b;border:1px solid #2c4056;border-radius:10px;padding:9px;text-align:center;font-weight:800;margin-bottom:7px;">0 CA</div>
+        <label class="manual-label">Cantidad que querés agregar</label>
+        <input type="number" id="partialQty" class="input" min="1" style="margin-bottom:7px;" placeholder="Ej. 5">
+        <button class="btn btn-light" onclick="aplicarParcial()">AGREGAR CANTIDAD PARCIAL</button>
       </div>
 
-      <button class="btn btn-danger" style="margin-top:8px" onclick="solicitarReclasificacion()">
-        SOLICITAR RECLASIFICACIÓN (PDF)
-      </button>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #5e252b;">
+        <label class="manual-label">Lote a reclasificar</label>
+        <input type="text" id="reclassLot" class="input" style="margin-bottom:7px;" readonly>
+        <label class="manual-label">Cantidad a reclasificar</label>
+        <input type="number" id="reclassQty" class="input" min="1" style="margin-bottom:7px;" placeholder="Ingresá cantidad">
+        <button class="btn btn-danger" onclick="solicitarReclasificacion()">
+          SOLICITAR RECLASIFICACIÓN (PDF)
+        </button>
+      </div>
     </div>
 
     <div class="scan-actions">
@@ -1137,7 +1238,7 @@ function procesarMatrizStock(data){
       const val = norm(cell);
       if(!val) return;
 
-      if(keyUbi===-1 && (val.includes("ubicacio") || val.includes("posic"))){
+      if(keyUbi===-1 && (val.includes("ubicacio") || val.includes("ubicac") || val.includes("posic"))){
         keyUbi=index;
       }
 
@@ -1149,7 +1250,7 @@ function procesarMatrizStock(data){
         keyCant=index;
       }
 
-      if(keySku===-1 && (val.includes("articulo") || val.includes("sku"))){
+      if(keySku===-1 && (val.includes("articulo") || val.includes("artcul") || val.includes("sku"))){
         keySku=index;
       }
     });
@@ -1346,8 +1447,9 @@ function procesarFuentesYGenerarPallets(){
   zonasPickingPermitidas = [
     ...new Set(
       itemsRaw
-        .map(it => String(it.dep || "").trim().toUpperCase())
-        .filter(z => z && z !== "ST000000" && !z.startsWith("ST"))
+        .map(it => String(it.dep || zonaDeUbicacion(it.ubi) || "").trim().toUpperCase())
+        .map(z => normalizarUbicacion(z).slice(0,4))
+        .filter(z => z && z !== "ST00" && !z.startsWith("ST"))
     )
   ];
 
@@ -1403,6 +1505,8 @@ function armarLogicaVolumetrica(items){
 
   renderPallets();
   renderDetalleCompleto();
+  volverSeleccionModo();
+  renderFreeOverview();
 }
 
 /* ============================================================
@@ -1484,7 +1588,7 @@ function renderPallets(){
         </button>
 
         <button class="btn btn-free"
-          onclick="abrirScannerPallet(${p.id},true)">
+          onclick="mostrarModoLibre()">
           ➕ PICKING LIBRE
         </button>
       </div>
@@ -1612,6 +1716,56 @@ function toggleDetalleCompleto(){
 /* ============================================================
    ABRIR PICKING
 ============================================================ */
+function volverSeleccionModo(){
+  document.getElementById("initialModeButtons").style.display="grid";
+  document.getElementById("vistaSugerida").style.display="none";
+  document.getElementById("vistaLibre").style.display="none";
+}
+
+function mostrarModoSugerido(){
+  document.getElementById("initialModeButtons").style.display="none";
+  document.getElementById("vistaSugerida").style.display="block";
+  document.getElementById("vistaLibre").style.display="none";
+  renderPallets();
+  renderDetalleCompleto();
+}
+
+function mostrarModoLibre(){
+  document.getElementById("initialModeButtons").style.display="none";
+  document.getElementById("vistaSugerida").style.display="none";
+  document.getElementById("vistaLibre").style.display="block";
+  renderFreeOverview();
+}
+
+function abrirPickingLibreGlobal(){
+  currentPalletId = buscarPalletLibreActivo();
+  if(currentPalletId===null){
+    alert("Todos los pallets de picking ya están completos.");
+    return;
+  }
+
+  modoLibre=true;
+  pendingItems=[...itemsTotales];
+  currentItemIndex=0;
+
+  document.getElementById("scannerModal").style.display="block";
+  document.getElementById("scanModeTitle").textContent="Picking libre";
+  document.getElementById("scanModeMini").textContent="TODAS LAS LÍNEAS DEL PICKING";
+  document.getElementById("suggestedTarget").classList.add("hidden");
+  document.getElementById("freeTarget").classList.remove("hidden");
+  document.getElementById("exceptionPanel").style.display="none";
+  limpiarScannerInputs();
+  seleccionarPrimeraLineaLibreGlobal();
+  actualizarPanelScanner();
+  actualizarProgresoScanner();
+  document.getElementById("scanEanInput").focus();
+}
+
+function buscarPalletLibreActivo(){
+  const p=palletsGenerados.find(x=>palletPending(x)>0);
+  return p ? p.id : null;
+}
+
 function abrirScannerPallet(id,esLibre){
   const p=palletsGenerados.find(x=>x.id===id);
   if(!p) return;
@@ -1619,106 +1773,86 @@ function abrirScannerPallet(id,esLibre){
   currentPalletId=id;
   modoLibre=esLibre;
 
-  // En sugerido mostramos solo las líneas de ese pallet.
-  // En libre mostramos TODAS las líneas del picking.
-  pendingItems = esLibre ? itemsTotales : p.items;
+  // En sugerido usamos solamente las líneas del pallet.
+  // El libre global se abre desde el botón principal y muestra todas las líneas.
+  pendingItems = esLibre ? [...itemsTotales] : p.items;
   currentItemIndex=0;
 
   document.getElementById("scannerModal").style.display="block";
-
-  document.getElementById("scanModeTitle").textContent=
-    `Pallet #${id}`;
-
-  document.getElementById("scanModeMini").textContent=
-    esLibre
-      ? "PICKING LIBRE · TODAS LAS LÍNEAS"
-      : "PICKING SUGERIDO · LÍNEAS DEL PALLET";
+  document.getElementById("scanModeTitle").textContent=`Pallet #${id}`;
+  document.getElementById("scanModeMini").textContent=esLibre
+    ? "PICKING LIBRE · TODAS LAS LÍNEAS"
+    : "PICKING SUGERIDO · LÍNEAS DEL PALLET";
 
   document.getElementById("suggestedTarget").classList.toggle("hidden",esLibre);
   document.getElementById("freeTarget").classList.toggle("hidden",!esLibre);
-
   document.getElementById("exceptionPanel").style.display="none";
   limpiarScannerInputs();
 
-  if(!esLibre){
-    ordenarYSeleccionarPrimeraSugerida();
+  if(esLibre){
+    seleccionarPrimeraLineaLibreGlobal();
   }else{
-    ordenarYSeleccionarPrimeraLibre();
+    ordenarYSeleccionarPrimeraSugerida();
   }
 
-  restaurarTargetNormal();
   actualizarPanelScanner();
   actualizarProgresoScanner();
-
   document.getElementById("scanEanInput").focus();
 }
 
 function cerrarScanner(){
   detenerScannerCamara();
-
   document.getElementById("scannerModal").style.display="none";
-
   actualizarResumenGeneral();
   renderPallets();
-
+  renderDetalleCompleto();
+  renderFreeOverview();
   hablar("");
 }
 
 function preparedForCurrentItem(item){
-  const p=palletsGenerados.find(x=>x.id===currentPalletId);
+  if(!item) return 0;
 
-  if(!p || !item) return 0;
-
+  // En libre/global el preparado se toma del total de la línea.
   if(modoLibre){
     return Number(item.pickedTotal || 0);
   }
 
-  return getPalletLinePrepared(p,item.lineId);
+  const p=palletsGenerados.find(x=>x.id===currentPalletId);
+  return p ? getPalletLinePrepared(p,item.lineId) : 0;
 }
 
 function remainingForCurrentItem(item){
-  return Math.max(
-    0,
-    (Number(item.cant)||0) - preparedForCurrentItem(item)
-  );
+  return Math.max(0,(Number(item.cant)||0)-preparedForCurrentItem(item));
 }
 
 function ordenarYSeleccionarPrimeraSugerida(){
   pendingItems.sort((a,b)=>{
-    return (
-      (Number(b.cant)||0)-(Number(a.cant)||0) ||
-      String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"})
-    );
+    return (Number(b.cant)||0)-(Number(a.cant)||0) ||
+      String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"});
   });
 
-  currentItemIndex=pendingItems.findIndex(
-    it=>remainingForCurrentItem(it)>0
-  );
-
+  currentItemIndex=pendingItems.findIndex(it=>remainingForCurrentItem(it)>0);
   if(currentItemIndex===-1){
+    mostrarCompletado();
+    return null;
+  }
+  return seleccionarLineaScanner(currentItemIndex,true);
+}
+
+function seleccionarPrimeraLineaLibreGlobal(){
+  pendingItems.sort((a,b)=>{
+    return String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"}) ||
+      (Number(b.cant)||0)-(Number(a.cant)||0);
+  });
+
+  currentItemIndex=pendingItems.findIndex(it=>remainingForCurrentItem(it)>0);
+  if(currentItemIndex<0){
     mostrarCompletado();
     return null;
   }
 
   return seleccionarLineaScanner(currentItemIndex,false);
-}
-
-function ordenarYSeleccionarPrimeraLibre(){
-  pendingItems.sort((a,b)=>{
-    return (
-      String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"}) ||
-      (Number(b.cant)||0)-(Number(a.cant)||0)
-    );
-  });
-
-  currentItemIndex=pendingItems.findIndex(
-    it=>remainingForCurrentItem(it)>0
-  );
-
-  return seleccionarLineaScanner(
-    currentItemIndex>=0 ? currentItemIndex : 0,
-    false
-  );
 }
 
 function buscarSiguientePendienteSugerido(){
@@ -1729,7 +1863,6 @@ function seleccionarLineaScanner(index,hablarLinea=true){
   if(index<0 || index>=pendingItems.length) return null;
 
   const item=pendingItems[index];
-
   if(remainingForCurrentItem(item)<=0){
     mostrarToast("Esa línea ya está completa.");
     return null;
@@ -1738,16 +1871,11 @@ function seleccionarLineaScanner(index,hablarLinea=true){
   currentItemIndex=index;
 
   restaurarTargetNormal();
-
-  document.getElementById("scanTargetSku").textContent=
-    `${item.sku} - ${item.desc || ""}`;
-
+  document.getElementById("scanTargetSku").textContent=`${item.sku} - ${item.desc || ""}`;
   document.getElementById("scanTargetUbi").textContent=item.ubi;
+  document.getElementById("scanTargetRemaining").textContent=remainingForCurrentItem(item);
 
-  document.getElementById("scanTargetRemaining").textContent=
-    remainingForCurrentItem(item);
-
-  if(!modoLibre && hablarLinea){
+  if(hablarLinea && !modoLibre){
     hablar(`Preparar ${remainingForCurrentItem(item)} cajas de SKU ${item.sku}`);
   }
 
@@ -1765,54 +1893,46 @@ function actualizarPanelScanner(){
   document.getElementById("scanPrepared").textContent=prepared;
   document.getElementById("scanPending").textContent=pending;
   document.getElementById("scanCapacity").textContent=p.cantTotal;
-  document.getElementById("progressSummary").textContent=
-    `${prepared} / ${p.cantTotal}`;
+  document.getElementById("progressSummary").textContent=`${prepared} / ${p.cantTotal}`;
 
   document.querySelectorAll(".scan-stat .small")[0].textContent="Preparadas";
   document.querySelectorAll(".scan-stat .small")[1].textContent="Pendientes";
   document.querySelectorAll(".scan-stat .small")[2].textContent="Total a preparar";
-
-  if(modoLibre){
-    document.getElementById("freeTarget").classList.remove("hidden");
-  }else{
-    document.getElementById("suggestedTarget").classList.remove("hidden");
-    const item=pendingItems[currentItemIndex];
-    if(item) seleccionarLineaScanner(currentItemIndex,false);
-  }
 }
 
 function mostrarCompletado(){
-  document.getElementById("suggestedTarget").innerHTML=`
-    <div style="font-size:2.2rem">✅</div>
-    <div style="font-size:1.15rem;font-weight:900;margin-top:5px">
-      PALLET COMPLETO
-    </div>
-    <div style="font-size:.78rem;color:#aab8c7;margin-top:5px">
-      Ya no quedan cajas pendientes
-    </div>
-  `;
-
+  const target=document.getElementById("suggestedTarget");
+  target.classList.remove("hidden");
+  target.innerHTML=`<div style="font-size:2.2rem">✅</div><div style="font-size:1.15rem;font-weight:900;margin-top:5px">PALLET COMPLETO</div><div style="font-size:.78rem;color:#aab8c7;margin-top:5px">Ya no quedan cajas pendientes</div>`;
   document.getElementById("btnConfirmarCaja").style.display="none";
-
   hablar("Pallet completo");
 }
 
 function restaurarTargetNormal(){
   const target=document.getElementById("suggestedTarget");
-
-  target.innerHTML=`
-    <div class="target-caption">SIGUIENTE A PREPARAR</div>
-    <div class="target-sku" id="scanTargetSku">SKU</div>
-    <div class="target-ubi">📍 <span id="scanTargetUbi">UBICACIÓN</span></div>
-    <div class="target-qty">
-      <span id="scanTargetRemaining">0</span>
-      <small>CAJAS PENDIENTES DE ESTA LÍNEA</small>
-    </div>
-  `;
-
+  target.innerHTML=`<div class="target-caption">LÍNEA SELECCIONADA</div><div class="target-sku" id="scanTargetSku">SKU</div><div class="target-ubi">📍 <span id="scanTargetUbi">UBICACIÓN</span></div><div class="target-qty"><span id="scanTargetRemaining">0</span><small>CAJAS PENDIENTES DE ESTA LÍNEA</small></div>`;
   document.getElementById("btnConfirmarCaja").style.display="block";
 }
 
+function renderFreeOverview(){
+  const body=document.getElementById("freeOverviewBody");
+  if(!body) return;
+
+  const ordered=[...itemsTotales].sort((a,b)=>String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"}) || (Number(b.cant)||0)-(Number(a.cant)||0));
+  let prepared=0,total=0;
+
+  body.innerHTML=ordered.map(it=>{
+    const t=Number(it.cant)||0;
+    const p=Number(it.pickedTotal)||0;
+    const pend=Math.max(0,t-p);
+    prepared+=p; total+=t;
+    return `<button type="button" class="free-line" style="width:100%;border-left:0;border-right:0;border-top:0;background:${pend===0?'#effaf4':'#fff'};text-align:left;cursor:${pend>0?'pointer':'default'}" onclick="${pend>0?`abrirPickingLibreGlobal(); setTimeout(()=>seleccionarLineaPorId('${esc(it.lineId)}'),120);`:''}"><div><div class="title">${esc(it.ubi)}</div><div class="muted">${esc(it.sku)} - ${esc(it.desc||"")}</div></div><div><div class="muted">Preparado</div><strong>${p}/${t}</strong></div><div><div class="muted">Pend.</div><strong>${pend}</strong></div></button>`;
+  }).join("");
+
+  document.getElementById("freeSummaryPrepared").textContent=prepared;
+  document.getElementById("freeSummaryPending").textContent=Math.max(0,total-prepared);
+  document.getElementById("freeSummaryTotal").textContent=total;
+}
 /* ============================================================
    INPUTS / VALIDACIÓN VISUAL
 ============================================================ */
@@ -1869,20 +1989,31 @@ function mostrarValidacion(ok,main,sub){
 /* ============================================================
    BUSQUEDA DE LOTE EN STOCK
 ============================================================ */
-function esZonaPicking(ubi){
-  const u=String(ubi || "").toUpperCase().trim();
+function normalizarUbicacion(ubi){
+  return String(ubi||"").toUpperCase().replace(/\./g,"").replace(/\s/g,"");
+}
 
-  if(!u || u==="ST000000" || u.startsWith("ST")){
-    return false;
+function zonaDeUbicacion(ubi){
+  const u=normalizarUbicacion(ubi);
+  if(!u) return "";
+  return u.slice(0,4);
+}
+
+function esZonaPicking(ubi,item=null){
+  const u=normalizarUbicacion(ubi);
+  if(!u || u.startsWith("ST") || u==="ST000000") return false;
+
+  // La validación de una línea usa siempre su propio sector.
+  if(item){
+    const zonaItem=String(item.dep||zonaDeUbicacion(item.ubi)||"").toUpperCase();
+    return !!zonaItem && u.startsWith(zonaItem);
   }
 
-  if(!zonasPickingPermitidas.length){
-    return false;
+  if(zonasPickingPermitidas.length){
+    return zonasPickingPermitidas.some(z=>u.startsWith(String(z).toUpperCase()));
   }
 
-  return zonasPickingPermitidas.some(z=>
-    u.startsWith(String(z).toUpperCase())
-  );
+  return false;
 }
 
 function capacidadPalletSKU(sku){
@@ -1892,75 +2023,63 @@ function capacidadPalletSKU(sku){
 function esPalletAbierto(row){
   const cap=capacidadPalletSKU(row.sku);
   const qty=Number(row.qty)||0;
-
   if(!cap || !qty) return false;
-
   return qty % cap !== 0;
 }
 
-function buscarLoteEnStock(sku,item,sufijo){
-  return stockData.find(s=>{
+function filasLoteEnZona(sku,item,sufijo){
+  const needle=String(sufijo||"").toUpperCase();
+  return stockData.filter(s=>{
     if(String(s.sku)!==String(sku)) return false;
-    if(!esZonaPicking(s.ubi)) return false;
-    if(s.observado) return false;
-
-    const cantidad=Number(s.qty)||0;
-    if(cantidad<=0) return false;
-
-    const lote=String(s.lote || "").toUpperCase();
-
-    return lote.includes(String(sufijo).toUpperCase());
-  }) || null;
+    if(!esZonaPicking(s.ubi,item)) return false;
+    if((Number(s.qty)||0)<=0) return false;
+    return String(s.lote||"").toUpperCase().includes(needle);
+  });
 }
 
-function listarLotesDisponibles(sku){
-  return stockData
-    .filter(s=>{
-      return (
-        String(s.sku)===String(sku) &&
-        (Number(s.qty)||0)>0 &&
-        esZonaPicking(s.ubi)
-      );
-    })
-    .sort((a,b)=>{
-      const obsA=a.observado ? 1 : 0;
-      const obsB=b.observado ? 1 : 0;
-      const openA=esPalletAbierto(a) ? 1 : 0;
-      const openB=esPalletAbierto(b) ? 1 : 0;
+function buscarLoteEnStock(sku,item,sufijo){
+  const filas=filasLoteEnZona(sku,item,sufijo);
+  // Primero una fila normal. Las observadas se informan, pero no pasan automáticamente.
+  return filas.find(r=>!r.observado) || null;
+}
 
-      return (
-        obsB-obsA ||
-        openB-openA ||
-        String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"})
-      );
-    });
+function listarLotesDisponibles(sku,item){
+  return stockData.filter(s=>{
+    return String(s.sku)===String(sku) &&
+      (Number(s.qty)||0)>0 &&
+      esZonaPicking(s.ubi,item);
+  }).sort((a,b)=>{
+    const obsA=a.observado?1:0, obsB=b.observado?1:0;
+    const openA=esPalletAbierto(a)?1:0, openB=esPalletAbierto(b)?1:0;
+    return obsA-obsB || openB-openA || String(a.ubi||"").localeCompare(String(b.ubi||""),undefined,{numeric:true,sensitivity:"base"});
+  });
+}
+
+function cantidadTotalFilas(filas){
+  return filas.reduce((acc,r)=>acc+(Number(r.qty)||0),0);
 }
 
 function descripcionStock(row){
   const cap=capacidadPalletSKU(row.sku);
   const qty=Number(row.qty)||0;
-
   let estado="";
-  if(row.observado){
-    estado=" ⚠️ OBSERVADO";
-  }else if(cap && qty % cap !== 0){
-    const resto=qty % cap;
-    estado=` · PALLET ABIERTO (resto ${resto} CA)`;
-  }else if(cap){
-    estado=" · PALLET CERRADO COMPLETO";
-  }
-
-  return `${qty} CA${cap ? ` · Palletizado ${cap} CA` : ""}${estado}`;
+  if(row.observado) estado=" · ⚠️ OBSERVADO";
+  else if(cap && qty%cap!==0) estado=` · 🟡 PALLET ABIERTO (resto ${qty%cap} CA)`;
+  else if(cap) estado=" · Pallet cerrado completo";
+  return `${qty} CA${cap?` · Palletizado ${cap} CA`:``}${estado}`;
 }
 
+function seleccionarLoteObservadoSiCorresponde(filas){
+  const obs=filas.find(r=>r.observado);
+  return obs || null;
+}
 /* ============================================================
    CONFIRMAR CAJA
 ============================================================ */
+let ultimoContextoExcepcion = null;
+
 function confirmarLinea(){
   const eanVal=document.getElementById("scanEanInput").value.trim();
-  const rawLot=document.getElementById("scanLotJulian").value.trim();
-  const rawTime=document.getElementById("scanLotTime").value.trim();
-
   const skuScanned=eanMapData[eanVal] || eanVal;
   const datosLote=calcularValidacionLote();
 
@@ -1968,148 +2087,121 @@ function confirmarLinea(){
     mostrarValidacion(false,"FALTA CÓDIGO","Escaneá la caja primero.");
     return;
   }
-
   if(!datosLote.julian){
-    mostrarValidacion(false,"FALTA LOTE","Ingresá el lote/juliano de la caja.");
+    mostrarValidacion(false,"FALTA LOTE","Ingresá los últimos 3 dígitos del lote.");
     return;
   }
-
   if(!datosLote.turno){
     mostrarValidacion(false,"HORA INVÁLIDA","Ingresá la hora, por ejemplo 18:22.");
     return;
   }
 
   const p=palletsGenerados.find(x=>x.id===currentPalletId);
-  if(!p) return;
-
-  if(palletPending(p)<=0){
-    mostrarValidacion(
-      false,
-      "PALLET COMPLETO",
-      "No hay capacidad pendiente en este pallet."
-    );
-    return;
-  }
+  if(!p){ mostrarValidacion(false,"SIN PALLET","No hay un pallet activo."); return; }
+  if(palletPending(p)<=0){ mostrarValidacion(false,"PALLET COMPLETO","No hay capacidad pendiente."); return; }
 
   let itemIndex=-1;
-
   if(modoLibre){
-    itemIndex=pendingItems.findIndex(it=>{
-      return String(it.sku)===String(skuScanned) &&
-        remainingForCurrentItem(it)>0;
-    });
-
-    // Si el SKU aparece en varias líneas, respeta la línea seleccionada
-    // cuando coincide con el SKU.
-    if(
-      currentItemIndex>=0 &&
-      pendingItems[currentItemIndex] &&
-      String(pendingItems[currentItemIndex].sku)===String(skuScanned) &&
-      remainingForCurrentItem(pendingItems[currentItemIndex])>0
-    ){
+    if(currentItemIndex>=0 && pendingItems[currentItemIndex] && String(pendingItems[currentItemIndex].sku)===String(skuScanned) && remainingForCurrentItem(pendingItems[currentItemIndex])>0){
       itemIndex=currentItemIndex;
+    }else{
+      itemIndex=pendingItems.findIndex(it=>String(it.sku)===String(skuScanned) && remainingForCurrentItem(it)>0);
     }
   }else{
     itemIndex=currentItemIndex;
   }
 
-  if(itemIndex===-1){
-    mostrarValidacion(
-      false,
-      "SKU SIN PENDIENTE",
-      "No queda cantidad pendiente para este SKU."
-    );
+  if(itemIndex<0){
+    mostrarValidacion(false,"SKU SIN PENDIENTE","No queda cantidad pendiente para este SKU.");
     return;
   }
 
   const item=pendingItems[itemIndex];
-
-  if(remainingForCurrentItem(item)<=0){
-    mostrarValidacion(
-      false,
-      "LÍNEA COMPLETA",
-      "Elegí otra línea pendiente."
-    );
-    return;
-  }
-
-  // En sugerido, la línea seleccionada puede ser cualquiera del listado,
-  // pero el SKU de la caja debe coincidir con esa línea.
   if(String(item.sku)!==String(skuScanned)){
-    mostrarValidacion(
-      false,
-      "SKU INCORRECTO",
-      `La línea seleccionada es ${item.sku} y la caja es ${skuScanned}.`
-    );
+    mostrarValidacion(false,"SKU INCORRECTO",`La línea seleccionada es ${item.sku} y la caja es ${skuScanned}.`);
     return;
   }
 
   const sufijo=datosLote.sufijo;
+  const filasCoincidentes=filasLoteEnZona(skuScanned,item,sufijo);
+  const loteEncontrado=filasCoincidentes.find(r=>!r.observado) || null;
+  const stockLoteDisponible=cantidadTotalFilas(filasCoincidentes.filter(r=>!r.observado));
 
-  const loteEncontrado=buscarLoteEnStock(
-    skuScanned,
+  ultimoContextoExcepcion={
     item,
-    sufijo
-  );
+    sku:skuScanned,
+    loteFisico:sufijo,
+    loteImpreso:document.getElementById("scanLotJulian").value.trim(),
+    filasCoincidentes,
+    stockLoteDisponible,
+    hora:datosLote.hora,
+    julian:datosLote.julian,
+    turno:datosLote.turno
+  };
 
   if(!loteEncontrado){
-    mostrarValidacion(
-      false,
-      "LOTE NO COINCIDE",
-      `Caja ${sufijo}. No se encontró coincidencia en stock.`
-    );
-
+    const observado=seleccionarLoteObservadoSiCorresponde(filasCoincidentes);
+    mostrarValidacion(false,"LOTE NO DISPONIBLE",observado?"El lote existe en picking, pero está OBSERVADO.":`No se encontró ${sufijo} en el sector de la línea.`);
     mostrarExcepcion(
-      listarLotesDisponibles(skuScanned),
+      listarLotesDisponibles(skuScanned,item),
       item,
-      `No se encontró ${sufijo} para ${skuScanned} en la zona de picking.`
+      observado
+        ? `El lote ${sufijo} está en ${observado.ubi}, pero está OBSERVADO.`
+        : `No se encontró ${sufijo} en la zona de picking de ${item.ubi}.`
     );
-
-    hablar("Lote no coincide");
+    hablar(observado?"Lote observado":"Lote no disponible");
     return;
   }
 
-  // Consumimos una caja del registro validado.
-  loteEncontrado.qty = Math.max(
-    0,
-    (Number(loteEncontrado.qty)||0)-1
-  );
-
-  // Actualizamos preparado de la línea y del pallet.
-  // itemsTotales conserva el total preparado global de cada línea.
-  const baseItem = itemsTotales.find(x=>String(x.lineId)===String(item.lineId));
-  if(baseItem){
-    baseItem.pickedTotal = Number(baseItem.pickedTotal || 0) + 1;
+  // Una caja equivale a 1 CA. Si el lote existe pero no alcanza para toda la línea,
+  // mostramos cuánto stock queda y permitimos usar cantidad parcial.
+  if(stockLoteDisponible < remainingForCurrentItem(item)){
+    mostrarValidacion(false,"STOCK DEL LOTE INSUFICIENTE",`Hay ${stockLoteDisponible} CA disponibles del lote ${sufijo}.`);
+    mostrarExcepcion([loteEncontrado],item,`El lote seleccionado tiene ${stockLoteDisponible} CA disponibles.`);
+    return;
   }
 
-  item.pickedTotal = Number(item.pickedTotal || 0) + 1;
+  consumirStockFilas(filasCoincidentes.filter(r=>!r.observado),1);
+  registrarPreparado(item,1,p);
 
-  if(!p.preparedByLine) p.preparedByLine = {};
-
-  p.preparedByLine[item.lineId] =
-    Number(p.preparedByLine[item.lineId] || 0) + 1;
-
-  p.preparedQty = Number(p.preparedQty || 0) + 1;
-
-  // En sugerido también mantenemos la marca local de la línea del pallet.
-  if(!modoLibre){
-    item.pickedQty = Number(item.pickedQty || 0) + 1;
-  }
-
-  mostrarValidacion(
-    true,
-    "CAJA AGREGADA",
-    `${sufijo} coincide con ${loteEncontrado.lote}`
-  );
-
+  mostrarValidacion(true,"CAJA AGREGADA",`${sufijo} coincide con ${loteEncontrado.lote}`);
   hablar("Caja confirmada");
-
   document.getElementById("exceptionPanel").style.display="none";
 
+  avanzarDespuesDePreparar(item,p);
+}
+
+function consumirStockFilas(filas,qty){
+  let restante=Number(qty)||0;
+  for(const row of filas){
+    if(restante<=0) break;
+    const disponible=Number(row.qty)||0;
+    const tomar=Math.min(disponible,restante);
+    row.qty=disponible-tomar;
+    restante-=tomar;
+  }
+  return (Number(qty)||0)-restante;
+}
+
+function registrarPreparado(item,qty,p){
+  const q=Number(qty)||0;
+  const baseItem=itemsTotales.find(x=>String(x.lineId)===String(item.lineId));
+  if(baseItem) baseItem.pickedTotal=Number(baseItem.pickedTotal||0)+q;
+  item.pickedTotal=Number(item.pickedTotal||0)+q;
+
+  if(!p.preparedByLine) p.preparedByLine={};
+  p.preparedByLine[item.lineId]=Number(p.preparedByLine[item.lineId]||0)+q;
+  p.preparedQty=Number(p.preparedQty||0)+q;
+
+  if(!modoLibre) item.pickedQty=Number(item.pickedQty||0)+q;
+}
+
+function avanzarDespuesDePreparar(item,p){
   actualizarPanelScanner();
   actualizarProgresoScanner();
   actualizarResumenGeneral();
   renderDetalleCompleto();
+  renderFreeOverview();
 
   if(palletPending(p)<=0){
     document.getElementById("btnConfirmarCaja").style.display="none";
@@ -2117,25 +2209,21 @@ function confirmarLinea(){
     return;
   }
 
-  document.getElementById("btnConfirmarCaja").style.display="block";
-
   limpiarInputsPreservandoMensaje();
 
-  // En sugerido NO obliga a seguir el orden: conserva la línea
-  // seleccionada mientras tenga pendiente. Si se completó, selecciona
-  // la siguiente línea pendiente por cantidad mayor.
   if(!modoLibre){
     if(remainingForCurrentItem(item)>0){
-      seleccionarLineaScanner(itemIndex,false);
+      seleccionarLineaScanner(currentItemIndex,false);
     }else{
       ordenarYSeleccionarPrimeraSugerida();
     }
   }else{
-    // En libre la lista completa queda disponible.
-    seleccionarLineaScanner(
-      pendingItems.findIndex(it=>remainingForCurrentItem(it)>0),
-      false
-    );
+    // Si el pallet actual se llenó, la próxima caja comienza en el siguiente pallet.
+    const siguiente=buscarPalletLibreActivo();
+    if(siguiente!==null && siguiente!==currentPalletId){
+      currentPalletId=siguiente;
+    }
+    seleccionarPrimeraLineaLibreGlobal();
   }
 
   document.getElementById("scanEanInput").focus();
@@ -2154,130 +2242,113 @@ function limpiarInputsPreservandoMensaje(){
 ============================================================ */
 function mostrarExcepcion(lotesSys,item,msj){
   const panel=document.getElementById("exceptionPanel");
-
   panel.style.display="block";
-
   document.getElementById("exceptionMessage").textContent=msj;
 
-  document.getElementById("sysLotsList").innerHTML =
-    lotesSys.length
+  const disponibles=ultimoContextoExcepcion ? Number(ultimoContextoExcepcion.stockLoteDisponible||0) : 0;
+  document.getElementById("partialAvailable").textContent=`${disponibles} CA disponibles del lote seleccionado`;
+  document.getElementById("partialQty").value="";
+  document.getElementById("partialQty").max=Math.max(0,disponibles);
+
+  const loteReclas=ultimoContextoExcepcion?.loteFisico || "";
+  document.getElementById("reclassLot").value=loteReclas;
+  document.getElementById("reclassQty").value="";
+  document.getElementById("reclassQty").max=Math.max(1,disponibles || 999999);
+
+  document.getElementById("sysLotsList").innerHTML=lotesSys.length
     ? lotesSys.map(l=>{
         const estado=l.observado
           ? '<span style="color:#ffb3b3;font-weight:800;">⚠️ OBSERVADO</span>'
           : (esPalletAbierto(l)
-              ? '<span style="color:#ffd166;font-weight:800;">🟡 PALLET ABIERTO</span>'
-              : '<span style="color:#9fe3b1;">Pallet cerrado completo</span>');
-
-        return `
-          <li>
-            <b>${esc(l.ubi)}</b> · Lote <b>${esc(l.lote)}</b><br>
-            ${esc(descripcionStock(l))}<br>
-            ${estado}
-          </li>
-        `;
+            ? '<span style="color:#ffd166;font-weight:800;">🟡 PALLET ABIERTO</span>'
+            : '<span style="color:#9fe3b1;">Pallet cerrado completo</span>');
+        return `<li><b>${esc(l.ubi)}</b> · Lote <b>${esc(l.lote)}</b><br>${esc(descripcionStock(l))}<br>${estado}</li>`;
       }).join("")
-    : "<li>No hay stock disponible del SKU en los sectores de picking habilitados.</li>";
-
-  const pendiente = modoLibre
-    ? Math.max(1,item.cant-(item.pickedTotal || 0))
-    : Math.max(1,item.cant-getPalletLinePrepared(
-        palletsGenerados.find(x=>x.id===currentPalletId),
-        item.lineId
-      ));
-
-  document.getElementById("partialQty").max = pendiente;
+    : "<li>No hay stock disponible del SKU en la zona de picking de la línea.</li>";
 }
 
 function aplicarParcial(){
-  const qty=parseInt(
-    document.getElementById("partialQty").value,
-    10
-  );
+  const qty=parseInt(document.getElementById("partialQty").value,10);
+  const ctx=ultimoContextoExcepcion;
+  if(!ctx){ alert("No hay un lote seleccionado para aplicar cantidad parcial."); return; }
+  if(!qty || qty<=0){ alert("Cantidad parcial inválida."); return; }
 
-  if(!qty || qty<=0){
-    alert("Cantidad parcial inválida.");
+  const p=palletsGenerados.find(x=>x.id===currentPalletId);
+  const item=ctx.item;
+  if(!p || !item) return;
+
+  const disponible=Math.min(Number(ctx.stockLoteDisponible||0),palletPending(p),remainingForCurrentItem(item));
+  if(qty>disponible){
+    alert(`Podés agregar hasta ${disponible} CA.`);
     return;
   }
 
-  if(currentItemIndex>=0){
-    const item=pendingItems[currentItemIndex];
-    const p=palletsGenerados.find(x=>x.id===currentPalletId);
-    if(!item || !p) return;
+  const filas=ctx.filasCoincidentes.filter(r=>!r.observado);
+  consumirStockFilas(filas,qty);
+  registrarPreparado(item,qty,p);
 
-    const pendiente=Math.min(
-      Math.max(0,item.cant-getPalletLinePrepared(p,item.lineId)),
-      palletPending(p)
-    );
+  mostrarValidacion(true,"CANTIDAD PARCIAL AGREGADA",`${qty} CA del lote ${ctx.loteFisico}`);
+  document.getElementById("exceptionPanel").style.display="none";
+  actualizarPanelScanner();
+  actualizarProgresoScanner();
+  actualizarResumenGeneral();
+  renderDetalleCompleto();
+  renderFreeOverview();
 
-    if(qty>pendiente){
-      alert(`La cantidad parcial no puede superar ${pendiente}.`);
-      return;
-    }
+  if(palletPending(p)<=0){
+    document.getElementById("btnConfirmarCaja").style.display="none";
+    hablar("Pallet completo");
+    return;
+  }
 
-    const baseItem = itemsTotales.find(x=>String(x.lineId)===String(item.lineId));
-    if(baseItem){
-      baseItem.pickedTotal = Number(baseItem.pickedTotal || 0) + qty;
-    }
-
-    item.pickedTotal = Number(item.pickedTotal || 0) + qty;
-
-    if(!p.preparedByLine) p.preparedByLine={};
-
-    p.preparedByLine[item.lineId] =
-      Number(p.preparedByLine[item.lineId] || 0) + qty;
-
-    p.preparedQty = Number(p.preparedQty || 0) + qty;
-
-    if(!modoLibre){
-      item.pickedQty = Number(item.pickedQty || 0) + qty;
-    }
-
-    mostrarValidacion(
-      true,
-      "CANTIDAD PARCIAL APLICADA",
-      `${qty} cajas marcadas como preparadas`
-    );
-
-    document.getElementById("exceptionPanel").style.display="none";
-
-    actualizarPanelScanner();
-    actualizarProgresoScanner();
-    actualizarResumenGeneral();
-    renderDetalleCompleto();
-
+  limpiarInputsPreservandoMensaje();
+  if(!modoLibre){
+    if(remainingForCurrentItem(item)>0) seleccionarLineaScanner(currentItemIndex,false);
+    else ordenarYSeleccionarPrimeraSugerida();
+  }else{
     if(palletPending(p)<=0){
-      document.getElementById("btnConfirmarCaja").style.display="none";
-      hablar("Pallet completo");
-      return;
+      const next=buscarPalletLibreActivo();
+      if(next!==null) currentPalletId=next;
     }
-
-    if(remainingForCurrentItem(item)<=0){
-      if(!modoLibre) ordenarYSeleccionarPrimeraSugerida();
-    }else{
-      seleccionarLineaScanner(currentItemIndex,false);
-    }
+    seleccionarPrimeraLineaLibreGlobal();
   }
 }
 
 function solicitarReclasificacion(){
-  if(currentItemIndex<0 || currentItemIndex>=pendingItems.length){
-    alert("No hay una línea seleccionada.");
+  if(!ultimoContextoExcepcion){
+    alert("Primero seleccioná un lote con observación o diferencia para generar la reclasificación.");
     return;
   }
 
-  const item=pendingItems[currentItemIndex];
+  const item=ultimoContextoExcepcion.item;
+  const lote=String(document.getElementById("reclassLot").value||"").trim();
+  const qty=parseInt(document.getElementById("reclassQty").value,10);
+
+  if(!lote){
+    alert("Falta el lote a reclasificar.");
+    return;
+  }
+  if(!qty || qty<=0){
+    alert("Ingresá la cantidad que querés reclasificar.");
+    return;
+  }
 
   try{
     const {jsPDF}=window.jspdf;
     const doc=new jsPDF();
-
     doc.setFontSize(14);
     doc.text("Solicitud de Reclasificación de Stock",20,20);
     doc.setFontSize(10);
     doc.text(`SKU: ${item.sku} - ${item.desc || ""}`,20,35);
-    doc.text(`Ubicación Original: ${item.ubi}`,20,45);
-
-    doc.save(`Reclasificacion_${item.sku}.pdf`);
+    doc.text(`Ubicación de picking: ${item.ubi}`,20,45);
+    doc.text(`Lote validado (juliano + turno): ${lote}`,20,55);
+    doc.text(`Lote impreso en caja: ${ultimoContextoExcepcion.loteImpreso || ""}`,20,65);
+    doc.text(`Cantidad a reclasificar: ${qty} CA`,20,75);
+    doc.text(`Juliano informado: ${ultimoContextoExcepcion.julian || ""}`,20,85);
+    doc.text(`Hora informada: ${ultimoContextoExcepcion.hora || ""}`,20,95);
+    doc.text(`Turno calculado: ${ultimoContextoExcepcion.turno || ""}`,20,105);
+    doc.text("Motivo: diferencia / lote observado en picking.",20,120);
+    doc.save(`Reclasificacion_${item.sku}_${lote}.pdf`);
   }catch(err){
     alert("No se pudo generar el PDF.");
   }
