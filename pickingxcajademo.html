@@ -2,587 +2,630 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Picking PK - JDE</title>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<title>Picking PK - Pallet Mixto</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js"></script>
 
 <style>
-:root{
- --primary:#1e3a5f;
- --primary2:#294f7d;
- --success:#198754;
- --danger:#dc3545;
- --warning:#f59e0b;
- --info:#0d6efd;
- --bg:#f3f6fa;
- --border:#dbe3ec;
- --muted:#64748b;
- --white:#fff;
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
 }
-*{box-sizing:border-box}
-body{
- margin:0;
- background:var(--bg);
- color:#1f2937;
- font-family:Arial,Helvetica,sans-serif;
-}
-button,input{
- font:inherit;
-}
-button{cursor:pointer}
-.app{
- max-width:1150px;
- margin:auto;
- padding:10px;
-}
-.header{
- background:var(--primary);
- color:white;
- padding:15px;
- border-radius:14px;
- margin-bottom:10px;
-}
-.header h1{
- margin:0;
- font-size:1.15rem;
-}
-.header p{
- margin:4px 0 0;
- font-size:.8rem;
- opacity:.9;
-}
-.card{
- background:white;
- border:1px solid var(--border);
- border-radius:14px;
- padding:13px;
- margin-bottom:10px;
-}
-h2{
- color:var(--primary);
- font-size:1rem;
- margin:0 0 10px;
-}
-.load-grid{
- display:grid;
- grid-template-columns:repeat(3,1fr);
- gap:10px;
-}
-.load-box{
- border:1px dashed #b7c6d7;
- border-radius:11px;
- padding:10px;
- background:#fbfdff;
-}
-.load-box label{
- display:block;
- font-weight:bold;
- font-size:.8rem;
- margin-bottom:7px;
-}
-.file-input{
- width:100%;
- font-size:.75rem;
-}
-.status{
- display:block;
- margin-top:6px;
- font-size:.72rem;
- color:var(--muted);
-}
-.btn{
- width:100%;
- min-height:46px;
- border:0;
- border-radius:10px;
- padding:9px 12px;
- font-weight:bold;
-}
-.btn-primary{background:var(--primary);color:white}
-.btn-success{background:var(--success);color:white}
-.btn-warning{background:var(--warning);color:#111}
-.btn-info{background:var(--info);color:white}
-.btn-danger{background:var(--danger);color:white}
-.btn-light{
- background:#edf2f7;
- color:#253447;
- border:1px solid #d5dee8;
-}
-.btn-generate{
- margin-top:12px;
- font-size:1rem;
-}
-.hidden{display:none!important}
 
-.mode-grid{
- display:grid;
- grid-template-columns:1fr 1fr;
- gap:10px;
+html,body{
+  margin:0;
+  padding:0;
+  background:#f3f6f9;
+  font-family:Arial,Helvetica,sans-serif;
+  color:#17202a;
 }
-.mode-grid .btn{
- min-height:65px;
- font-size:1rem;
+
+body{
+  min-height:100vh;
 }
+
+button,
+input{
+  font-family:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  width:100%;
+  max-width:1100px;
+  margin:auto;
+  padding:10px;
+}
+
+.header{
+  background:#1e3a5f;
+  color:white;
+  border-radius:14px;
+  padding:15px;
+  margin-bottom:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);
+}
+
+.header h1{
+  margin:0;
+  font-size:1.25rem;
+}
+
+.header p{
+  margin:4px 0 0;
+  opacity:.85;
+  font-size:.82rem;
+}
+
+.card{
+  background:white;
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+.section-title{
+  margin:0 0 12px;
+  font-size:1rem;
+  color:#1e3a5f;
+}
+
+.hidden{
+  display:none !important;
+}
+
+/* CARGA */
+
+.load-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+
+.load-box{
+  border:1px solid #d7dee7;
+  border-radius:12px;
+  padding:12px;
+  background:#fafbfc;
+}
+
+.load-box label{
+  display:block;
+  font-weight:bold;
+  font-size:.82rem;
+  margin-bottom:8px;
+}
+
+.file-input{
+  width:100%;
+  font-size:.76rem;
+}
+
+.status{
+  display:block;
+  margin-top:8px;
+  font-size:.76rem;
+  color:#68737d;
+}
+
+.status.ok{
+  color:#198754;
+  font-weight:bold;
+}
+
+.status.error{
+  color:#c0392b;
+  font-weight:bold;
+}
+
+.load-actions{
+  margin-top:12px;
+}
+
+/* BOTONES */
+
+.btn{
+  border:0;
+  border-radius:10px;
+  min-height:44px;
+  padding:10px 14px;
+  font-size:.82rem;
+  font-weight:bold;
+}
+
+.btn-primary{
+  background:#1e3a5f;
+  color:white;
+}
+
+.btn-primary:disabled{
+  opacity:.45;
+}
+
+.btn-green{
+  background:#198754;
+  color:white;
+}
+
+.btn-orange{
+  background:#f59e0b;
+  color:white;
+}
+
+.btn-red{
+  background:#dc3545;
+  color:white;
+}
+
+.btn-light{
+  background:#edf1f5;
+  color:#25313d;
+}
+
+.btn-blue{
+  background:#2563eb;
+  color:white;
+}
+
+.btn-full{
+  width:100%;
+}
+
+.top-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+/* RESUMEN */
 
 .summary{
- display:grid;
- grid-template-columns:repeat(4,1fr);
- gap:7px;
- margin-bottom:10px;
-}
-.summary-box{
- background:white;
- border:1px solid var(--border);
- border-radius:10px;
- padding:9px;
- text-align:center;
-}
-.summary-box .n{
- font-size:1.25rem;
- font-weight:900;
- color:var(--primary);
-}
-.summary-box .l{
- font-size:.68rem;
- color:var(--muted);
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:10px;
 }
 
-.zone-card{
- border:1px solid var(--border);
- border-radius:13px;
- margin-bottom:10px;
- overflow:hidden;
- background:white;
+.summary-card{
+  border-radius:12px;
+  padding:10px;
+  background:#f5f7fa;
+  border:1px solid #e0e5eb;
+  text-align:center;
 }
-.zone-head{
- background:#eaf0f7;
- padding:10px 12px;
- display:flex;
- justify-content:space-between;
- align-items:center;
+
+.summary-title{
+  font-size:.68rem;
+  color:#68737d;
+  font-weight:bold;
+  text-transform:uppercase;
 }
+
+.summary-values{
+  margin-top:4px;
+  font-size:1rem;
+  font-weight:bold;
+}
+
+.summary-values div{
+  margin:2px 0;
+}
+
+.ca{
+  color:#1e3a5f;
+}
+
+.un{
+  color:#198754;
+}
+
+/* LINEAS */
+
 .zone-title{
- font-weight:900;
- color:var(--primary);
-}
-.zone-total{
- font-size:.72rem;
- color:var(--muted);
-}
-.line{
- display:grid;
- grid-template-columns:1.05fr .7fr 1.5fr .55fr .55fr .45fr;
- gap:6px;
- align-items:center;
- padding:9px 10px;
- border-top:1px solid #edf1f5;
- font-size:.73rem;
-}
-.line:hover{
- background:#f8fafc;
-}
-.line.prepared{
- background:#effaf4;
- font-weight:bold;
-}
-.line.prepared .sku,
-.line.prepared .ubi{
- font-weight:900;
-}
-.line-head{
- font-size:.65rem;
- font-weight:bold;
- color:var(--muted);
- background:#f8fafc;
-}
-.line .desc{
- color:#475569;
-}
-.pm{
- text-align:center;
- font-weight:900;
- color:var(--primary);
-}
-.qty{
- text-align:center;
- font-weight:bold;
-}
-.prep{
- text-align:center;
-}
-.action{
- text-align:center;
-}
-.action button{
- min-height:34px;
- padding:5px 7px;
- font-size:.65rem;
+  margin:14px 0 7px;
+  padding:8px 10px;
+  background:#1e3a5f;
+  color:white;
+  border-radius:8px;
+  font-size:.82rem;
+  font-weight:bold;
 }
 
-.all-lines{
- margin-top:10px;
+.line-card{
+  border:1px solid #dfe5eb;
+  border-radius:11px;
+  background:white;
+  padding:10px;
+  margin-bottom:7px;
 }
 
-.search-box{
- margin-bottom:10px;
-}
-.search-box input{
- width:100%;
- min-height:44px;
- border:1px solid var(--border);
- border-radius:9px;
- padding:8px 10px;
+.line-card.prepared{
+  border-left:5px solid #198754;
+  background:#f4fbf7;
 }
 
-#scannerModal{
- position:fixed;
- inset:0;
- background:#0f1720;
- color:white;
- z-index:9999;
- display:none;
- overflow:auto;
-}
-.scanner-wrap{
- max-width:700px;
- margin:auto;
- padding:9px;
-}
-.scanner-top{
- position:sticky;
- top:0;
- z-index:10;
- background:#0f1720;
- padding-bottom:8px;
-}
-.scanner-head{
- display:flex;
- justify-content:space-between;
- align-items:center;
- gap:8px;
-}
-.scanner-title{
- font-size:1rem;
- font-weight:900;
-}
-.scanner-sub{
- font-size:.7rem;
- color:#aab8c7;
- margin-top:3px;
-}
-.scanner-summary{
- display:grid;
- grid-template-columns:repeat(3,1fr);
- gap:6px;
- margin-top:8px;
-}
-.scan-stat{
- background:#182536;
- border:1px solid #2c4056;
- border-radius:10px;
- padding:7px;
- text-align:center;
-}
-.scan-stat strong{
- display:block;
- font-size:1.1rem;
-}
-.scan-stat span{
- font-size:.62rem;
- color:#aab8c7;
+.line-card.partial{
+  border-left:5px solid #f59e0b;
+  background:#fffaf0;
 }
 
-.target{
- background:#172535;
- border:2px solid #2b79b9;
- border-radius:13px;
- padding:12px;
- text-align:center;
- margin-bottom:9px;
+.line-card.done{
+  opacity:.9;
 }
-.target-small{
- color:#aab8c7;
- font-size:.68rem;
- font-weight:bold;
+
+.line-main{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  align-items:center;
 }
-.target-sku{
- font-size:1.05rem;
- font-weight:900;
- margin-top:5px;
+
+.line-title{
+  font-size:.9rem;
+  font-weight:bold;
 }
-.target-desc{
- font-size:.75rem;
- color:#cbd5e1;
- margin-top:3px;
+
+.line-desc{
+  margin-top:3px;
+  font-size:.76rem;
+  color:#68737d;
 }
+
+.line-location{
+  font-size:.75rem;
+  margin-top:4px;
+  color:#46525e;
+}
+
+.line-qty{
+  text-align:right;
+  white-space:nowrap;
+}
+
+.line-qty .ordered{
+  font-size:1.1rem;
+  font-weight:bold;
+}
+
+.line-qty .prepared{
+  font-size:.72rem;
+  color:#198754;
+}
+
+.line-footer{
+  margin-top:7px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  font-size:.72rem;
+}
+
+.pm-tag{
+  display:inline-block;
+  background:#1e3a5f;
+  color:white;
+  border-radius:6px;
+  padding:4px 7px;
+  margin:2px;
+  font-weight:bold;
+}
+
+/* PREPARACION */
+
+.prep-header{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  align-items:center;
+}
+
+.sku-big{
+  font-size:1.35rem;
+  font-weight:bold;
+  color:#1e3a5f;
+}
+
+.desc-big{
+  font-size:.82rem;
+  color:#68737d;
+  margin-top:3px;
+}
+
+.target-box{
+  background:#eef4fa;
+  border-radius:10px;
+  padding:10px;
+  margin-top:10px;
+  border:1px solid #d7e2ed;
+}
+
+.target-label{
+  font-size:.68rem;
+  color:#68737d;
+  text-transform:uppercase;
+  font-weight:bold;
+}
+
 .target-qty{
- font-size:1.7rem;
- font-weight:900;
- margin-top:7px;
-}
-.target-qty small{
- font-size:.65rem;
- color:#aab8c7;
+  font-size:1.45rem;
+  font-weight:bold;
+  color:#1e3a5f;
 }
 
-.input-card{
- background:#17212b;
- border:1px solid #2c4056;
- border-radius:12px;
- padding:10px;
- margin-bottom:9px;
-}
-.input-label{
- display:block;
- font-size:.7rem;
- font-weight:bold;
- color:#aab8c7;
- margin-bottom:6px;
-}
-.input{
- width:100%;
- min-height:48px;
- border:0;
- border-radius:9px;
- padding:9px;
- text-align:center;
- font-size:1rem;
- margin-bottom:7px;
-}
-.two{
- display:grid;
- grid-template-columns:1fr 1fr;
- gap:7px;
+.scanner-box{
+  background:#111827;
+  border-radius:12px;
+  overflow:hidden;
+  margin-bottom:10px;
 }
 
-.camera{
- display:none;
- background:#000;
- border-radius:12px;
- overflow:hidden;
- margin-bottom:9px;
-}
-#cameraPreview{
- width:100%;
- min-height:230px;
- object-fit:cover;
- display:block;
-}
-.camera-buttons{
- display:grid;
- grid-template-columns:1fr 1fr;
- gap:6px;
- padding:7px;
+#reader{
+  width:100%;
+  min-height:150px;
 }
 
-.stock-card{
- background:white;
- color:#1f2937;
- border-radius:12px;
- margin-top:9px;
- overflow:hidden;
+.manual-box{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  margin-top:8px;
 }
-.stock-title{
- padding:10px;
- font-weight:900;
- color:var(--primary);
- border-bottom:1px solid #e8edf3;
+
+.manual-box input{
+  width:100%;
+  min-height:44px;
+  border:1px solid #cfd7df;
+  border-radius:9px;
+  padding:10px;
+  font-size:1rem;
 }
-.stock-head,
+
+.stock-table-wrap{
+  width:100%;
+  overflow-x:auto;
+  border:1px solid #dfe5eb;
+  border-radius:10px;
+}
+
+.stock-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.72rem;
+  min-width:520px;
+}
+
+.stock-table th{
+  background:#1e3a5f;
+  color:white;
+  padding:8px 6px;
+  text-align:left;
+}
+
+.stock-table td{
+  padding:8px 6px;
+  border-bottom:1px solid #e4e8ec;
+}
+
 .stock-row{
- display:grid;
- grid-template-columns:.9fr 1fr 1fr .65fr;
- gap:5px;
- padding:8px 9px;
- align-items:center;
- font-size:.7rem;
+  cursor:pointer;
 }
-.stock-head{
- background:#f1f5f9;
- color:#64748b;
- font-weight:bold;
- font-size:.62rem;
-}
-.stock-row{
- border-top:1px solid #edf1f5;
- cursor:pointer;
-}
-.stock-row:hover{
- background:#f8fafc;
-}
+
+.stock-row:hover,
 .stock-row.selected{
- background:#dbeafe;
- outline:2px solid #2563eb;
+  background:#eaf2fb;
 }
+
 .stock-row.suggested{
- font-weight:900;
- background:#fff7df;
+  font-weight:bold;
+  background:#fff6d8;
 }
+
 .stock-row.suggested.selected{
- background:#dbeafe;
-}
-.stock-qty{
- text-align:center;
- font-weight:900;
+  background:#ffe7a0;
 }
 
-.validation{
- display:none;
- padding:11px;
- border-radius:11px;
- text-align:center;
- margin-bottom:9px;
-}
-.validation.ok{
- display:block;
- background:#0e3320;
- border:2px solid #28b463;
-}
-.validation.err{
- display:block;
- background:#3a1216;
- border:2px solid #ef4444;
-}
-.validation-main{
- font-size:1rem;
- font-weight:900;
-}
-.validation-sub{
- font-size:.72rem;
- margin-top:3px;
- color:#cbd5e1;
+.stock-empty{
+  padding:15px;
+  text-align:center;
+  color:#68737d;
+  font-size:.8rem;
 }
 
-.exception{
- display:none;
- background:#3d151a;
- border:2px solid #ef4444;
- border-radius:12px;
- padding:11px;
- margin-bottom:9px;
-}
-.exception h3{
- margin:0 0 7px;
- font-size:.9rem;
-}
-.exception-text{
- font-size:.72rem;
- margin-bottom:8px;
-}
-.reclass-box{
- margin-top:10px;
- padding-top:10px;
- border-top:1px solid #63262d;
-}
-.partial-info{
- background:#17212b;
- border:1px solid #2c4056;
- border-radius:9px;
- padding:8px;
- text-align:center;
- font-weight:bold;
- margin-bottom:7px;
+.qty-panel{
+  margin-top:10px;
+  background:#f7f9fb;
+  border:1px solid #dfe5eb;
+  border-radius:10px;
+  padding:10px;
 }
 
-.progress{
- background:white;
- color:#1f2937;
- border-radius:12px;
- overflow:hidden;
- margin-top:9px;
-}
-.progress-title{
- padding:9px;
- font-weight:bold;
- border-bottom:1px solid #e8edf3;
-}
-.progress-row{
- display:grid;
- grid-template-columns:1.3fr .6fr .5fr;
- gap:5px;
- padding:8px 9px;
- border-bottom:1px solid #edf1f5;
- font-size:.68rem;
- cursor:pointer;
-}
-.progress-row.current{
- background:#fff7df;
-}
-.progress-row.done{
- background:#effaf4;
-}
-.progress-row .muted{
- color:#64748b;
+.qty-panel label{
+  font-size:.76rem;
+  font-weight:bold;
+  display:block;
+  margin-bottom:5px;
 }
 
-.bottom-buttons{
- display:grid;
- grid-template-columns:1fr 1fr;
- gap:7px;
- margin-top:9px;
+.qty-panel input{
+  width:100%;
+  min-height:48px;
+  border:2px solid #1e3a5f;
+  border-radius:9px;
+  padding:8px;
+  font-size:1.25rem;
+  text-align:center;
+  font-weight:bold;
 }
+
+.qty-info{
+  font-size:.75rem;
+  margin:6px 0;
+  color:#46525e;
+}
+
+.prep-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:9px;
+}
+
+.prep-actions .wide{
+  grid-column:1/-1;
+}
+
+/* MODALES */
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  z-index:10000;
+}
+
+.modal-box{
+  width:100%;
+  max-width:650px;
+  background:white;
+  border-radius:16px 16px 0 0;
+  padding:16px;
+  max-height:90vh;
+  overflow:auto;
+}
+
+.modal-title{
+  margin:0 0 10px;
+  color:#1e3a5f;
+  font-size:1rem;
+}
+
+.modal-buttons{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+
+/* TOAST */
 
 .toast{
- position:fixed;
- left:50%;
- bottom:20px;
- transform:translateX(-50%);
- background:#111827;
- color:white;
- padding:10px 14px;
- border-radius:9px;
- display:none;
- z-index:10020;
- font-size:.75rem;
- max-width:90%;
- text-align:center;
+  position:fixed;
+  left:50%;
+  bottom:20px;
+  transform:translateX(-50%);
+  z-index:11000;
+  background:#111827;
+  color:white;
+  border-radius:10px;
+  padding:11px 15px;
+  font-size:.78rem;
+  max-width:90%;
+  text-align:center;
+  display:none;
 }
 
-.voice{
- position:fixed;
- right:14px;
- bottom:14px;
- width:56px;
- height:56px;
- border-radius:50%;
- border:0;
- background:#ef4444;
- color:white;
- font-size:1.4rem;
- z-index:10010;
+.toast.show{
+  display:block;
 }
-.voice.listening{
- background:#198754;
- animation:pulse 1s infinite;
+
+/* PROGRESO */
+
+.progress{
+  height:7px;
+  background:#e5e7eb;
+  border-radius:20px;
+  overflow:hidden;
+  margin-top:7px;
 }
-@keyframes pulse{
- 0%{box-shadow:0 0 0 0 rgba(25,135,84,.7)}
- 70%{box-shadow:0 0 0 18px rgba(25,135,84,0)}
- 100%{box-shadow:0 0 0 0 rgba(25,135,84,0)}
+
+.progress-bar{
+  height:100%;
+  background:#198754;
+  width:0;
 }
+
+/* RESPONSIVE */
 
 @media(max-width:760px){
- .app{padding:7px}
- .load-grid{grid-template-columns:1fr}
- .mode-grid{grid-template-columns:1fr}
- .summary{grid-template-columns:repeat(2,1fr)}
- .line{
-  grid-template-columns:.8fr .65fr 1.25fr .45fr .55fr .4fr;
-  font-size:.65rem;
- }
- .line-head{font-size:.55rem}
- .action button{
-  font-size:.55rem;
-  padding:4px;
- }
- .stock-head,
- .stock-row{
-  grid-template-columns:.75fr .95fr .9fr .6fr;
-  font-size:.64rem;
- }
+
+  .app{
+    padding:7px;
+  }
+
+  .header{
+    padding:12px;
+  }
+
+  .header h1{
+    font-size:1.05rem;
+  }
+
+  .load-grid{
+    grid-template-columns:1fr;
+  }
+
+  .summary{
+    grid-template-columns:repeat(3,1fr);
+  }
+
+  .summary-card{
+    padding:8px 4px;
+  }
+
+  .summary-values{
+    font-size:.85rem;
+  }
+
+  .top-actions{
+    grid-template-columns:1fr;
+  }
+
+  .line-main{
+    grid-template-columns:1fr auto;
+  }
+
+  .prep-actions{
+    grid-template-columns:1fr;
+  }
+
+  .prep-actions .wide{
+    grid-column:auto;
+  }
+}
+
+@media(max-width:390px){
+
+  .summary{
+    gap:4px;
+  }
+
+  .summary-title{
+    font-size:.59rem;
+  }
+
+  .summary-values{
+    font-size:.75rem;
+  }
+
+  .line-title{
+    font-size:.82rem;
+  }
+
+  .line-desc{
+    font-size:.7rem;
+  }
 }
 </style>
 </head>
@@ -591,3265 +634,3264 @@ h2{
 
 <div class="app">
 
- <div class="header">
-  <h1>Picking PK - JDE</h1>
-  <p>Preparación de pallets de picking validada contra Stock JDE</p>
- </div>
-
- <div class="card">
-  <h2>1. CARGA DE ARCHIVOS</h2>
-
-  <div class="load-grid">
-
-   <div class="load-box">
-    <label>Stock JDE</label>
-    <input class="file-input" type="file" id="fileStock" accept=".xlsx,.xls">
-    <small class="status" id="statusStock">Pendiente...</small>
-   </div>
-
-   <div class="load-box">
-    <label>MST Producto</label>
-    <input class="file-input" type="file" id="fileMaestro" accept=".xlsx,.xls">
-    <small class="status" id="statusMaestro">Pendiente...</small>
-   </div>
-
-   <div class="load-box">
-    <label>Surtido JDE</label>
-    <input class="file-input" type="file" id="fileSurtido" accept=".xlsx,.xls,.html,.htm">
-    <small class="status" id="statusSurtido">Pendiente...</small>
-   </div>
-
+  <div class="header">
+    <h1>Picking PK - Pallet Mixto</h1>
+    <p>Preparación de picking validada contra stock JDE</p>
   </div>
 
-  <button class="btn btn-success btn-generate"
-          onclick="generarPicking()">
-   GENERAR PICKING
-  </button>
- </div>
+  <!-- =====================================================
+       PANTALLA DE CARGA
+  ====================================================== -->
 
- <div id="mainArea" class="hidden">
+  <section id="screenLoad">
 
-  <div class="card">
-   <h2>¿Qué tipo de picking vas a realizar?</h2>
+    <div class="card">
 
-   <div class="mode-grid">
-    <button class="btn btn-warning"
-            onclick="mostrarPickingSugerido()">
-     PICKING SUGERIDO
-    </button>
+      <h2 class="section-title">Carga de archivos</h2>
 
-    <button class="btn btn-info"
-            onclick="mostrarPickingLibre()">
-     PICKING LIBRE
-    </button>
-   </div>
-  </div>
+      <div class="load-grid">
 
-  <div id="suggestedView" class="hidden">
+        <div class="load-box">
+          <label>1. Stock JDE</label>
 
-   <div class="card">
+          <input
+            class="file-input"
+            type="file"
+            id="fileStock"
+            accept=".xlsx,.xls,.csv"
+          >
+
+          <small
+            id="statusStock"
+            class="status"
+          >
+            Pendiente de carga...
+          </small>
+        </div>
+
+        <div class="load-box">
+          <label>2. MST Producto</label>
+
+          <input
+            class="file-input"
+            type="file"
+            id="fileMaestro"
+            accept=".xlsx,.xls,.csv"
+          >
+
+          <small
+            id="statusMaestro"
+            class="status"
+          >
+            Pendiente de carga...
+          </small>
+        </div>
+
+        <div class="load-box">
+          <label>3. Surtido JDE</label>
+
+          <input
+            class="file-input"
+            type="file"
+            id="fileSurtido"
+            accept=".xlsx,.xls,.html,.htm,.csv"
+          >
+
+          <small
+            id="statusSurtido"
+            class="status"
+          >
+            Pendiente de carga...
+          </small>
+        </div>
+
+      </div>
+
+      <div class="load-actions">
+
+        <button
+          id="btnContinuar"
+          class="btn btn-primary btn-full"
+          disabled
+        >
+          CARGAR Y CONTINUAR
+        </button>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       PANTALLA PRINCIPAL
+  ====================================================== -->
+
+  <section id="screenMain" class="hidden">
+
+    <div class="card">
+
+      <div class="prep-header">
+
+        <div>
+          <h2 class="section-title" style="margin-bottom:3px">
+            Pallet mixto
+          </h2>
+
+          <div
+            id="pmActualMain"
+            style="font-size:.75rem;color:#68737d"
+          >
+            PM 1
+          </div>
+        </div>
+
+        <button
+          class="btn btn-orange"
+          onclick="cerrarPM()"
+        >
+          CERRAR PM
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- RESUMEN GENERAL -->
+
     <div class="summary">
-     <div class="summary-box">
-      <div class="n" id="sumZones">0</div>
-      <div class="l">Zonas</div>
-     </div>
-     <div class="summary-box">
-      <div class="n" id="sumLines">0</div>
-      <div class="l">Líneas</div>
-     </div>
-     <div class="summary-box">
-      <div class="n" id="sumPrepared">0</div>
-      <div class="l">Preparadas</div>
-     </div>
-     <div class="summary-box">
-      <div class="n" id="sumPending">0</div>
-      <div class="l">Pendientes</div>
-     </div>
+
+      <div class="summary-card">
+
+        <div class="summary-title">
+          A preparar
+        </div>
+
+        <div
+          id="summaryTotal"
+          class="summary-values"
+        >
+          -
+        </div>
+
+      </div>
+
+
+      <div class="summary-card">
+
+        <div class="summary-title">
+          Preparado
+        </div>
+
+        <div
+          id="summaryPrepared"
+          class="summary-values"
+        >
+          -
+        </div>
+
+      </div>
+
+
+      <div class="summary-card">
+
+        <div class="summary-title">
+          Pendiente
+        </div>
+
+        <div
+          id="summaryPending"
+          class="summary-values"
+        >
+          -
+        </div>
+
+      </div>
+
     </div>
 
-    <button class="btn btn-primary"
-            onclick="abrirPickingSugerido()">
-     PREPARAR PK
-    </button>
 
-    <button class="btn btn-light"
-            style="margin-top:7px"
-            onclick="mostrarTodasLasLineas()">
-     VER TODAS LAS LÍNEAS
-    </button>
-   </div>
+    <div class="card">
 
-   <div id="suggestedList"></div>
-   <div id="allLines" class="all-lines hidden"></div>
+      <div class="top-actions">
 
-  </div>
+        <button
+          class="btn btn-primary"
+          onclick="mostrarLineasTodas()"
+        >
+          VER TODAS LAS LÍNEAS
+        </button>
 
-  <div id="freeView" class="hidden">
+        <button
+          class="btn btn-green"
+          onclick="abrirPreparacion()"
+        >
+          PREPARAR PK
+        </button>
 
-   <div class="card">
-    <h2>PICKING LIBRE</h2>
+      </div>
 
-    <div class="search-box">
-     <input id="freeSearch"
-            placeholder="Buscar ubicación, SKU o descripción..."
-            oninput="renderFreeLines()">
     </div>
 
-    <button class="btn btn-info"
-            onclick="abrirPickingLibre()">
-     PREPARAR PK LIBRE
-    </button>
-   </div>
 
-   <div id="freeList"></div>
-
-  </div>
-
- </div>
-
-</div>
-
-
-<!-- =========================================================
-     MODAL DE PREPARACIÓN
-========================================================= -->
-
-<div id="scannerModal">
-
- <div class="scanner-wrap">
-
-  <div class="scanner-top">
-
-   <div class="scanner-head">
-    <div>
-     <div class="scanner-title" id="scannerTitle">
-      PREPARACIÓN
-     </div>
-     <div class="scanner-sub" id="scannerSub">
-      PM 1
-     </div>
+    <div
+      id="mainLines"
+      class="card"
+    >
     </div>
 
-    <button class="btn btn-danger"
-            style="width:auto"
-            onclick="cerrarPreparacion()">
-     CERRAR
-    </button>
-   </div>
+  </section>
 
-   <div class="scanner-summary">
 
-    <div class="scan-stat">
-     <strong id="scanPrepared">0</strong>
-     <span>Preparadas</span>
+  <!-- =====================================================
+       PANTALLA PREPARACION
+  ====================================================== -->
+
+  <section id="screenPrep" class="hidden">
+
+    <div class="card">
+
+      <div class="prep-header">
+
+        <div>
+
+          <div class="sku-big">
+            <span id="prepSku">
+              Escanear SKU
+            </span>
+          </div>
+
+          <div
+            id="prepDesc"
+            class="desc-big"
+          >
+            Escaneá la caja para comenzar
+          </div>
+
+        </div>
+
+        <button
+          class="btn btn-light"
+          onclick="volverPrincipal()"
+        >
+          VOLVER
+        </button>
+
+      </div>
+
+
+      <div
+        id="targetBox"
+        class="target-box hidden"
+      >
+
+        <div class="target-label">
+          Cantidad pendiente del SKU
+        </div>
+
+        <div
+          id="targetQty"
+          class="target-qty"
+        >
+          -
+        </div>
+
+        <div
+          id="targetDetail"
+          style="font-size:.72rem;color:#68737d"
+        >
+        </div>
+
+      </div>
+
     </div>
 
-    <div class="scan-stat">
-     <strong id="scanPending">0</strong>
-     <span>Pendientes</span>
-    </div>
 
-    <div class="scan-stat">
-     <strong id="scanPM">PM 1</strong>
-     <span>Pallet actual</span>
-    </div>
+    <!-- SCANNER -->
 
-   </div>
+    <div class="card">
 
-  </div>
+      <h2 class="section-title">
+        Escanear caja
+      </h2>
 
+      <div class="scanner-box">
 
-  <div class="target">
+        <div id="reader"></div>
 
-   <div class="target-small">
-    LÍNEA SELECCIONADA
-   </div>
+      </div>
 
-   <div class="target-sku" id="targetSku">
-    -
-   </div>
+      <div class="manual-box">
 
-   <div class="target-desc" id="targetDesc">
-    -
-   </div>
-
-   <div class="target-small"
-        style="margin-top:7px">
-    UBICACIÓN
-   </div>
-
-   <div class="target-sku"
-        style="font-size:.95rem"
-        id="targetUbi">
-    -
-   </div>
-
-   <div class="target-qty">
-    <span id="targetPending">0</span>
-    <small>CAJAS PENDIENTES</small>
-   </div>
-
-  </div>
-
-
-  <!-- CÁMARA -->
-
-  <div class="camera" id="cameraContainer">
-
-   <video id="cameraPreview"
-          autoplay
-          playsinline
-          muted></video>
-
-   <div class="camera-buttons">
-
-    <button class="btn btn-light"
-            onclick="detenerCamara()">
-     CERRAR CÁMARA
-    </button>
-
-    <button class="btn btn-primary"
-            onclick="iniciarCamara()">
-     REINTENTAR
-    </button>
-
-   </div>
-
-  </div>
-
-
-  <!-- SKU -->
-
-  <div class="input-card">
-
-   <label class="input-label">
-    1. ESCANEÁ LA CAJA
-   </label>
-
-   <input id="scanSku"
-          class="input"
+        <input
+          id="manualSku"
+          type="text"
           inputmode="numeric"
+          placeholder="Ingresar SKU / EAN"
           autocomplete="off"
-          placeholder="EAN / SKU"
-          oninput="limpiarCodigo()">
+        >
 
-   <button class="btn btn-primary"
-           onclick="toggleCamara()">
-    ESCANEAR CÓDIGO
-   </button>
+        <button
+          class="btn btn-primary"
+          onclick="buscarSKUManual()"
+        >
+          BUSCAR
+        </button>
 
-  </div>
+      </div>
 
-
-  <!-- LOTE FÍSICO -->
-
-  <div class="input-card">
-
-   <label class="input-label">
-    2. DATOS DE LA CAJA
-   </label>
-
-   <div class="two">
-
-    <div>
-     <label class="input-label">
-      Últimos 3 dígitos
-     </label>
-
-     <input id="scanJulian"
-            class="input"
-            inputmode="numeric"
-            placeholder="Ej. 163"
-            oninput="calcularLoteFisico()">
     </div>
 
-    <div>
-     <label class="input-label">
-      Hora
-     </label>
 
-     <input id="scanHora"
-            class="input"
-            inputmode="numeric"
-            placeholder="18:22"
-            oninput="calcularLoteFisico()">
+    <!-- STOCK -->
+
+    <div
+      id="stockSection"
+      class="card hidden"
+    >
+
+      <h2 class="section-title">
+        Stock disponible
+      </h2>
+
+      <div
+        id="stockInfo"
+        style="font-size:.74rem;color:#68737d;margin-bottom:8px"
+      >
+      </div>
+
+      <div class="stock-table-wrap">
+
+        <table class="stock-table">
+
+          <thead>
+            <tr>
+              <th>Ubicación</th>
+              <th>Lote</th>
+              <th>Lote caja</th>
+              <th>Cantidad</th>
+            </tr>
+          </thead>
+
+          <tbody id="stockBody">
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      <div
+        id="qtyPanel"
+        class="qty-panel hidden"
+      >
+
+        <label>
+          Cantidad a preparar
+        </label>
+
+        <input
+          id="qtyPrepare"
+          type="number"
+          min="0"
+          step="1"
+          inputmode="numeric"
+        >
+
+        <div
+          id="qtyInfo"
+          class="qty-info"
+        >
+        </div>
+
+        <div class="prep-actions">
+
+          <button
+            class="btn btn-green"
+            onclick="confirmarPreparacion()"
+          >
+            CONFIRMAR CANTIDAD
+          </button>
+
+          <button
+            class="btn btn-light"
+            onclick="cancelarSeleccionLote()"
+          >
+            CANCELAR
+          </button>
+
+          <button
+            class="btn btn-orange wide"
+            onclick="abrirReclasificacion()"
+          >
+            NO ENCUENTRO NINGÚN LOTE
+          </button>
+
+          <button
+            class="btn btn-red wide"
+            onclick="cerrarPreparacionActual()"
+          >
+            CERRAR PREPARACIÓN
+          </button>
+
+        </div>
+
+      </div>
+
     </div>
 
-   </div>
 
-   <div id="loteCalculado"
-        class="hidden"
-        style="text-align:center;
-               background:#243447;
-               border-radius:9px;
-               padding:8px">
-    <div style="font-size:.65rem;color:#aab8c7">
-     LOTE VALIDADO
+    <!-- LINEAS DEL SKU -->
+
+    <div
+      id="skuLinesSection"
+      class="card hidden"
+    >
+
+      <h2 class="section-title">
+        Líneas a preparar
+      </h2>
+
+      <div id="skuLines">
+      </div>
+
     </div>
 
-    <strong id="loteFisico"
-            style="font-size:1.35rem">
-    </strong>
-   </div>
-
-  </div>
-
-
-  <div id="validation"
-       class="validation">
-
-   <div class="validation-main"
-        id="validationMain">
-   </div>
-
-   <div class="validation-sub"
-        id="validationSub">
-   </div>
-
-  </div>
-
-
-  <!-- STOCK DE LOTES -->
-
-  <div id="stockCard"
-       class="stock-card hidden">
-
-   <div class="stock-title">
-    STOCK DISPONIBLE DEL SKU
-   </div>
-
-   <div class="stock-head">
-    <div>Ubicación</div>
-    <div>Lote</div>
-    <div>Lote caja</div>
-    <div>Cantidad</div>
-   </div>
-
-   <div id="stockRows"></div>
-
-  </div>
-
-
-  <!-- EXCEPCIÓN -->
-
-  <div id="exceptionPanel"
-       class="exception">
-
-   <h3>
-    ⚠ NO SE ENCONTRÓ EL LOTE EN STOCK
-   </h3>
-
-   <div id="exceptionText"
-        class="exception-text">
-   </div>
-
-   <div id="partialBox">
-
-    <div class="partial-info"
-         id="availableText">
-     0 CA disponibles
-    </div>
-
-    <label class="input-label">
-     Cantidad que querés preparar de este lote
-    </label>
-
-    <input id="partialQty"
-           class="input"
-           type="number"
-           min="1"
-           placeholder="Cantidad">
-
-    <button class="btn btn-warning"
-            onclick="aplicarCantidadParcial()">
-     AGREGAR CANTIDAD PARCIAL
-    </button>
-
-   </div>
-
-
-   <div class="reclass-box">
-
-    <label class="input-label">
-     Lote físico para reclasificar
-    </label>
-
-    <input id="reclassLot"
-           class="input"
-           placeholder="Últimos 3 dígitos">
-
-    <label class="input-label">
-     Cantidad
-    </label>
-
-    <input id="reclassQty"
-           class="input"
-           type="number"
-           min="1"
-           placeholder="Cantidad">
-
-    <button class="btn btn-danger"
-            onclick="generarReclasificacion()">
-     SOLICITAR RECLASIFICACIÓN PDF
-    </button>
-
-   </div>
-
-  </div>
-
-
-  <button id="btnAgregar"
-          class="btn btn-success"
-          onclick="confirmarPreparacion()">
-   CONFIRMAR PREPARACIÓN
-  </button>
-
-
-  <div class="bottom-buttons">
-
-   <button class="btn btn-light"
-           onclick="limpiarPreparacion()">
-    LIMPIAR
-   </button>
-
-   <button class="btn btn-warning"
-           onclick="cerrarPM()">
-    CERRAR PM
-   </button>
-
-  </div>
-
-
-  <div class="progress">
-
-   <div class="progress-title">
-    Líneas del picking
-   </div>
-
-   <div id="progressRows"></div>
-
-  </div>
-
- </div>
-
- <button class="voice"
-         id="voiceButton"
-         onclick="activarMicrofono()">
-  🎤
- </button>
+  </section>
 
 </div>
 
 
-<div id="toast"
-     class="toast">
+<!-- =====================================================
+     MODAL RECLASIFICACION
+====================================================== -->
+
+<div
+  id="modalReclas"
+  class="modal hidden"
+>
+
+  <div class="modal-box">
+
+    <h2 class="modal-title">
+      Solicitud de reclasificación
+    </h2>
+
+    <div
+      id="reclasInfo"
+      style="font-size:.78rem;color:#46525e"
+    >
+    </div>
+
+    <div style="margin-top:10px">
+
+      <label style="font-size:.76rem;font-weight:bold">
+        Lote físico / Julian
+      </label>
+
+      <input
+        id="reclasLote"
+        type="text"
+        placeholder="Ingresar últimos 3 dígitos"
+        style="
+          width:100%;
+          min-height:45px;
+          margin-top:5px;
+          padding:9px;
+          border:1px solid #ccd5de;
+          border-radius:9px;
+        "
+      >
+
+    </div>
+
+    <div style="margin-top:10px">
+
+      <label style="font-size:.76rem;font-weight:bold">
+        Cantidad
+      </label>
+
+      <input
+        id="reclasCantidad"
+        type="number"
+        min="1"
+        step="1"
+        style="
+          width:100%;
+          min-height:45px;
+          margin-top:5px;
+          padding:9px;
+          border:1px solid #ccd5de;
+          border-radius:9px;
+        "
+      >
+
+    </div>
+
+    <div class="modal-buttons">
+
+      <button
+        class="btn btn-green"
+        onclick="generarReclasificacion()"
+      >
+        GENERAR PDF
+      </button>
+
+      <button
+        class="btn btn-light"
+        onclick="cerrarModalReclas()"
+      >
+        CANCELAR
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<div
+  id="toast"
+  class="toast"
+>
 </div>
 
 
 <script>
-/* =========================================================
-   VARIABLES
-========================================================= */
+ /* ============================================================
+   VARIABLES GENERALES
+============================================================ */
 
 let stockData = [];
 let maestroData = {};
-let eanMapData = {};
-let surtidoData = [];
+let surtidoLines = [];
 
-let itemsTotales = [];
+let surtidoTotals = {
+  CA: 0,
+  UN: 0
+};
 
-let modoPreparacion = "sugerido";
+let surtidoUM = {};
 
-let currentPM = 1;
-let currentItem = null;
+let eanMap = {};
+
+let currentSKU = "";
+let currentDescription = "";
 let selectedStock = null;
 
-let scannerReader = null;
-let scannerControls = null;
+let pmActual = 1;
 
-const SpeechRecognition =
- window.SpeechRecognition ||
- window.webkitSpeechRecognition;
+let mostrarTodas = false;
 
-let recognition =
- SpeechRecognition ? new SpeechRecognition() : null;
+let scanner = null;
+let scannerRunning = false;
 
 
-/* =========================================================
+/* ============================================================
    UTILIDADES
-========================================================= */
+============================================================ */
 
 function esc(v){
- return String(v ?? "")
-  .replaceAll("&","&amp;")
-  .replaceAll("<","&lt;")
-  .replaceAll(">","&gt;")
-  .replaceAll('"',"&quot;")
-  .replaceAll("'","&#039;");
-}
-
-function num(v){
- if(v===null || v===undefined || v==="") return 0;
-
- let s=String(v)
-  .replace(/\s/g,"")
-  .replace(/\./g,"")
-  .replace(",",".");
- 
- let n=parseFloat(s);
-
- return isNaN(n) ? 0 : n;
-}
-
-function toast(msg){
- const el=document.getElementById("toast");
- el.textContent=msg;
- el.style.display="block";
-
- clearTimeout(window.toastTimer);
-
- window.toastTimer=setTimeout(()=>{
-  el.style.display="none";
- },2500);
-}
-
-function normalizarUbicacion(ubi){
- return String(ubi || "")
-  .toUpperCase()
-  .replace(/\./g,"")
-  .replace(/\s/g,"");
-}
-
-function zonaUbicacion(ubi){
- return normalizarUbicacion(ubi).slice(0,4);
-}
-
-function normalizarHora(valor){
- let h=String(valor || "")
-  .trim()
-  .replace(".",":");
-
- if(/^\d{4}$/.test(h)){
-  h=h.slice(0,2)+":"+h.slice(2);
- }
-
- let m=h.match(/^(\d{1,2}):(\d{1,2})$/);
-
- if(!m) return "";
-
- let hh=parseInt(m[1],10);
- let mm=parseInt(m[2],10);
-
- if(hh<0 || hh>23 || mm<0 || mm>59){
-  return "";
- }
-
- return String(hh).padStart(2,"0")+":"+
-        String(mm).padStart(2,"0");
-}
-
-function obtenerTurno(hora){
- if(!hora) return "";
-
- let partes=hora.split(":");
-
- let minutos=
-  parseInt(partes[0],10)*60+
-  parseInt(partes[1],10);
-
- if(minutos<480) return "A";
- if(minutos<960) return "B";
-
- return "C";
-}
-
-function extraerUltimos3(valor){
- let dig=String(valor || "")
-  .replace(/\D/g,"");
-
- if(dig.length<3) return "";
-
- return dig.slice(-3);
-}
-
-function loteCajaDesdeSistema(lote){
- let txt=String(lote || "")
-  .toUpperCase()
-  .trim();
-
- let dig=txt.replace(/\D/g,"");
-
- if(dig.length>=3){
-  return dig.slice(-3);
- }
-
- return txt.slice(-3);
-}
-
-function mostrarValidacion(ok,titulo,detalle){
- const box=document.getElementById("validation");
-
- box.className="validation "+(ok?"ok":"err");
-
- document.getElementById("validationMain").textContent=titulo;
- document.getElementById("validationSub").textContent=detalle || "";
-}
-
-function limpiarValidacion(){
- const box=document.getElementById("validation");
- box.className="validation";
- document.getElementById("validationMain").textContent="";
- document.getElementById("validationSub").textContent="";
+  return String(v ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 }
 
 
-/* =========================================================
-   CARGA ARCHIVOS
-========================================================= */
-
-document.getElementById("fileStock")
-.addEventListener("change",async e=>{
-
- const file=e.target.files[0];
- if(!file)return;
-
- try{
-
-  const wb=await leerWorkbook(file);
-
-  const nombre=
-   wb.SheetNames.find(n=>
-    n.toLowerCase().includes("vstock")
-   ) ||
-   wb.SheetNames[0];
-
-  const matriz=
-   XLSX.utils.sheet_to_json(
-    wb.Sheets[nombre],
-    {header:1}
-   );
-
-  stockData=procesarStockExacto(matriz);
-
-  document.getElementById("statusStock").textContent=
-   `OK - ${stockData.length} registros`;
-
-  document.getElementById("statusStock").style.color=
-   "var(--success)";
-
- }catch(err){
-
-  alert("Error leyendo Stock JDE:\n"+err.message);
-
- }
-
-});
-
-
-document.getElementById("fileMaestro")
-.addEventListener("change",async e=>{
-
- const file=e.target.files[0];
- if(!file)return;
-
- try{
-
-  const wb=await leerWorkbook(file);
-
-  maestroData={};
-  eanMapData={};
-
-  /* -----------------------------------------
-     MST PRODUCTO
-  ----------------------------------------- */
-
-  const nombreMST=
-   wb.SheetNames.find(n=>
-    n.toLowerCase().includes("mst producto")
-   ) ||
-   wb.SheetNames[0];
-
-  const matriz=
-   XLSX.utils.sheet_to_json(
-    wb.Sheets[nombreMST],
-    {header:1}
-   );
-
-  matriz.slice(1).forEach(row=>{
-
-   const sku=String(row[1] || "").trim();
-
-   if(!sku)return;
-
-   const descripcion=
-    String(row[2] || row[3] || "").trim();
-
-   const ean=
-    String(row[9] || "").trim();
-
-   maestroData[sku]={
-    descripcion:descripcion,
-    capacidad:
-     (parseInt(row[5],10)||21) *
-     (parseInt(row[6],10)||4)
-   };
-
-   if(ean){
-    eanMapData[ean]=sku;
-   }
-
-  });
-
-
-  document.getElementById("statusMaestro").textContent=
-   `OK - ${Object.keys(maestroData).length} SKUs`;
-
-  document.getElementById("statusMaestro").style.color=
-   "var(--success)";
-
- }catch(err){
-
-  alert("Error leyendo MST Producto:\n"+err.message);
-
- }
-
-});
-
-
-document.getElementById("fileSurtido")
-.addEventListener("change",async e=>{
-
- const file=e.target.files[0];
- if(!file)return;
-
- try{
-
-  surtidoData=await leerExcelComoMatriz(file);
-
-  document.getElementById("statusSurtido").textContent=
-   `OK - ${surtidoData.length} filas`;
-
-  document.getElementById("statusSurtido").style.color=
-   "var(--success)";
-
- }catch(err){
-
-  alert("Error leyendo Surtido JDE:\n"+err.message);
-
- }
-
-});
-
-
-function leerWorkbook(file){
-
- return new Promise((resolve,reject)=>{
-
-  const reader=new FileReader();
-
-  reader.onload=e=>{
-
-   try{
-
-    const wb=XLSX.read(
-     new Uint8Array(e.target.result),
-     {type:"array"}
-    );
-
-    resolve(wb);
-
-   }catch(err){
-    reject(err);
-   }
-
-  };
-
-  reader.onerror=reject;
-
-  reader.readAsArrayBuffer(file);
-
- });
-
+function normalizar(v){
+  return String(v ?? "")
+    .trim()
+    .toUpperCase();
 }
 
 
-async function leerExcelComoMatriz(file){
-
- const wb=await leerWorkbook(file);
-
- const sheetName=
-  wb.SheetNames.find(n=>
-   n.toLowerCase().includes("vstock")
-  ) ||
-  wb.SheetNames[0];
-
- return XLSX.utils.sheet_to_json(
-  wb.Sheets[sheetName],
-  {header:1}
- );
+function normalizarSKU(v){
+  return String(v ?? "")
+    .trim()
+    .replace(/^0+/,"") || "0";
 }
 
 
-/* =========================================================
-   STOCK JDE
-   FORMATO EXACTO INFORMADO POR EL USUARIO
+function numero(v){
+  if(typeof v === "number") return v;
 
-   A = MCU
-   B = Ubicación
-   C = Lote
-   D = LotStatus
-   E = UM1
-   F = CantEnMano
-   L = articulo
-   M = articulodescripcion
-   U = Paletizado
-========================================================= */
+  let s = String(v ?? "")
+    .trim()
+    .replace(/\s/g,"");
 
-function procesarStockExacto(data){
+  if(!s) return 0;
 
- const resultado=[];
-
- for(let i=0;i<data.length;i++){
-
-  const r=data[i];
-
-  if(!r || r.length<13)continue;
-
-  const sku=String(r[11] || "").trim();
-
-  if(!sku)continue;
-
-  if(sku.toUpperCase()==="ARTICULO")continue;
-
-  const ubicacion=
-   String(r[1] || "")
-   .trim()
-   .toUpperCase();
-
-  const lote=
-   String(r[2] || "")
-   .trim()
-   .toUpperCase();
-
-  const cantidad=num(r[5]);
-
-  const descripcion=
-   String(r[12] || "").trim();
-
-  const paletizado=num(r[20]);
-
-  if(cantidad<=0)continue;
-
-  resultado.push({
-
-   mcu:String(r[0] || "").trim(),
-
-   ubi:ubicacion,
-
-   lote:lote,
-
-   estado:String(r[3] || "").trim(),
-
-   um:String(r[4] || "").trim(),
-
-   qty:cantidad,
-
-   sku:sku,
-
-   desc:descripcion,
-
-   paletizado:paletizado,
-
-   observado:
-    /OBS|OBSERVAD/i.test(
-     String(r[3] || "")
-    )
-
-  });
-
- }
-
- return resultado;
-}
-
-
-/* =========================================================
-   GENERAR PICKING
-   SE MANTIENE LA LÓGICA ESPECIAL DEL SURTIDO JDE ORIGINAL
-========================================================= */
-
-function generarPicking(){
-
- if(!stockData.length){
-  alert("Falta cargar el Stock JDE.");
-  return;
- }
-
- if(!Object.keys(maestroData).length){
-  alert("Falta cargar el MST Producto.");
-  return;
- }
-
- if(!surtidoData.length){
-  alert("Falta cargar el Surtido JDE.");
-  return;
- }
-
- const items=[];
-
- let enZonaMixtos=false;
-
- let expectedTotal=0;
- let cajasExtraidas=0;
-
-
- for(let i=0;i<surtidoData.length;i++){
-
-  const row=surtidoData[i];
-
-  if(!row || !row.length)continue;
-
-  const rowStr=
-   row.join(" ").toUpperCase();
-
-
-  /* -----------------------------------------
-     MISMA LÓGICA DEL HTML ORIGINAL:
-     detectar AREA SURTIDO + PALLET MIXTO
-  ----------------------------------------- */
-
-  if(
-   rowStr.includes("AREA SURTIDO") &&
-   rowStr.includes("PALLET MIXTO")
-  ){
-
-   enZonaMixtos=true;
-   continue;
-
+  if(s.includes(",") && s.includes(".")){
+    if(s.lastIndexOf(",") > s.lastIndexOf(".")){
+      s = s.replace(/\./g,"").replace(",",".");
+    }else{
+      s = s.replace(/,/g,"");
+    }
+  }else if(s.includes(",")){
+    s = s.replace(",",".");
   }
 
+  const n = parseFloat(s);
 
-  if(
-   rowStr.includes("AREA SURTIDO") &&
-   !rowStr.includes("PALLET MIXTO")
-  ){
+  return Number.isFinite(n) ? n : 0;
+}
 
-   enZonaMixtos=false;
 
+function formatoNumero(v){
+  const n = Number(v) || 0;
+
+  if(Number.isInteger(n)){
+    return n.toLocaleString("es-AR");
   }
 
+  return n.toLocaleString("es-AR",{
+    maximumFractionDigits:2
+  });
+}
 
-  /* -----------------------------------------
-     TOTAL DEL REPORTE
-  ----------------------------------------- */
 
-  if(
-   rowStr.includes(
-    "CANTIDAD POR UNIDAD DE MEDIDA"
-   )
-  ){
+function mostrarToast(msg,ms=2800){
+  const t = document.getElementById("toast");
 
-   const bloque=[
-    ...row,
-    ...(surtidoData[i+1] || []),
-    ...(surtidoData[i+2] || [])
-   ];
+  t.textContent = msg;
+  t.classList.add("show");
 
-   bloque.forEach(cell=>{
+  clearTimeout(window.toastTimer);
 
-    const n=num(cell);
+  window.toastTimer = setTimeout(()=>{
+    t.classList.remove("show");
+  },ms);
+}
 
-    if(
-     n>0 &&
-     n>expectedTotal
-    ){
-     expectedTotal=n;
+
+/* ============================================================
+   ESTADO DE ARCHIVOS
+============================================================ */
+
+function estado(id,text,tipo=""){
+  const el = document.getElementById(id);
+
+  if(!el) return;
+
+  el.textContent = text;
+  el.className = "status";
+
+  if(tipo){
+    el.classList.add(tipo);
+  }
+}
+
+
+function todosCargados(){
+  return (
+    stockData.length > 0 &&
+    surtidoLines.length > 0 &&
+    Object.keys(maestroData).length >= 0 &&
+    Object.keys(surtidoUM).length > 0
+  );
+}
+
+
+function actualizarBotonContinuar(){
+
+  const btn = document.getElementById("btnContinuar");
+
+  /*
+    MST puede existir incluso sin registros de capacidad.
+    Lo obligatorio para continuar es:
+    STOCK + SURTIDO + TOTALES DEL SURTIDO.
+  */
+
+  const ok =
+    stockData.length > 0 &&
+    surtidoLines.length > 0 &&
+    Object.keys(surtidoUM).length > 0;
+
+  btn.disabled = !ok;
+}
+
+
+/* ============================================================
+   LECTURA DE ARCHIVOS
+============================================================ */
+
+async function leerWorkbook(file){
+
+  const buffer = await file.arrayBuffer();
+
+  try{
+
+    const wb = XLSX.read(buffer,{
+      type:"array",
+      cellDates:false,
+      raw:true
+    });
+
+    if(wb && wb.SheetNames && wb.SheetNames.length){
+      return wb;
     }
 
-   });
-
+  }catch(e){
+    console.log("No se pudo leer como XLSX:",e);
   }
 
+  throw new Error(
+    "No se pudo leer el archivo como Excel."
+  );
+}
 
-  if(!enZonaMixtos)continue;
 
+async function leerArchivoComoMatriz(file){
 
-  /* -----------------------------------------
-     ESTRUCTURA DEL Surtido JDE ORIGINAL
-  ----------------------------------------- */
+  const nombre = String(file.name || "").toLowerCase();
 
-  const ubi=
-   String(row[0] || "").trim();
+  /*
+    HTML / HTM / XLS generado desde reporte HTML
+  */
 
   if(
-   !ubi.includes(".") ||
-   ubi.length<=6 ||
-   ubi.includes(" ")
+    nombre.endsWith(".html") ||
+    nombre.endsWith(".htm")
   ){
-   continue;
+
+    const texto = await file.text();
+
+    const parser = new DOMParser();
+
+    const doc = parser.parseFromString(
+      texto,
+      "text/html"
+    );
+
+    const tablas = [...doc.querySelectorAll("table")];
+
+    if(!tablas.length){
+      throw new Error(
+        "No se encontró ninguna tabla en el Surtido."
+      );
+    }
+
+    let mejor = null;
+
+    for(const tabla of tablas){
+
+      const filas = [...tabla.querySelectorAll("tr")];
+
+      const matriz = filas.map(tr =>
+        [...tr.querySelectorAll("th,td")]
+          .map(td => td.innerText.trim())
+      );
+
+      const textoTabla = matriz
+        .flat()
+        .join(" ")
+        .toUpperCase();
+
+      if(
+        textoTabla.includes("UBICACIÓN") &&
+        textoTabla.includes("ARTÍCULO") &&
+        textoTabla.includes("CANTIDAD")
+      ){
+        mejor = matriz;
+        break;
+      }
+
+      if(!mejor && matriz.length){
+        mejor = matriz;
+      }
+    }
+
+    if(!mejor){
+      throw new Error(
+        "No se pudo extraer la tabla del Surtido."
+      );
+    }
+
+    return mejor;
   }
 
 
-  const sku=
-   String(row[1] || "").trim();
+  /*
+    CSV
+  */
 
-  const desc=
-   String(
-    row[4] ||
-    row[3] ||
-    ""
-   ).trim();
+  if(nombre.endsWith(".csv")){
+
+    const texto = await file.text();
+
+    const lineas = texto.split(/\r?\n/);
+
+    return lineas.map(linea => {
+
+      if(linea.includes(";")){
+        return linea.split(";").map(x=>x.trim());
+      }
+
+      return linea.split(",").map(x=>x.trim());
+
+    });
+  }
 
 
-  let qty=0;
+  /*
+    Excel
+  */
+
+  const wb = await leerWorkbook(file);
+
+  let sheetName =
+    wb.SheetNames.find(n =>
+      normalizar(n).includes("VSTOCK")
+    );
+
+  if(!sheetName){
+    sheetName = wb.SheetNames[0];
+  }
+
+  return XLSX.utils.sheet_to_json(
+    wb.Sheets[sheetName],
+    {
+      header:1,
+      raw:true,
+      defval:""
+    }
+  );
+}
 
 
-  /* Buscar cantidad antes de CA,
-     igual que el código original */
+/* ============================================================
+   STOCK JDE
+============================================================ */
 
-  for(
-   let c=row.length-1;
-   c>=2;
-   c--
+function procesarStock(data){
+
+  const res = [];
+
+  /*
+    FORMATO CONFIRMADO DEL STOCK:
+
+    A MCU
+    B Ubicación
+    C Lote
+    D LotStatus
+    E UM1
+    F CantEnMano
+    ...
+    L articulo
+    M articulodescripcion
+    ...
+    U Paletizado
+  */
+
+  for(let i=0;i<data.length;i++){
+
+    const r = data[i];
+
+    if(!Array.isArray(r)) continue;
+
+    const sku = String(r[11] ?? "").trim();
+
+    if(!sku) continue;
+
+    if(
+      normalizar(sku) === "ARTICULO" ||
+      normalizar(sku) === "SKU"
+    ){
+      continue;
+    }
+
+    const ubi = String(r[1] ?? "")
+      .trim()
+      .toUpperCase();
+
+    const lote = String(r[2] ?? "")
+      .trim()
+      .toUpperCase();
+
+    const qty = numero(r[5]);
+
+    const desc = String(r[12] ?? "")
+      .trim();
+
+    if(qty <= 0) continue;
+
+    res.push({
+
+      sku:normalizarSKU(sku),
+
+      skuOriginal:sku,
+
+      ubi:ubi || "S/U",
+
+      lote:lote || "SIN LOTE",
+
+      qty:qty,
+
+      qtyOriginal:qty,
+
+      desc:desc,
+
+      um:String(r[4] ?? "")
+        .trim()
+        .toUpperCase(),
+
+      paletizado:numero(r[20]),
+
+      observado:r.some(c =>
+        /OBSERV|OBS\b/i.test(String(c ?? ""))
+      )
+
+    });
+  }
+
+  return res;
+}
+
+
+/* ============================================================
+   MST PRODUCTO
+============================================================ */
+
+function procesarMaestro(data){
+
+  const maestro = {};
+
+  /*
+    Formato histórico:
+
+    B = SKU
+    F = factor
+    G = factor
+
+    Se conserva esta lectura únicamente para
+    información del producto.
+
+    NO se utiliza para convertir CA a UN.
+  */
+
+  for(let i=1;i<data.length;i++){
+
+    const r = data[i];
+
+    if(!Array.isArray(r)) continue;
+
+    const sku = normalizarSKU(r[1]);
+
+    if(!sku || sku === "0") continue;
+
+    const capacidad =
+      Math.max(
+        1,
+        Math.floor(
+          numero(r[5]) * numero(r[6])
+        ) || 1
+      );
+
+    maestro[sku] = {
+      sku:sku,
+      capacidad:capacidad,
+      descripcion:String(r[2] ?? "").trim()
+    };
+  }
+
+  return maestro;
+}
+
+
+/* ============================================================
+   MST PRODUCTO / EAN
+============================================================ */
+
+function procesarEAN(data){
+
+  const mapa = {};
+
+  for(let i=1;i<data.length;i++){
+
+    const r = data[i];
+
+    if(!Array.isArray(r)) continue;
+
+    /*
+      Según el formato utilizado anteriormente:
+
+      B = SKU
+      J = EAN
+    */
+
+    const sku = normalizarSKU(r[1]);
+
+    const ean = String(r[9] ?? "")
+      .trim();
+
+    if(!sku || sku === "0") continue;
+
+    if(ean){
+      mapa[normalizarSKU(ean)] = sku;
+    }
+  }
+
+  return mapa;
+}
+
+
+/* ============================================================
+   PARSER DEL SURTIDO
+============================================================ */
+
+function procesarSurtido(data){
+
+  const lineas = [];
+
+  const totales = {};
+
+  let dentroLineas = false;
+
+  let headerEncontrado = false;
+
+  let lineId = 1;
+
+  for(let i=0;i<data.length;i++){
+
+    const r = data[i];
+
+    if(!Array.isArray(r)) continue;
+
+    const texto = r
+      .map(x=>String(x ?? "").trim())
+      .join(" ")
+      .toUpperCase();
+
+    /*
+      DETECTAR BLOQUE FINAL
+      "Cantidad por unidad de medida"
+    */
+
+    if(
+      texto.includes("CANTIDAD") &&
+      texto.includes("POR UNIDAD") &&
+      texto.includes("MEDIDA")
+    ){
+
+      /*
+        Las filas siguientes contienen:
+
+        CA | 1938
+        UN | xxx
+
+        Se procesan hasta encontrar un bloque vacío
+        o una nueva sección.
+      */
+
+      for(let j=i+1;j<Math.min(i+15,data.length);j++){
+
+        const rr = data[j] || [];
+
+        const um = normalizar(rr[0]);
+
+        const cant = numero(rr[1]);
+
+        if(
+          (um === "CA" || um === "UN") &&
+          cant > 0
+        ){
+          totales[um] =
+            (totales[um] || 0) + cant;
+        }
+      }
+
+      continue;
+    }
+
+
+    /*
+      DETECTAR CABECERA
+    */
+
+    const tieneUbic =
+      texto.includes("UBICACIÓN") ||
+      texto.includes("UBICACION");
+
+    const tieneArticulo =
+      texto.includes("ARTÍCULO") ||
+      texto.includes("ARTICULO");
+
+    const tieneCantidad =
+      texto.includes("CANTIDAD");
+
+    if(
+      tieneUbic &&
+      tieneArticulo &&
+      tieneCantidad
+    ){
+
+      headerEncontrado = true;
+      dentroLineas = true;
+
+      continue;
+    }
+
+    if(!dentroLineas) continue;
+
+
+    /*
+      FIN DE LAS LÍNEAS
+    */
+
+    if(
+      texto.startsWith("CLIENTES:") ||
+      texto.includes("CANTIDAD POR UNIDAD DE MEDIDA")
+    ){
+      dentroLineas = false;
+      continue;
+    }
+
+
+    /*
+      EVITAR FILAS VACÍAS
+    */
+
+    const ubic = String(r[0] ?? "")
+      .trim();
+
+    const skuRaw = String(r[1] ?? "")
+      .trim();
+
+    const lote = String(r[2] ?? "")
+      .trim();
+
+    const desc = String(r[4] ?? "")
+      .trim();
+
+    const um = normalizar(r[9]);
+
+    const qty = numero(r[8]);
+
+    if(!ubic || !skuRaw || qty <= 0){
+      continue;
+    }
+
+    /*
+      Solamente CA / UN
+    */
+
+    if(
+      um !== "CA" &&
+      um !== "UN"
+    ){
+      continue;
+    }
+
+    const sku = normalizarSKU(skuRaw);
+
+    const zona =
+      ubic.substring(0,4).toUpperCase();
+
+    lineas.push({
+
+      lineId:lineId++,
+
+      ubi:ubic.toUpperCase(),
+
+      zona:zona,
+
+      sku:sku,
+
+      desc:desc,
+
+      lote:lote.toUpperCase(),
+
+      qty:qty,
+
+      um:um,
+
+      orden:String(r[6] ?? "").trim(),
+
+      linea:String(r[7] ?? "").trim(),
+
+      preparado:0,
+
+      pms:[]
+
+    });
+  }
+
+
+  /*
+    Si por algún motivo no encontró el bloque de totales,
+    calcular solamente como respaldo las UM existentes
+    en las líneas.
+
+    Pero si el bloque final existe, tiene prioridad.
+  */
+
+  if(
+    Object.keys(totales).length === 0
   ){
 
-   const valor=
-    String(row[c] || "")
+    for(const l of lineas){
+
+      totales[l.um] =
+        (totales[l.um] || 0) + l.qty;
+    }
+  }
+
+
+  return {
+    lineas:lineas,
+    totales:totales
+  };
+}
+
+
+/* ============================================================
+   LOTE CAJA / JULIAN
+============================================================ */
+
+function loteCaja(lote){
+
+  const s = String(lote || "")
     .trim()
     .toUpperCase();
 
-   if(valor==="CA"){
+  if(!s) return "-";
 
-    qty=num(row[c-1]);
-    break;
+  /*
+    Busca la última secuencia de 3 números.
 
-   }
+    Ejemplo:
 
-   if(
-    valor.includes(" CA") ||
-    valor.includes("CA")
-   ){
+    B2632A_218C
+              ^^^
+              218
+  */
 
-    qty=num(
-     valor
-      .replace("CA","")
-      .trim()
-    );
+  const matches =
+    s.match(/\d{3}/g);
 
-    break;
-
-   }
-
+  if(matches && matches.length){
+    return matches[matches.length-1];
   }
 
+  /*
+    Si no encuentra una secuencia de 3,
+    toma los últimos 3 números disponibles.
+  */
 
-  /* Fallback del original:
-     buscar cualquier número positivo */
+  const nums = s.replace(/\D/g,"");
 
-  if(qty<=0){
+  if(nums.length >= 3){
+    return nums.slice(-3);
+  }
 
-   for(
-    let c=row.length-1;
-    c>=2;
-    c--
-   ){
+  return "-";
+}
 
-    const n=num(row[c]);
 
-    if(
-     n>0 &&
-     n<10000
-    ){
+/* ============================================================
+   PENDIENTES
+============================================================ */
 
-     qty=n;
-     break;
+function pendienteLinea(line){
 
+  return Math.max(
+    0,
+    Number(line.qty || 0) -
+    Number(line.preparado || 0)
+  );
+}
+
+
+function lineasPendientesSKU(sku){
+
+  return surtidoLines.filter(l =>
+    l.sku === normalizarSKU(sku) &&
+    pendienteLinea(l) > 0
+  );
+}
+
+
+function pendienteSKU(sku){
+
+  return lineasPendientesSKU(sku)
+    .reduce(
+      (a,l)=>a+pendienteLinea(l),
+      0
+    );
+}
+
+
+/* ============================================================
+   PREPARACIÓN PM
+============================================================ */
+
+function registrarPM(line,qty){
+
+  if(!line.pms){
+    line.pms = [];
+  }
+
+  const encontrado =
+    line.pms.find(x => x.pm === pmActual);
+
+  if(encontrado){
+    encontrado.qty += qty;
+  }else{
+    line.pms.push({
+      pm:pmActual,
+      qty:qty
+    });
+  }
+}
+
+
+/* ============================================================
+   RESUMEN DEL SURTIDO
+============================================================ */
+
+function resumenUM(){
+
+  const total = {};
+  const prep = {};
+
+  for(const um of Object.keys(surtidoUM)){
+
+    total[um] =
+      Number(surtidoUM[um] || 0);
+
+    prep[um] = 0;
+  }
+
+  /*
+    PREPARADO se obtiene de las líneas,
+    respetando la UM de cada línea.
+  */
+
+  for(const l of surtidoLines){
+
+    if(!(l.um in prep)){
+      prep[l.um] = 0;
     }
 
-   }
-
+    prep[l.um] +=
+      Number(l.preparado || 0);
   }
 
+  return {
+    total:total,
+    preparado:prep
+  };
+}
+
+
+/* ============================================================
+   HTML PARA MOSTRAR CA / UN
+============================================================ */
+
+function htmlUM(obj){
+
+  const partes = [];
+
+  /*
+    El orden siempre será CA y luego UN.
+  */
 
   if(
-   qty<=0 ||
-   !sku ||
-   isNaN(parseInt(sku,10))
+    obj.CA !== undefined &&
+    Number(obj.CA) > 0
   ){
-   continue;
+    partes.push(
+      `<div class="ca">
+        ${formatoNumero(obj.CA)} CA
+      </div>`
+    );
   }
 
-
-  const info=
-   maestroData[sku] ||
-   {
-    descripcion:desc,
-    capacidad:84
-   };
-
-
-  items.push({
-
-   lineId:"L"+(items.length+1),
-
-   ubi:ubi,
-
-   zona:zonaUbicacion(ubi),
-
-   sku:sku,
-
-   desc:
-    desc ||
-    info.descripcion ||
-    "",
-
-   orden:
-    parseInt(row[6] || 0,10),
-
-   cant:qty,
-
-   preparado:0,
-
-   pm:null,
-
-   loteSugerido:
-    extraerLoteSugerido(row),
-
-   capacidad:
-    info.capacidad || 84
-
-  });
-
-
-  cajasExtraidas+=qty;
-
- }
-
-
- if(!items.length){
-
-  alert(
-   "No se encontraron líneas de PALLET MIXTO en el Surtido JDE."
-  );
-
-  return;
-
- }
-
-
- items.sort((a,b)=>
-  String(a.ubi).localeCompare(
-   String(b.ubi),
-   undefined,
-   {numeric:true}
-  )
- );
-
-
- itemsTotales=items;
-
-
- document.getElementById("mainArea")
-  .classList.remove("hidden");
-
-
- renderTodo();
-
-
- if(
-  expectedTotal>0 &&
-  cajasExtraidas!==expectedTotal
- ){
-
-  alert(
-   `Se extrajeron ${cajasExtraidas} cajas.\n\n`+
-   `El reporte indica ${expectedTotal} cajas.`
-  );
-
- }else{
-
-  toast(
-   `Picking generado: ${cajasExtraidas} cajas`
-  );
-
- }
-
-}
-
-
-/* =========================================================
-   LOTE SUGERIDO DEL SURTIDO
-   Se intenta conservar cualquier dato de lote presente
-   en la fila del reporte.
-========================================================= */
-
-function extraerLoteSugerido(row){
-
- if(!row)return "";
-
- for(const cell of row){
-
-  const txt=
-   String(cell || "")
-   .trim()
-   .toUpperCase();
-
   if(
-   !txt ||
-   txt==="CA" ||
-   txt==="LOTE"
-  )continue;
-
-  /* formatos que parezcan lote */
-
-  if(
-   /\b[A-Z]\s*\d{5,}\b/.test(txt) ||
-   /\b\d{3}[ABC]\b/.test(txt) ||
-   /\b\d{3}\s*[ABC]\b/.test(txt)
+    obj.UN !== undefined &&
+    Number(obj.UN) > 0
   ){
-
-   return txt;
-
+    partes.push(
+      `<div class="un">
+        ${formatoNumero(obj.UN)} UN
+      </div>`
+    );
   }
 
- }
-
- return "";
+  return partes.length
+    ? partes.join("")
+    : "-";
 }
 
 
-/* =========================================================
-   RENDER PRINCIPAL
-========================================================= */
-
-function renderTodo(){
-
- renderSuggested();
-
- renderFreeLines();
-
- actualizarResumen();
-
-}
-
-
-/* =========================================================
-   AGRUPACIÓN POR ZONA
-   PRIMEROS 4 CARACTERES DE LA UBICACIÓN
-========================================================= */
-
-function agruparPorZona(){
-
- const grupos={};
-
- itemsTotales.forEach(item=>{
-
-  const zona=
-   zonaUbicacion(item.ubi) ||
-   "SIN ZONA";
-
-  if(!grupos[zona]){
-   grupos[zona]=[];
-  }
-
-  grupos[zona].push(item);
-
- });
-
-
- Object.keys(grupos).forEach(zona=>{
-
-  grupos[zona].sort((a,b)=>{
-
-   return (
-    Number(b.cant)-Number(a.cant)
-   ) ||
-   String(a.ubi).localeCompare(
-    String(b.ubi),
-    undefined,
-    {numeric:true}
-   );
-
-  });
-
- });
-
- return grupos;
-}
-
-
-/* =========================================================
-   VISTA PICKING SUGERIDO
-========================================================= */
-
-function mostrarPickingSugerido(){
-
- document.getElementById("suggestedView")
-  .classList.remove("hidden");
-
- document.getElementById("freeView")
-  .classList.add("hidden");
-
- renderSuggested();
-
-}
-
-
-function renderSuggested(){
-
- const cont=
-  document.getElementById("suggestedList");
-
- if(!cont)return;
-
- const grupos=
-  agruparPorZona();
-
- cont.innerHTML="";
-
- Object.keys(grupos)
- .sort()
- .forEach(zona=>{
-
-  const items=grupos[zona];
-
-  const total=
-   items.reduce(
-    (a,b)=>a+Number(b.cant),
-    0
-   );
-
-  const card=
-   document.createElement("div");
-
-  card.className="zone-card";
-
-  card.innerHTML=`
-
-   <div class="zone-head">
-
-    <div class="zone-title">
-     ZONA ${esc(zona)}
-    </div>
-
-    <div class="zone-total">
-     ${items.length} líneas · ${total} CA
-    </div>
-
-   </div>
-
-   <div class="line line-head">
-    <div>UBICACIÓN</div>
-    <div>SKU</div>
-    <div>DESCRIPCIÓN</div>
-    <div>CANT.</div>
-    <div>PREP.</div>
-    <div>PM</div>
-   </div>
-
-   ${items.map(renderLinea).join("")}
-
-  `;
-
-  cont.appendChild(card);
-
- });
-
-}
-  <script>
-/* =========================================================
-   RENDER DE LÍNEAS
-========================================================= */
-
-function renderLinea(item){
-
- const preparado=
-  Number(item.preparado || 0);
-
- const pendiente=
-  Math.max(
-   0,
-   Number(item.cant)-preparado
-  );
-
- const completa=
-  pendiente<=0;
-
- return `
-
- <div class="line ${completa?'prepared':''}">
-
-  <div class="ubi">
-   ${esc(item.ubi)}
-  </div>
-
-  <div class="sku">
-   ${esc(item.sku)}
-  </div>
-
-  <div class="desc">
-   ${esc(item.desc || "")}
-  </div>
-
-  <div class="qty">
-   ${item.cant}
-  </div>
-
-  <div class="prep">
-   ${preparado}/${item.cant}
-  </div>
-
-  <div class="pm">
-   ${item.pm ? "PM "+item.pm : "-"}
-  </div>
-
- </div>
-
- `;
-
-}
-
-
-/* =========================================================
-   TODAS LAS LÍNEAS
-   UBICACIÓN ASCENDENTE + CANTIDAD DESCENDENTE
-========================================================= */
-
-function mostrarTodasLasLineas(){
-
- const cont=
-  document.getElementById("allLines");
-
- cont.classList.toggle("hidden");
-
- if(cont.classList.contains("hidden")){
-  return;
- }
-
- const ordenadas=
-  [...itemsTotales].sort((a,b)=>{
-
-   return (
-    String(a.ubi).localeCompare(
-     String(b.ubi),
-     undefined,
-     {
-      numeric:true,
-      sensitivity:"base"
-     }
-    )
-   ) ||
-   (
-    Number(b.cant)-
-    Number(a.cant)
-   );
-
-  });
-
-
- cont.innerHTML=`
-
-  <div class="card">
-
-   <h2>
-    TODAS LAS LÍNEAS
-   </h2>
-
-   <div class="line line-head">
-    <div>UBICACIÓN</div>
-    <div>SKU</div>
-    <div>DESCRIPCIÓN</div>
-    <div>CANT.</div>
-    <div>PREP.</div>
-    <div>PM</div>
-   </div>
-
-   ${ordenadas
-    .map(renderLinea)
-    .join("")}
-
-  </div>
-
- `;
-
-}
-
-
-/* =========================================================
-   PICKING LIBRE
-========================================================= */
-
-function mostrarPickingLibre(){
-
- document.getElementById("suggestedView")
-  .classList.add("hidden");
-
- document.getElementById("freeView")
-  .classList.remove("hidden");
-
- renderFreeLines();
-
-}
-
-
-function renderFreeLines(){
-
- const cont=
-  document.getElementById("freeList");
-
- if(!cont)return;
-
- const filtro=
-  String(
-   document.getElementById("freeSearch")?.value ||
-   ""
-  )
-  .trim()
-  .toUpperCase();
-
-
- const ordenadas=
-  [...itemsTotales]
-  .sort((a,b)=>{
-
-   return (
-    String(a.ubi).localeCompare(
-     String(b.ubi),
-     undefined,
-     {
-      numeric:true,
-      sensitivity:"base"
-     }
-    )
-   ) ||
-   Number(b.cant)-Number(a.cant);
-
-  })
-  .filter(item=>{
-
-   if(!filtro)return true;
-
-   return (
-    String(item.ubi).toUpperCase().includes(filtro) ||
-    String(item.sku).toUpperCase().includes(filtro) ||
-    String(item.desc).toUpperCase().includes(filtro)
-   );
-
-  });
-
-
- cont.innerHTML=`
-
- <div class="card">
-
-  <h2>
-   TODAS LAS LÍNEAS DE PICKING
-  </h2>
-
-  <div class="line line-head">
-   <div>UBICACIÓN</div>
-   <div>SKU</div>
-   <div>DESCRIPCIÓN</div>
-   <div>CANT.</div>
-   <div>PREP.</div>
-   <div>PM</div>
-  </div>
-
-  ${ordenadas.map(renderLinea).join("")}
-
- </div>
-
- `;
-
-}
-
-
-/* =========================================================
-   RESUMEN
-========================================================= */
+/* ============================================================
+   RENDER RESUMEN
+============================================================ */
 
 function actualizarResumen(){
 
- const zonas=
-  new Set(
-   itemsTotales.map(
-    x=>zonaUbicacion(x.ubi)
-   )
-  );
+  const r = resumenUM();
 
- const lineas=
-  itemsTotales.length;
+  const pendiente = {};
 
- const preparado=
-  itemsTotales.reduce(
-   (a,b)=>a+Number(b.preparado||0),
-   0
-  );
+  const ums = new Set([
+    ...Object.keys(r.total),
+    ...Object.keys(r.preparado)
+  ]);
 
- const total=
-  itemsTotales.reduce(
-   (a,b)=>a+Number(b.cant||0),
-   0
-  );
+  for(const um of ums){
 
- const pendiente=
-  total-preparado;
+    pendiente[um] =
+      Math.max(
+        0,
+        Number(r.total[um] || 0) -
+        Number(r.preparado[um] || 0)
+      );
+  }
 
+  document.getElementById(
+    "summaryTotal"
+  ).innerHTML = htmlUM(r.total);
 
- document.getElementById("sumZones").textContent=
-  zonas.size;
+  document.getElementById(
+    "summaryPrepared"
+  ).innerHTML = htmlUM(r.preparado);
 
- document.getElementById("sumLines").textContent=
-  lineas;
+  document.getElementById(
+    "summaryPending"
+  ).innerHTML = htmlUM(pendiente);
 
- document.getElementById("sumPrepared").textContent=
-  preparado;
-
- document.getElementById("sumPending").textContent=
-  pendiente;
-
+  document.getElementById(
+    "pmActualMain"
+  ).textContent =
+    `PM ${pmActual}`;
 }
 
 
-/* =========================================================
-   INICIO PREPARACIÓN
-========================================================= */
+/* ============================================================
+   RENDER LINEAS PRINCIPALES
+============================================================ */
 
-function abrirPickingSugerido(){
+function renderMain(){
 
- modoPreparacion="sugerido";
+  const cont =
+    document.getElementById("mainLines");
 
- currentPM=1;
+  cont.innerHTML = "";
 
- abrirModalPreparacion();
+  actualizarResumen();
 
- seleccionarPrimeraLinea();
+  let lineas = [...surtidoLines];
 
+  if(!mostrarTodas){
+
+    /*
+      Agrupadas por zona.
+      Dentro de cada zona:
+      cantidad descendente.
+    */
+
+    const zonas = {};
+
+    lineas.forEach(l=>{
+
+      if(!zonas[l.zona]){
+        zonas[l.zona] = [];
+      }
+
+      zonas[l.zona].push(l);
+    });
+
+    const zonasOrdenadas =
+      Object.keys(zonas).sort();
+
+    zonasOrdenadas.forEach(zona=>{
+
+      zonas[zona].sort((a,b)=>
+        Number(b.qty)-Number(a.qty) ||
+        a.ubi.localeCompare(b.ubi)
+      );
+
+      const titulo =
+        document.createElement("div");
+
+      titulo.className = "zone-title";
+
+      titulo.textContent =
+        `ZONA ${zona}`;
+
+      cont.appendChild(titulo);
+
+      zonas[zona].forEach(l=>{
+        cont.appendChild(crearCardLinea(l));
+      });
+
+    });
+
+  }else{
+
+    /*
+      Todas las líneas:
+      ubicación ascendente,
+      cantidad descendente.
+    */
+
+    lineas.sort((a,b)=>
+      a.ubi.localeCompare(b.ubi) ||
+      Number(b.qty)-Number(a.qty)
+    );
+
+    lineas.forEach(l=>{
+      cont.appendChild(crearCardLinea(l));
+    });
+  }
 }
 
 
-function abrirPickingLibre(){
+/* ============================================================
+   CARD DE LINEA
+============================================================ */
 
- modoPreparacion="libre";
+function crearCardLinea(line){
 
- currentPM=1;
+  const card =
+    document.createElement("div");
 
- abrirModalPreparacion();
+  const pendiente =
+    pendienteLinea(line);
 
- seleccionarPrimeraLineaLibre();
+  const preparado =
+    Number(line.preparado || 0);
 
-}
-
-
-function abrirModalPreparacion(){
-
- document.getElementById("scannerModal")
-  .style.display="block";
-
- document.getElementById("scannerTitle")
-  .textContent=
-   modoPreparacion==="sugerido"
-   ? "PICKING SUGERIDO"
-   : "PICKING LIBRE";
-
- actualizarPanel();
-
-}
+  if(pendiente <= 0){
+    card.className =
+      "line-card prepared done";
+  }else if(preparado > 0){
+    card.className =
+      "line-card partial";
+  }else{
+    card.className =
+      "line-card";
+  }
 
 
-/* =========================================================
-   SELECCIÓN DE LÍNEAS
-========================================================= */
-
-function lineasPendientes(){
-
- return itemsTotales.filter(
-  item=>
-   Number(item.preparado||0) <
-   Number(item.cant||0)
- );
-}
+  const pms =
+    (line.pms || [])
+      .map(x =>
+        `<span class="pm-tag">
+          PM ${x.pm}
+        </span>`
+      )
+      .join("");
 
 
-function seleccionarPrimeraLinea(){
+  card.innerHTML = `
 
- const pendientes=
-  [...lineasPendientes()]
-  .sort((a,b)=>{
+    <div class="line-main">
 
-   return (
-    Number(b.cant)-Number(a.cant)
-   ) ||
-   String(a.ubi).localeCompare(
-    String(b.ubi),
-    undefined,
-    {numeric:true}
-   );
+      <div>
 
-  });
+        <div class="line-title">
+          ${esc(line.sku)}
+        </div>
 
+        <div class="line-desc">
+          ${esc(line.desc)}
+        </div>
 
- if(!pendientes.length){
+        <div class="line-location">
+          📍 ${esc(line.ubi)}
+        </div>
 
-  mostrarTodoCompleto();
-  return;
+      </div>
 
- }
+      <div class="line-qty">
 
- seleccionarLinea(pendientes[0]);
+        <div class="ordered">
+          ${formatoNumero(line.qty)}
+          ${esc(line.um)}
+        </div>
 
-}
+        <div class="prepared">
+          Preparado:
+          ${formatoNumero(preparado)}
+          ${esc(line.um)}
+        </div>
 
+      </div>
 
-function seleccionarPrimeraLineaLibre(){
+    </div>
 
- const pendientes=
-  [...lineasPendientes()]
-  .sort((a,b)=>{
+    <div class="progress">
+      <div
+        class="progress-bar"
+        style="
+          width:${line.qty > 0
+            ? Math.min(100,preparedoPorcentaje(line))
+            : 0
+          }%
+        "
+      ></div>
+    </div>
 
-   return (
-    String(a.ubi).localeCompare(
-     String(b.ubi),
-     undefined,
-     {
-      numeric:true,
-      sensitivity:"base"
-     }
-    )
-   ) ||
-   Number(b.cant)-Number(a.cant);
+    <div class="line-footer">
 
-  });
+      <div>
+        Pendiente:
+        <strong>
+          ${formatoNumero(pendiente)}
+          ${esc(line.um)}
+        </strong>
+      </div>
 
+      <div>
+        ${pms || ""}
+      </div>
 
- if(!pendientes.length){
-
-  mostrarTodoCompleto();
-  return;
-
- }
-
- seleccionarLinea(pendientes[0]);
-
-}
-
-
-function seleccionarLinea(item){
-
- if(!item)return;
-
- currentItem=item;
-
- selectedStock=null;
-
- limpiarPreparacion();
-
- document.getElementById("targetSku")
-  .textContent=item.sku;
-
- document.getElementById("targetDesc")
-  .textContent=item.desc || "";
-
- document.getElementById("targetUbi")
-  .textContent=item.ubi;
-
- document.getElementById("targetPending")
-  .textContent=
-   Math.max(
-    0,
-    Number(item.cant)-
-    Number(item.preparado||0)
-   );
-
- document.getElementById("scannerSub")
-  .textContent=
-   `PM ${currentPM} · ${item.ubi}`;
-
- cargarStockAutomatico();
-
- actualizarPanel();
-
-}
-
-
-/* =========================================================
-   STOCK AUTOMÁTICO DEL SKU
-========================================================= */
-
-function cargarStockAutomatico(){
-
- if(!currentItem)return;
-
- const filas=
-  obtenerStockDelSKU(currentItem);
-
- const card=
-  document.getElementById("stockCard");
-
- const rows=
-  document.getElementById("stockRows");
-
- if(!filas.length){
-
-  card.classList.remove("hidden");
-
-  rows.innerHTML=`
-
-   <div style="padding:12px;
-               text-align:center;
-               color:#64748b;
-               font-size:.72rem">
-    No hay stock disponible de este SKU
-    en las zonas de picking.
-   </div>
-
+    </div>
   `;
 
-  return;
- }
-
-
- card.classList.remove("hidden");
-
- rows.innerHTML=
-  filas.map(renderStockRow).join("");
-
+  return card;
 }
 
 
-function obtenerStockDelSKU(item){
+function preparadoPorcentaje(line){
 
- const sku=
-  String(item.sku);
+  return (
+    Number(line.preparado || 0) /
+    Number(line.qty || 1)
+  ) * 100;
+}
 
- const zona=
-  zonaUbicacion(item.ubi);
 
+/* ============================================================
+   PANTALLAS
+============================================================ */
 
- return stockData
-  .filter(row=>{
+function mostrarPantalla(id){
 
-   if(String(row.sku)!==sku){
-    return false;
-   }
-
-   if(Number(row.qty)<=0){
-    return false;
-   }
-
-   /*
-      IMPORTANTE:
-      Para esta línea usamos SU PROPIA ZONA.
-      Así no se mezclan sectores.
-   */
-
-   const ubic=
-    normalizarUbicacion(row.ubi);
-
-   return ubic.startsWith(zona);
-
-  })
-  .sort((a,b)=>{
-
-   return (
-    esLoteSugerido(b,item)-
-    esLoteSugerido(a,item)
-   ) ||
-   (
-    String(a.ubi).localeCompare(
-     String(b.ubi),
-     undefined,
-     {numeric:true}
-    )
-   );
-
+  [
+    "screenLoad",
+    "screenMain",
+    "screenPrep"
+  ].forEach(x=>{
+    document.getElementById(x)
+      .classList.add("hidden");
   });
 
+  document.getElementById(id)
+    .classList.remove("hidden");
 }
 
 
-function esLoteSugerido(stock,item){
+/* ============================================================
+   MOSTRAR TODAS
+============================================================ */
 
- if(!item || !item.loteSugerido){
-  return 0;
- }
+function mostrarLineasTodas(){
 
- const sugerido=
-  extraerUltimos3(
-   item.loteSugerido
-  );
+  mostrarTodas = true;
 
- const loteCaja=
-  loteCajaDesdeSistema(
-   stock.lote
-  );
+  renderMain();
 
- if(
-  sugerido &&
-  loteCaja &&
-  sugerido===loteCaja
- ){
-  return 1;
- }
-
- return 0;
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
 }
 
 
-function renderStockRow(row){
+/* ============================================================
+   VOLVER A AGRUPADAS
+============================================================ */
 
- const sugerido=
-  esLoteSugerido(
-   row,
-   currentItem
+function volverAgrupadas(){
+
+  mostrarTodas = false;
+
+  renderMain();
+}
+ /* ============================================================
+   CARGA STOCK
+============================================================ */
+
+document.getElementById("fileStock")
+.addEventListener("change",async function(e){
+
+  const file = e.target.files[0];
+
+  if(!file) return;
+
+  estado(
+    "statusStock",
+    "Leyendo Stock JDE...",
+    ""
   );
 
- const seleccionado=
-  selectedStock===row;
+  try{
 
- const loteCaja=
-  loteCajaDesdeSistema(
-   row.lote
+    const data =
+      await leerArchivoComoMatriz(file);
+
+    stockData =
+      procesarStock(data);
+
+    if(!stockData.length){
+
+      throw new Error(
+        "No se encontraron registros de stock."
+      );
+    }
+
+    estado(
+      "statusStock",
+      `✓ Stock cargado: ${stockData.length.toLocaleString("es-AR")} registros`,
+      "ok"
+    );
+
+    actualizarBotonContinuar();
+
+  }catch(err){
+
+    console.error(err);
+
+    stockData = [];
+
+    estado(
+      "statusStock",
+      "✕ Error: " + err.message,
+      "error"
+    );
+
+    actualizarBotonContinuar();
+  }
+});
+
+
+/* ============================================================
+   CARGA MST
+============================================================ */
+
+document.getElementById("fileMaestro")
+.addEventListener("change",async function(e){
+
+  const file = e.target.files[0];
+
+  if(!file) return;
+
+  estado(
+    "statusMaestro",
+    "Leyendo MST Producto...",
+    ""
   );
 
+  try{
 
- return `
+    const wb =
+      await leerWorkbook(file);
 
- <div class="stock-row
-      ${sugerido?'suggested':''}
-      ${seleccionado?'selected':''}"
-      onclick="seleccionarStock('${esc(row.lote)}','${esc(row.ubi)}')">
+    /*
+      Primera hoja para capacidad / datos.
+    */
 
-  <div>
-   ${esc(row.ubi)}
-  </div>
+    const firstSheet =
+      wb.Sheets[wb.SheetNames[0]];
 
-  <div>
-   ${esc(row.lote)}
-  </div>
+    const data =
+      XLSX.utils.sheet_to_json(
+        firstSheet,
+        {
+          header:1,
+          raw:true,
+          defval:""
+        }
+      );
 
-  <div>
-   ${esc(loteCaja)}
-   ${sugerido
-    ? "<br><strong>★ SUGERIDO</strong>"
-    : ""}
-  </div>
+    maestroData =
+      procesarMaestro(data);
 
-  <div class="stock-qty">
-   ${row.qty}
-  </div>
 
- </div>
+    /*
+      Buscar hoja MST Producto
+      para EAN.
+    */
 
- `;
+    let hojaMST =
+      wb.SheetNames.find(n =>
+        normalizar(n).includes("MST") &&
+        normalizar(n).includes("PRODUCT")
+      );
+
+    if(!hojaMST){
+      hojaMST = wb.SheetNames[0];
+    }
+
+    const dataMST =
+      XLSX.utils.sheet_to_json(
+        wb.Sheets[hojaMST],
+        {
+          header:1,
+          raw:true,
+          defval:""
+        }
+      );
+
+    eanMap =
+      procesarEAN(dataMST);
+
+
+    estado(
+      "statusMaestro",
+      `✓ MST cargado: ${Object.keys(maestroData).length.toLocaleString("es-AR")} SKU`,
+      "ok"
+    );
+
+    actualizarBotonContinuar();
+
+  }catch(err){
+
+    console.error(err);
+
+    maestroData = {};
+    eanMap = {};
+
+    /*
+      El MST no impide continuar si el resto está bien.
+    */
+
+    estado(
+      "statusMaestro",
+      "⚠ MST leído parcialmente: " + err.message,
+      ""
+    );
+
+    actualizarBotonContinuar();
+  }
+});
+
+
+/* ============================================================
+   CARGA SURTIDO
+============================================================ */
+
+document.getElementById("fileSurtido")
+.addEventListener("change",async function(e){
+
+  const file = e.target.files[0];
+
+  if(!file) return;
+
+  estado(
+    "statusSurtido",
+    "Leyendo Surtido JDE...",
+    ""
+  );
+
+  try{
+
+    const data =
+      await leerArchivoComoMatriz(file);
+
+    const resultado =
+      procesarSurtido(data);
+
+    surtidoLines =
+      resultado.lineas;
+
+    surtidoUM =
+      resultado.totales;
+
+
+    if(!surtidoLines.length){
+
+      throw new Error(
+        "No se encontraron líneas de PALLET MIXTO."
+      );
+    }
+
+
+    if(
+      !Object.keys(surtidoUM).length
+    ){
+
+      throw new Error(
+        "No se encontró 'Cantidad por unidad de medida'."
+      );
+    }
+
+
+    /*
+      IMPORTANTE:
+
+      surtidoUM sale DIRECTAMENTE del bloque:
+
+      Cantidad por unidad de medida
+
+      CA | 1938
+
+      No se calcula CA x capacidad.
+    */
+
+    const resumen =
+      Object.keys(surtidoUM)
+        .map(um =>
+          `${formatoNumero(surtidoUM[um])} ${um}`
+        )
+        .join(" + ");
+
+
+    estado(
+      "statusSurtido",
+      `✓ Surtido cargado: ${surtidoLines.length.toLocaleString("es-AR")} líneas | ${resumen}`,
+      "ok"
+    );
+
+    actualizarBotonContinuar();
+
+  }catch(err){
+
+    console.error(err);
+
+    surtidoLines = [];
+    surtidoUM = {};
+
+    estado(
+      "statusSurtido",
+      "✕ Error: " + err.message,
+      "error"
+    );
+
+    actualizarBotonContinuar();
+  }
+});
+
+
+/* ============================================================
+   CONTINUAR
+============================================================ */
+
+document.getElementById("btnContinuar")
+.addEventListener("click",function(){
+
+  if(
+    !stockData.length ||
+    !surtidoLines.length
+  ){
+
+    alert(
+      "Falta cargar Stock JDE o Surtido JDE."
+    );
+
+    return;
+  }
+
+  mostrarPantalla("screenMain");
+
+  mostrarTodas = false;
+
+  renderMain();
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+});
+
+
+/* ============================================================
+   PREPARACION
+============================================================ */
+
+async function abrirPreparacion(){
+
+  mostrarPantalla("screenPrep");
+
+  currentSKU = "";
+  currentDescription = "";
+  selectedStock = null;
+
+  document.getElementById("prepSku")
+    .textContent = "Escanear SKU";
+
+  document.getElementById("prepDesc")
+    .textContent =
+      "Escaneá la caja para comenzar";
+
+  document.getElementById("targetBox")
+    .classList.add("hidden");
+
+  document.getElementById("stockSection")
+    .classList.add("hidden");
+
+  document.getElementById("skuLinesSection")
+    .classList.add("hidden");
+
+  document.getElementById("qtyPanel")
+    .classList.add("hidden");
+
+  iniciarScanner();
 
 }
 
 
-/* =========================================================
-   SELECCIONAR STOCK
-========================================================= */
+/* ============================================================
+   SCANNER
+============================================================ */
 
-function seleccionarStock(lote,ubi){
+async function iniciarScanner(){
 
- if(!currentItem)return;
+  if(scannerRunning) return;
 
- const fila=
-  stockData.find(row=>
-   String(row.sku)===
-    String(currentItem.sku) &&
-   String(row.lote)===
-    String(lote) &&
-   String(row.ubi)===
-    String(ubi)
-  );
+  const reader =
+    document.getElementById("reader");
 
- if(!fila)return;
+  reader.innerHTML = "";
 
- selectedStock=fila;
+  try{
 
- document.getElementById("scanJulian")
-  .value=
-   loteCajaDesdeSistema(
-    fila.lote
-   );
+    if(
+      typeof ZXing === "undefined" ||
+      !ZXing.BrowserMultiFormatReader
+    ){
+      reader.innerHTML =
+        `<div style="
+          color:white;
+          padding:25px;
+          text-align:center;
+          font-size:.8rem">
+          Scanner no disponible.<br>
+          Utilizá ingreso manual.
+        </div>`;
 
- mostrarValidacion(
-  true,
-  "LOTE SELECCIONADO",
-  `${fila.ubi} · ${fila.lote} · ${fila.qty} CA disponibles`
- );
+      return;
+    }
 
- cargarStockAutomatico();
+
+    scanner =
+      new ZXing.BrowserMultiFormatReader();
+
+    const devices =
+      await ZXing.BrowserCodeReader
+        .listVideoInputDevices();
+
+
+    if(!devices || !devices.length){
+
+      reader.innerHTML =
+        `<div style="
+          color:white;
+          padding:25px;
+          text-align:center;
+          font-size:.8rem">
+          No se encontró cámara.<br>
+          Utilizá ingreso manual.
+        </div>`;
+
+      return;
+    }
+
+
+    /*
+      Preferir cámara trasera.
+    */
+
+    let device =
+      devices.find(d =>
+        /back|rear|environment|trasera/i
+          .test(d.label)
+      );
+
+    if(!device){
+      device = devices[0];
+    }
+
+
+    await scanner.decodeFromVideoDevice(
+      device.deviceId,
+      "reader",
+      (result,error)=>{
+
+        if(result){
+
+          const texto =
+            result.getText();
+
+          procesarCodigo(texto);
+        }
+
+      }
+    );
+
+    scannerRunning = true;
+
+  }catch(err){
+
+    console.error(err);
+
+    reader.innerHTML =
+      `<div style="
+        color:white;
+        padding:25px;
+        text-align:center;
+        font-size:.8rem">
+        No se pudo activar la cámara.<br>
+        Utilizá ingreso manual.
+      </div>`;
+  }
+}
+
+
+function detenerScanner(){
+
+  try{
+
+    if(scanner){
+
+      scanner.reset();
+
+    }
+
+  }catch(e){}
+
+  scanner = null;
+  scannerRunning = false;
+}
+
+
+/* ============================================================
+   PROCESAR CODIGO
+============================================================ */
+
+function procesarCodigo(codigo){
+
+  const valor =
+    String(codigo || "").trim();
+
+  if(!valor) return;
+
+  /*
+    Primero intentar EAN.
+  */
+
+  let sku = eanMap[
+    normalizarSKU(valor)
+  ];
+
+
+  /*
+    Si no es EAN, probar directamente como SKU.
+  */
+
+  if(!sku){
+
+    const posible =
+      normalizarSKU(valor);
+
+    if(
+      surtidoLines.some(
+        l => l.sku === posible
+      )
+    ){
+      sku = posible;
+    }
+  }
+
+
+  /*
+    Algunos lectores agregan caracteres.
+    Buscar también coincidencia exacta
+    dentro del texto.
+  */
+
+  if(!sku){
+
+    const encontrado =
+      Object.keys(eanMap)
+        .find(ean =>
+          valor.includes(ean)
+        );
+
+    if(encontrado){
+      sku = eanMap[encontrado];
+    }
+  }
+
+
+  if(!sku){
+
+    mostrarToast(
+      "No se encontró el SKU del código escaneado."
+    );
+
+    return;
+  }
+
+
+  seleccionarSKU(sku);
+}
+
+
+/* ============================================================
+   BUSQUEDA MANUAL
+============================================================ */
+
+function buscarSKUManual(){
+
+  const valor =
+    document.getElementById("manualSku")
+      .value.trim();
+
+  if(!valor){
+
+    mostrarToast(
+      "Ingresá un SKU o EAN."
+    );
+
+    return;
+  }
+
+  procesarCodigo(valor);
+}
+
+
+/* ============================================================
+   SELECCIONAR SKU
+============================================================ */
+
+function seleccionarSKU(sku){
+
+  sku = normalizarSKU(sku);
+
+  const lineas =
+    surtidoLines.filter(
+      l => l.sku === sku
+    );
+
+  if(!lineas.length){
+
+    mostrarToast(
+      "Este SKU no está en el Surtido."
+    );
+
+    return;
+  }
+
+
+  const pendiente =
+    pendienteSKU(sku);
+
+  /*
+    Evitar duplicación:
+    si ya está completo, advertir.
+  */
+
+  if(pendiente <= 0){
+
+    alert(
+      `Ya preparaste la cantidad ordenada del SKU ${sku}.`
+    );
+
+    return;
+  }
+
+
+  currentSKU = sku;
+
+  currentDescription =
+    lineas.find(l => l.desc)?.desc ||
+    maestroData[sku]?.descripcion ||
+    "";
+
+
+  document.getElementById("prepSku")
+    .textContent = sku;
+
+  document.getElementById("prepDesc")
+    .textContent =
+      currentDescription;
+
+
+  document.getElementById("targetBox")
+    .classList.remove("hidden");
+
+
+  /*
+    Mostrar pendiente por UM.
+  */
+
+  const pendientesUM = {};
+
+  lineas.forEach(l=>{
+
+    const p =
+      pendienteLinea(l);
+
+    if(p > 0){
+
+      pendientesUM[l.um] =
+        (pendientesUM[l.um] || 0) + p;
+    }
+  });
+
+
+  document.getElementById("targetQty")
+    .innerHTML =
+      htmlUM(pendientesUM);
+
+
+  document.getElementById("targetDetail")
+    .textContent =
+      "Seleccioná un lote de stock y luego la cantidad.";
+
+
+  mostrarLineasSKU();
+
+  mostrarStockSKU();
 
 }
 
 
-/* =========================================================
-   PANEL
-========================================================= */
+/* ============================================================
+   LINEAS DEL SKU
+============================================================ */
 
-function actualizarPanel(){
+function mostrarLineasSKU(){
 
- const preparado=
-  itemsTotales.reduce(
-   (a,b)=>a+Number(b.preparado||0),
-   0
-  );
+  const sec =
+    document.getElementById("skuLinesSection");
 
- const total=
-  itemsTotales.reduce(
-   (a,b)=>a+Number(b.cant||0),
-   0
-  );
+  const cont =
+    document.getElementById("skuLines");
 
- document.getElementById("scanPrepared")
-  .textContent=preparado;
+  sec.classList.remove("hidden");
 
- document.getElementById("scanPending")
-  .textContent=
-   Math.max(0,total-preparado);
+  cont.innerHTML = "";
 
- document.getElementById("scanPM")
-  .textContent=
-   "PM "+currentPM;
+  const lineas =
+    surtidoLines
+      .filter(l =>
+        l.sku === currentSKU &&
+        pendienteLinea(l) > 0
+      )
+      .sort((a,b)=>
+        Number(b.qty)-Number(a.qty)
+      );
 
- actualizarProgreso();
 
+  lineas.forEach(l=>{
+
+    const div =
+      document.createElement("div");
+
+    div.style.cssText = `
+      border-bottom:1px solid #e1e6eb;
+      padding:8px 0;
+      font-size:.75rem;
+    `;
+
+    div.innerHTML = `
+      <strong>${esc(l.ubi)}</strong>
+      · ${formatoNumero(l.qty)} ${esc(l.um)}
+      · Pendiente:
+      <strong>
+        ${formatoNumero(pendienteLinea(l))}
+      </strong>
+      ${esc(l.um)}
+      <br>
+      Lote sugerido:
+      <strong>${esc(l.lote || "-")}</strong>
+    `;
+
+    cont.appendChild(div);
+  });
 }
 
 
-/* =========================================================
-   PROGRESO
-========================================================= */
+/* ============================================================
+   MOSTRAR STOCK
+============================================================ */
 
-function actualizarProgreso(){
+function mostrarStockSKU(){
 
- const cont=
-  document.getElementById("progressRows");
+  const sec =
+    document.getElementById("stockSection");
 
- if(!cont)return;
+  const body =
+    document.getElementById("stockBody");
 
- const orden=
-  modoPreparacion==="libre"
-  ? [...itemsTotales].sort((a,b)=>
-      String(a.ubi).localeCompare(
-       String(b.ubi),
-       undefined,
-       {numeric:true}
-      ) ||
-      Number(b.cant)-Number(a.cant)
-    )
-  : [...itemsTotales].sort((a,b)=>
-      Number(b.cant)-Number(a.cant) ||
-      String(a.ubi).localeCompare(
-       String(b.ubi),
-       undefined,
-       {numeric:true}
+  const info =
+    document.getElementById("stockInfo");
+
+  sec.classList.remove("hidden");
+
+  body.innerHTML = "";
+
+  selectedStock = null;
+
+  document.getElementById("qtyPanel")
+    .classList.add("hidden");
+
+
+  /*
+    Solo stock del SKU.
+  */
+
+  let stock =
+    stockData.filter(
+      s => s.sku === currentSKU &&
+           Number(s.qty) > 0
+    );
+
+
+  /*
+    La zona de picking se determina por
+    las ubicaciones del Surtido de ese SKU.
+  */
+
+  const zonas =
+    new Set(
+      surtidoLines
+        .filter(l => l.sku === currentSKU)
+        .map(l => l.zona)
+    );
+
+
+  /*
+    Priorizar zonas de picking.
+    No eliminar stock fuera de zona:
+    si no hay dentro de zona, mostrar todo
+    para que el operador pueda detectar stock.
+  */
+
+  const stockPicking =
+    stock.filter(s =>
+      [...zonas].some(z =>
+        s.ubi.startsWith(z)
       )
     );
 
 
- cont.innerHTML=
-  orden.map(item=>{
+  if(stockPicking.length){
+    stock = stockPicking;
+  }
 
-   const preparado=
-    Number(item.preparado||0);
 
-   const pendiente=
-    Math.max(
-     0,
-     Number(item.cant)-preparado
+  /*
+    Obtener lotes sugeridos del Surtido.
+  */
+
+  const lotesSugeridos =
+    new Set(
+      surtidoLines
+        .filter(l =>
+          l.sku === currentSKU &&
+          pendienteLinea(l) > 0
+        )
+        .map(l => normalizar(l.lote))
+        .filter(Boolean)
     );
 
-   const esActual=
-    currentItem &&
-    item.lineId===currentItem.lineId;
+
+  /*
+    Ordenar:
+    1. lote sugerido
+    2. ubicación
+  */
+
+  stock.sort((a,b)=>{
+
+    const as =
+      lotesSugeridos.has(
+        normalizar(a.lote)
+      ) ? 0 : 1;
+
+    const bs =
+      lotesSugeridos.has(
+        normalizar(b.lote)
+      ) ? 0 : 1;
+
+    return as-bs ||
+      a.ubi.localeCompare(b.ubi);
+  });
 
 
-   return `
+  const totalStock =
+    stock.reduce(
+      (a,s)=>a+Number(s.qty || 0),
+      0
+    );
 
-   <div class="progress-row
-       ${esActual?'current':''}
-       ${pendiente===0?'done':''}"
-       onclick="seleccionarLineaPorId('${esc(item.lineId)}')">
 
-    <div>
-     <strong>${esc(item.sku)}</strong><br>
-     <span class="muted">
-      ${esc(item.ubi)}
-     </span>
-    </div>
+  info.innerHTML =
+    `SKU <strong>${esc(currentSKU)}</strong> · ` +
+    `Stock disponible: <strong>${formatoNumero(totalStock)}</strong>`;
 
-    <div>
-     ${preparado}/${item.cant}<br>
-     <span class="muted">prep.</span>
-    </div>
 
-    <div>
-     ${pendiente}<br>
-     <span class="muted">pend.</span>
-    </div>
+  if(!stock.length){
 
-   </div>
+    body.innerHTML = `
+      <tr>
+        <td colspan="4">
+          <div class="stock-empty">
+            No se encontró stock disponible para este SKU
+            en las ubicaciones de picking.
+          </div>
+        </td>
+      </tr>
+    `;
 
-   `;
+    return;
+  }
 
-  }).join("");
+
+  stock.forEach((s,index)=>{
+
+    const tr =
+      document.createElement("tr");
+
+    const sugerido =
+      lotesSugeridos.has(
+        normalizar(s.lote)
+      );
+
+    tr.className =
+      "stock-row" +
+      (sugerido ? " suggested" : "");
+
+    tr.innerHTML = `
+      <td>${esc(s.ubi)}</td>
+      <td>${esc(s.lote)}</td>
+      <td>${esc(loteCaja(s.lote))}</td>
+      <td>
+        <strong>
+          ${formatoNumero(s.qty)}
+        </strong>
+      </td>
+    `;
+
+    tr.addEventListener(
+      "click",
+      ()=>seleccionarStock(s)
+    );
+
+    body.appendChild(tr);
+  });
+}
+
+
+/* ============================================================
+   SELECCIONAR STOCK
+============================================================ */
+
+function seleccionarStock(stock){
+
+  selectedStock = stock;
+
+  document
+    .querySelectorAll(".stock-row")
+    .forEach(row =>
+      row.classList.remove("selected")
+    );
+
+
+  /*
+    Encontrar visualmente la fila.
+  */
+
+  const filas =
+    document.querySelectorAll(".stock-row");
+
+  filas.forEach(row=>{
+
+    const lote =
+      row.children[1]?.textContent;
+
+    const ubi =
+      row.children[0]?.textContent;
+
+    if(
+      lote === stock.lote &&
+      ubi === stock.ubi
+    ){
+      row.classList.add("selected");
+    }
+  });
+
+
+  const panel =
+    document.getElementById("qtyPanel");
+
+  panel.classList.remove("hidden");
+
+
+  /*
+    Cantidad máxima:
+
+    mínimo entre:
+    - stock disponible
+    - pendiente del SKU
+
+    Si el stock es menor,
+    el operador puede elegir hasta
+    esa cantidad y luego usar otro lote.
+  */
+
+  const pendiente =
+    pendienteSKU(currentSKU);
+
+  const max =
+    Math.min(
+      Number(stock.qty || 0),
+      Number(pendiente || 0)
+    );
+
+
+  const input =
+    document.getElementById("qtyPrepare");
+
+  input.max = max;
+
+  input.value = max > 0 ? max : 0;
+
+
+  const info =
+    document.getElementById("qtyInfo");
+
+  info.innerHTML =
+    `Stock disponible en este lote:
+     <strong>${formatoNumero(stock.qty)}</strong>.
+     ` +
+    `Pendiente del SKU:
+     <strong>${formatoNumero(pendiente)}</strong>.
+     ` +
+    `Podés preparar hasta
+     <strong>${formatoNumero(max)}</strong>.`;
 
 }
 
 
-function seleccionarLineaPorId(lineId){
+/* ============================================================
+   CANCELAR LOTE
+============================================================ */
 
- const item=
-  itemsTotales.find(
-   x=>String(x.lineId)===String(lineId)
-  );
+function cancelarSeleccionLote(){
 
- if(!item)return;
+  selectedStock = null;
 
- if(
-  Number(item.preparado)>=
-  Number(item.cant)
- ){
+  document.getElementById("qtyPanel")
+    .classList.add("hidden");
 
-  toast(
-   "Ya preparaste la cantidad ordenada."
-  );
-
-  return;
-
- }
-
- seleccionarLinea(item);
-
+  document
+    .querySelectorAll(".stock-row")
+    .forEach(row =>
+      row.classList.remove("selected")
+    );
 }
 
 
-/* =========================================================
-   CÁLCULO LOTE FÍSICO
-========================================================= */
-
-function calcularLoteFisico(){
-
- const julian=
-  extraerUltimos3(
-   document.getElementById("scanJulian").value
-  );
-
- const hora=
-  normalizarHora(
-   document.getElementById("scanHora").value
-  );
-
- const turno=
-  obtenerTurno(hora);
-
- const box=
-  document.getElementById("loteCalculado");
-
-
- if(julian && turno){
-
-  box.classList.remove("hidden");
-
-  document.getElementById("loteFisico")
-   .textContent=
-    julian+turno;
-
- }else{
-
-  box.classList.add("hidden");
-
- }
-
-}
-
-
-/* =========================================================
-   CÓDIGO / EAN
-========================================================= */
-
-function limpiarCodigo(){
-
- const input=
-  document.getElementById("scanSku");
-
- input.value=
-  input.value.replace(/\s/g,"");
-
-}
-
-function obtenerSKUIngresado(){
-
- const valor=
-  document.getElementById("scanSku")
-   .value
-   .trim();
-
- if(!valor)return "";
-
- return eanMapData[valor] || valor;
-
-}
-
-
-/* =========================================================
-   CONFIRMAR PREPARACIÓN
-========================================================= */
+/* ============================================================
+   CONFIRMAR PREPARACION
+============================================================ */
 
 function confirmarPreparacion(){
 
- if(!currentItem){
+  if(!selectedStock){
 
-  mostrarValidacion(
-   false,
-   "SIN LÍNEA",
-   "No hay una línea seleccionada."
-  );
+    mostrarToast(
+      "Primero seleccioná un lote."
+    );
 
-  return;
- }
+    return;
+  }
 
 
- const sku=
-  obtenerSKUIngresado();
+  const input =
+    document.getElementById("qtyPrepare");
 
+  const qty =
+    numero(input.value);
 
- if(!sku){
 
-  mostrarValidacion(
-   false,
-   "FALTA SKU",
-   "Escaneá o ingresá el código de la caja."
-  );
+  if(qty <= 0){
 
-  return;
- }
+    mostrarToast(
+      "Ingresá una cantidad mayor a cero."
+    );
 
+    return;
+  }
 
- if(
-  String(sku)!==
-  String(currentItem.sku)
- ){
 
-  mostrarValidacion(
-   false,
-   "SKU INCORRECTO",
-   `La caja es ${sku}. Se espera ${currentItem.sku}.`
-  );
+  const disponible =
+    Number(selectedStock.qty || 0);
 
-  return;
- }
+  const pendiente =
+    pendienteSKU(currentSKU);
 
 
- const pendiente=
-  Math.max(
-   0,
-   Number(currentItem.cant)-
-   Number(currentItem.preparado||0)
-  );
+  if(qty > disponible){
 
+    alert(
+      `El lote seleccionado tiene solamente ` +
+      `${formatoNumero(disponible)} disponibles.`
+    );
 
- if(pendiente<=0){
+    input.value =
+      Math.min(disponible,pendiente);
 
-  mostrarValidacion(
-   false,
-   "CANTIDAD COMPLETA",
-   "Ya preparaste la cantidad ordenada."
-  );
+    return;
+  }
 
-  return;
- }
 
+  if(qty > pendiente){
 
- /* -----------------------------------------
-    Si el usuario seleccionó una fila de stock
-    se usa directamente.
- ----------------------------------------- */
+    alert(
+      `La cantidad pendiente del SKU es ` +
+      `${formatoNumero(pendiente)}.`
+    );
 
- if(!selectedStock){
+    input.value = pendiente;
 
-  mostrarValidacion(
-   false,
-   "SELECCIONÁ UN LOTE",
-   "Seleccioná una fila de stock."
-  );
+    return;
+  }
 
-  return;
 
- }
+  /*
+    Repartir la preparación entre las líneas
+    pendientes del SKU.
 
+    Primero:
+    - lote sugerido
+    Luego:
+    - cantidad restante.
+  */
 
- if(Number(selectedStock.qty)<=0){
+  let restante = qty;
 
-  mostrarValidacion(
-   false,
-   "SIN STOCK",
-   "El lote seleccionado ya no tiene stock."
-  );
+  const lineas =
+    surtidoLines
+      .filter(l =>
+        l.sku === currentSKU &&
+        pendienteLinea(l) > 0
+      )
+      .sort((a,b)=>{
 
-  cargarStockAutomatico();
+        const aMatch =
+          normalizar(a.lote) ===
+          normalizar(selectedStock.lote)
+            ? 0 : 1;
 
-  return;
+        const bMatch =
+          normalizar(b.lote) ===
+          normalizar(selectedStock.lote)
+            ? 0 : 1;
 
- }
+        return aMatch-bMatch ||
+          Number(b.qty)-Number(a.qty);
+      });
 
 
- const cantidadDisponible=
-  Number(selectedStock.qty);
+  for(const line of lineas){
 
- const cantidad=
-  Math.min(
-   cantidadDisponible,
-   pendiente
-  );
+    if(restante <= 0) break;
 
+    const pend =
+      pendienteLinea(line);
 
- /* -----------------------------------------
-    Si hay menos stock que lo pendiente,
-    NO consume automáticamente todo:
-    informa la cantidad disponible.
- ----------------------------------------- */
+    const tomar =
+      Math.min(
+        pend,
+        restante
+      );
 
- if(
-  cantidadDisponible<
-  pendiente
- ){
+    line.preparado += tomar;
 
-  mostrarExcepcionStock(
-   selectedStock,
-   cantidadDisponible
-  );
+    registrarPM(
+      line,
+      tomar
+    );
 
-  return;
+    restante -= tomar;
+  }
 
- }
 
+  /*
+    Descontar stock real de memoria.
+  */
 
- consumirStock(
-  selectedStock,
-  cantidad
- );
+  selectedStock.qty =
+    Math.max(
+      0,
+      Number(selectedStock.qty) - qty
+    );
 
- registrarPreparado(
-  currentItem,
-  cantidad
- );
 
-
- mostrarValidacion(
-  true,
-  "PREPARACIÓN CONFIRMADA",
-  `${cantidad} CA · lote ${selectedStock.lote}`
- );
-
-
- avanzarPreparacion();
-
-}
-  <script>
-/* =========================================================
-   CONSUMIR STOCK
-========================================================= */
-
-function consumirStock(row,cantidad){
-
- const disponible=
-  Number(row.qty||0);
-
- row.qty=
-  Math.max(
-   0,
-   disponible-
-   Number(cantidad||0)
-  );
-
-}
-
-
-/* =========================================================
-   REGISTRAR PREPARACIÓN
-========================================================= */
-
-function registrarPreparado(item,cantidad){
-
- const q=
-  Number(cantidad||0);
-
- item.preparado=
-  Number(item.preparado||0)+q;
-
- /*
-    MUY IMPORTANTE:
-    El PM queda registrado sobre la línea.
-    Si una línea continúa en otro PM,
-    se conserva el último PM.
- */
-
- item.pm=currentPM;
-
-}
-
-
-/* =========================================================
-   AVANZAR
-========================================================= */
-
-function avanzarPreparacion(){
-
- actualizarPanel();
-
- renderSuggested();
- renderFreeLines();
- actualizarResumen();
-
- const pendienteLinea=
-  Math.max(
-   0,
-   Number(currentItem.cant)-
-   Number(currentItem.preparado||0)
+  mostrarToast(
+    `Preparado ${formatoNumero(qty)} ${selectedStock.um || ""}`
   );
 
 
- /* -----------------------------------------
-    Si todavía faltan cajas de la misma línea,
-    seguimos con ella.
- ----------------------------------------- */
+  /*
+    Si ya se completó el SKU:
+    avisar y dejar posibilidad de cerrar.
+  */
 
- if(pendienteLinea>0){
-
-  seleccionarLinea(currentItem);
-
-  return;
-
- }
+  const pendienteDespues =
+    pendienteSKU(currentSKU);
 
 
- /* -----------------------------------------
-    Si terminó la línea, buscamos otra.
- ----------------------------------------- */
+  if(pendienteDespues <= 0){
 
- if(modoPreparacion==="libre"){
+    alert(
+      `SKU ${currentSKU} completo.\n\n` +
+      `Ya preparaste la cantidad ordenada.`
+    );
 
-  seleccionarPrimeraLineaLibre();
+    document.getElementById("targetQty")
+      .innerHTML =
+        `<div class="un" style="color:#198754">
+          COMPLETO ✓
+        </div>`;
+  }else{
 
- }else{
+    const lineasPend =
+      lineasPendientesSKU(currentSKU);
 
-  seleccionarPrimeraLinea();
+    const pUM = {};
 
- }
+    lineasPend.forEach(l=>{
+      pUM[l.um] =
+        (pUM[l.um] || 0) +
+        pendienteLinea(l);
+    });
 
+    document.getElementById("targetQty")
+      .innerHTML =
+        htmlUM(pUM);
+  }
+
+
+  /*
+    Refrescar.
+  */
+
+  mostrarStockSKU();
+
+  mostrarLineasSKU();
+
+  actualizarResumen();
+
+  /*
+    Mantener PM actual visible.
+  */
+
+  document.getElementById("pmActualMain")
+    .textContent =
+      `PM ${pmActual}`;
 }
 
 
-/* =========================================================
-   STOCK INSUFICIENTE
-========================================================= */
+/* ============================================================
+   CERRAR PREPARACION ACTUAL
+============================================================ */
 
-let contextoParcial=null;
+function cerrarPreparacionActual(){
 
-function mostrarExcepcionStock(row,disponible){
+  selectedStock = null;
 
- contextoParcial={
-  item:currentItem,
-  row:row,
-  disponible:disponible
- };
+  document.getElementById("qtyPanel")
+    .classList.add("hidden");
 
+  /*
+    No cerrar el PM.
+    Solo terminar la preparación del SKU actual.
+  */
 
- document.getElementById("exceptionPanel")
-  .style.display="block";
-
- document.getElementById("exceptionText")
-  .textContent=
-   `El lote ${row.lote} tiene solamente `+
-   `${disponible} CA disponibles. `+
-   `La línea necesita más cantidad.`;
-
- document.getElementById("availableText")
-  .textContent=
-   `${disponible} CA disponibles del lote seleccionado`;
-
- document.getElementById("partialQty")
-  .max=disponible;
-
- document.getElementById("partialQty")
-  .value="";
-
- document.getElementById("reclassLot")
-  .value=
-   loteCajaDesdeSistema(
-    row.lote
-   );
-
- document.getElementById("reclassQty")
-  .value="";
-
- mostrarValidacion(
-  false,
-  "STOCK INSUFICIENTE",
-  `Hay ${disponible} CA del lote ${row.lote}.`
- );
-
-
- /* Mostrar solamente la fila seleccionada */
- document.getElementById("stockRows")
-  .innerHTML=
-   renderStockRow(row);
-
+  mostrarToast(
+    "Preparación cerrada."
+  );
 }
 
 
-/* =========================================================
-   CANTIDAD PARCIAL
-========================================================= */
+/* ============================================================
+   VOLVER PRINCIPAL
+============================================================ */
 
-function aplicarCantidadParcial(){
+function volverPrincipal(){
 
- if(!contextoParcial){
+  detenerScanner();
 
-  alert(
-   "Primero seleccioná un lote."
-  );
+  mostrarPantalla("screenMain");
 
-  return;
+  renderMain();
 
- }
-
-
- const cantidad=
-  parseInt(
-   document.getElementById("partialQty").value,
-   10
-  );
-
-
- const disponible=
-  Number(
-   contextoParcial.disponible
-  );
-
-
- const pendiente=
-  Math.max(
-   0,
-   Number(contextoParcial.item.cant)-
-   Number(contextoParcial.item.preparado||0)
-  );
-
-
- if(
-  !cantidad ||
-  cantidad<=0
- ){
-
-  alert(
-   "Ingresá una cantidad válida."
-  );
-
-  return;
-
- }
-
-
- if(cantidad>disponible){
-
-  alert(
-   `Podés agregar como máximo ${disponible} CA.`
-  );
-
-  return;
-
- }
-
-
- if(cantidad>pendiente){
-
-  alert(
-   `La línea solamente necesita ${pendiente} CA.`
-  );
-
-  return;
-
- }
-
-
- consumirStock(
-  contextoParcial.row,
-  cantidad
- );
-
-
- registrarPreparado(
-  contextoParcial.item,
-  cantidad
- );
-
-
- mostrarValidacion(
-  true,
-  "CANTIDAD PARCIAL AGREGADA",
-  `${cantidad} CA del lote ${contextoParcial.row.lote}`
- );
-
-
- document.getElementById("exceptionPanel")
-  .style.display="none";
-
- contextoParcial=null;
-
- avanzarPreparacion();
-
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
 }
 
 
-/* =========================================================
+/* ============================================================
    CERRAR PM
-========================================================= */
+============================================================ */
 
 function cerrarPM(){
 
- if(!currentItem){
+  const pendientes =
+    resumenUM().total;
 
-  cerrarPreparacion();
-  return;
+  const prep =
+    resumenUM().preparado;
 
- }
+  let hayPendiente = false;
+
+  for(const um of Object.keys(pendientes)){
+
+    if(
+      Number(prep[um] || 0) <
+      Number(pendientes[um] || 0)
+    ){
+      hayPendiente = true;
+    }
+  }
 
 
- const pendientes=
-  lineasPendientes();
+  if(hayPendiente){
 
- const preparadasPM=
-  itemsTotales.filter(
-   x=>Number(x.pm)===Number(currentPM)
+    const continuar =
+      confirm(
+        "Todavía hay cantidades pendientes.\n\n" +
+        "¿Querés cerrar igualmente este PM?"
+      );
+
+    if(!continuar) return;
+  }
+
+
+  pmActual++;
+
+  mostrarToast(
+    `PM cerrado. Ahora estás preparando PM ${pmActual}.`,
+    3500
   );
 
 
- if(!preparadasPM.length){
+  document.getElementById("pmActualMain")
+    .textContent =
+      `PM ${pmActual}`;
 
-  alert(
-   "No preparaste ninguna caja en este PM."
-  );
-
-  return;
-
- }
-
-
- if(pendientes.length===0){
-
-  alert(
-   "El picking completo ya está preparado."
-  );
-
-  cerrarPreparacion();
-
-  return;
-
- }
-
-
- const confirmar=
-  confirm(
-   `¿Cerrar PM ${currentPM}?\n\n`+
-   `Las cajas ya preparadas quedarán `+
-   `asociadas al PM ${currentPM}.`
-  );
-
-
- if(!confirmar)return;
-
-
- currentPM++;
-
-
- currentItem=null;
- selectedStock=null;
- contextoParcial=null;
-
-
- limpiarPreparacion();
-
-
- mostrarValidacion(
-  true,
-  `PM ${currentPM-1} CERRADO`,
-  `Ahora estás preparando PM ${currentPM}.`
- );
-
-
- document.getElementById("scannerSub")
-  .textContent=
-   `PM ${currentPM}`;
-
-
- seleccionarPrimeraLinea();
-
+  renderMain();
 }
 
 
-/* =========================================================
-   CERRAR PREPARACIÓN
-========================================================= */
+/* ============================================================
+   RECLASIFICACION
+============================================================ */
 
-function cerrarPreparacion(){
+function abrirReclasificacion(){
 
- detenerCamara();
+  if(!currentSKU){
 
- document.getElementById("scannerModal")
-  .style.display="none";
+    mostrarToast(
+      "Primero seleccioná un SKU."
+    );
 
- currentItem=null;
- selectedStock=null;
- contextoParcial=null;
+    return;
+  }
 
- renderSuggested();
- renderFreeLines();
- actualizarResumen();
 
+  const pendiente =
+    pendienteSKU(currentSKU);
+
+
+  if(pendiente <= 0){
+
+    mostrarToast(
+      "Este SKU ya está completo."
+    );
+
+    return;
+  }
+
+
+  document.getElementById("reclasInfo")
+    .innerHTML = `
+      <strong>SKU:</strong> ${esc(currentSKU)}
+      <br>
+      <strong>Descripción:</strong>
+      ${esc(currentDescription)}
+      <br>
+      <strong>PM:</strong> ${pmActual}
+      <br>
+      <strong>Pendiente:</strong>
+      ${formatoNumero(pendiente)}
+    `;
+
+
+  document.getElementById("reclasCantidad")
+    .value = pendiente;
+
+
+  document.getElementById("reclasLote")
+    .value = "";
+
+
+  document.getElementById("modalReclas")
+    .classList.remove("hidden");
 }
 
 
-/* =========================================================
-   TODO COMPLETO
-========================================================= */
+function cerrarModalReclas(){
 
-function mostrarTodoCompleto(){
-
- document.getElementById("targetSku")
-  .textContent="PICKING COMPLETO";
-
- document.getElementById("targetDesc")
-  .textContent="No quedan líneas pendientes.";
-
- document.getElementById("targetUbi")
-  .textContent="-";
-
- document.getElementById("targetPending")
-  .textContent="0";
-
- document.getElementById("btnAgregar")
-  .disabled=true;
-
- mostrarValidacion(
-  true,
-  "PICKING COMPLETO",
-  "Todas las cantidades fueron preparadas."
- );
-
+  document.getElementById("modalReclas")
+    .classList.add("hidden");
 }
 
 
-/* =========================================================
-   LIMPIAR PREPARACIÓN
-========================================================= */
-
-function limpiarPreparacion(){
-
- document.getElementById("scanSku")
-  .value="";
-
- document.getElementById("scanJulian")
-  .value="";
-
- document.getElementById("scanHora")
-  .value="";
-
- document.getElementById("loteCalculado")
-  .classList.add("hidden");
-
- document.getElementById("stockCard")
-  .classList.add("hidden");
-
- document.getElementById("stockRows")
-  .innerHTML="";
-
- document.getElementById("exceptionPanel")
-  .style.display="none";
-
- document.getElementById("partialQty")
-  .value="";
-
- document.getElementById("reclassQty")
-  .value="";
-
- selectedStock=null;
-
- contextoParcial=null;
-
- limpiarValidacion();
-
- document.getElementById("btnAgregar")
-  .disabled=false;
-
-}
-
-
-/* =========================================================
-   RECLASIFICACIÓN PDF
-========================================================= */
+/* ============================================================
+   GENERAR PDF RECLASIFICACION
+============================================================ */
 
 function generarReclasificacion(){
 
- if(!currentItem){
+  const lote =
+    document.getElementById("reclasLote")
+      .value.trim();
 
-  alert(
-   "No hay una línea seleccionada."
-  );
+  const cantidad =
+    numero(
+      document.getElementById("reclasCantidad")
+        .value
+    );
 
-  return;
 
- }
+  if(!lote){
 
+    alert(
+      "Ingresá el lote físico / Julian."
+    );
 
- const lote=
-  String(
-   document.getElementById("reclassLot").value ||
-   ""
-  ).trim();
-
- const cantidad=
-  parseInt(
-   document.getElementById("reclassQty").value,
-   10
-  );
-
-
- if(!lote){
-
-  alert(
-   "Ingresá los últimos 3 dígitos del lote físico."
-  );
-
-  return;
-
- }
-
-
- if(!cantidad || cantidad<=0){
-
-  alert(
-   "Ingresá una cantidad válida."
-  );
-
-  return;
-
- }
-
-
- try{
-
-  const {jsPDF}=
-   window.jspdf;
-
-  const doc=
-   new jsPDF();
-
-
-  doc.setFontSize(16);
-
-  doc.text(
-   "SOLICITUD DE RECLASIFICACIÓN",
-   20,
-   20
-  );
-
-
-  doc.setFontSize(10);
-
-
-  let y=35;
-
-
-  doc.text(
-   `SKU: ${currentItem.sku}`,
-   20,
-   y
-  );
-
-  y+=8;
-
-
-  doc.text(
-   `Descripción: ${currentItem.desc || ""}`,
-   20,
-   y
-  );
-
-  y+=8;
-
-
-  doc.text(
-   `Ubicación de picking: ${currentItem.ubi}`,
-   20,
-   y
-  );
-
-  y+=8;
-
-
-  doc.text(
-   `Lote físico: ${lote}`,
-   20,
-   y
-  );
-
-  y+=8;
-
-
-  doc.text(
-   `Cantidad: ${cantidad} CA`,
-   20,
-   y
-  );
-
-  y+=8;
-
-
-  doc.text(
-   `PM: ${currentPM}`,
-   20,
-   y
-  );
-
-  y+=8;
-
-
-  doc.text(
-   `Fecha: ${new Date().toLocaleString("es-AR")}`,
-   20,
-   y
-  );
-
-  y+=12;
-
-
-  doc.text(
-   "Motivo:",
-   20,
-   y
-  );
-
-  y+=7;
-
-
-  doc.text(
-   "Diferencia entre lote físico encontrado",
-   20,
-   y
-  );
-
-  y+=6;
-
-
-  doc.text(
-   "y lote disponible en Stock JDE.",
-   20,
-   y
-  );
-
-
-  doc.save(
-   `Reclasificacion_${currentItem.sku}_${lote}.pdf`
-  );
-
-
-  toast(
-   "PDF de reclasificación generado"
-  );
-
-
- }catch(err){
-
-  alert(
-   "No se pudo generar el PDF:\n"+
-   err.message
-  );
-
- }
-
-}
-
-
-/* =========================================================
-   CÁMARA
-========================================================= */
-
-async function toggleCamara(){
-
- const box=
-  document.getElementById("cameraContainer");
-
- if(
-  box.style.display==="block"
- ){
-
-  detenerCamara();
-
- }else{
-
-  await iniciarCamara();
-
- }
-
-}
-
-
-async function iniciarCamara(){
-
- const box=
-  document.getElementById("cameraContainer");
-
- const video=
-  document.getElementById("cameraPreview");
-
-
- box.style.display="block";
-
-
- if(
-  !window.ZXing ||
-  !ZXing.BrowserMultiFormatReader
- ){
-
-  alert(
-   "No se pudo cargar el lector.\n"+
-   "Podés ingresar el SKU manualmente."
-  );
-
-  return;
-
- }
-
-
- try{
-
-  detenerCamara();
-
-  scannerReader=
-   new ZXing.BrowserMultiFormatReader();
-
-
-  scannerControls=
-   await scannerReader.decodeFromConstraints(
-
-    {
-     video:{
-      facingMode:{
-       ideal:"environment"
-      },
-      width:{
-       ideal:1280
-      },
-      height:{
-       ideal:720
-      }
-     }
-    },
-
-    video,
-
-    (result,error,controls)=>{
-
-     if(!result)return;
-
-
-     const codigo=
-      result.getText();
-
-
-     document.getElementById("scanSku")
-      .value=codigo;
-
-
-     limpiarCodigo();
-
-
-     toast(
-      "Código leído: "+codigo
-     );
-
-
-     detenerCamara();
-
-     setTimeout(()=>{
-
-      document.getElementById("scanJulian")
-       .focus();
-
-     },150);
-
-    }
-
-   );
-
- }catch(err){
-
-  console.error(err);
-
-  alert(
-   "No se pudo abrir la cámara.\n\n"+
-   "Verificá los permisos del navegador."
-  );
-
-  box.style.display="none";
-
- }
-
-}
-
-
-function detenerCamara(){
-
- try{
-
-  if(
-   scannerControls &&
-   scannerControls.stop
-  ){
-
-   scannerControls.stop();
-
+    return;
   }
 
- }catch(e){}
 
+  if(cantidad <= 0){
 
- scannerControls=null;
+    alert(
+      "Ingresá una cantidad válida."
+    );
 
-
- try{
-
-  if(
-   scannerReader &&
-   scannerReader.reset
-  ){
-
-   scannerReader.reset();
-
+    return;
   }
 
- }catch(e){}
+
+  /*
+    Determinar ubicación solicitada.
+
+    Se toma la primera ubicación de picking
+    pendiente del SKU.
+  */
+
+  const line =
+    surtidoLines.find(l =>
+      l.sku === currentSKU &&
+      pendienteLinea(l) > 0
+    );
 
 
- scannerReader=null;
+  const ubicacion =
+    line?.ubi || "NO DETERMINADA";
 
-
- const video=
-  document.getElementById("cameraPreview");
-
-
- if(video){
 
   try{
-   video.srcObject=null;
-  }catch(e){}
 
- }
+    const { jsPDF } =
+      window.jspdf;
+
+    const pdf =
+      new jsPDF();
 
 
- document.getElementById("cameraContainer")
-  .style.display="none";
+    const fecha =
+      new Date()
+        .toLocaleString("es-AR");
 
+
+    pdf.setFontSize(18);
+
+    pdf.text(
+      "SOLICITUD DE RECLASIFICACIÓN",
+      15,
+      20
+    );
+
+
+    pdf.setFontSize(11);
+
+    let y = 35;
+
+
+    const datos = [
+      ["Fecha",fecha],
+      ["PM",String(pmActual)],
+      ["SKU",currentSKU],
+      ["Descripción",currentDescription],
+      ["Ubicación",ubicacion],
+      ["Lote físico / Julian",lote],
+      ["Cantidad",String(cantidad)],
+      ["Motivo","No se encontró el lote indicado en stock"]
+    ];
+
+
+    for(const [label,value] of datos){
+
+      pdf.setFont("helvetica","bold");
+
+      pdf.text(
+        `${label}:`,
+        15,
+        y
+      );
+
+      pdf.setFont("helvetica","normal");
+
+      pdf.text(
+        String(value || ""),
+        60,
+        y
+      );
+
+      y += 9;
+    }
+
+
+    y += 10;
+
+    pdf.setFont("helvetica","bold");
+
+    pdf.text(
+      "Detalle:",
+      15,
+      y
+    );
+
+    pdf.setFont("helvetica","normal");
+
+    y += 8;
+
+    const detalle =
+      `Solicitar reclasificación de ` +
+      `${cantidad} unidades del SKU ` +
+      `${currentSKU} en la ubicación ` +
+      `${ubicacion}, lote físico ${lote}.`;
+
+    const partes =
+      pdf.splitTextToSize(
+        detalle,
+        175
+      );
+
+    pdf.text(
+      partes,
+      15,
+      y
+    );
+
+
+    const nombre =
+      `Reclasificacion_${currentSKU}_PM${pmActual}.pdf`;
+
+
+    pdf.save(nombre);
+
+
+    cerrarModalReclas();
+
+    mostrarToast(
+      "PDF de reclasificación generado."
+    );
+
+  }catch(err){
+
+    console.error(err);
+
+    alert(
+      "No se pudo generar el PDF."
+    );
+  }
 }
 
 
-/* =========================================================
-   VOZ
-========================================================= */
-
-if(recognition){
-
- recognition.lang="es-AR";
-
- recognition.interimResults=false;
-
- recognition.continuous=false;
-
-
- recognition.onresult=function(event){
-
-  const texto=
-   event.results[0][0]
-    .transcript
-    .trim();
-
-
-  const limpio=
-   texto.replace(/\s/g,"");
-
-
-  document.getElementById("scanSku")
-   .value=limpio;
-
-
-  document.getElementById("voiceButton")
-   .classList.remove("listening");
-
- };
-
-
- recognition.onerror=function(){
-
-  document.getElementById("voiceButton")
-   .classList.remove("listening");
-
- };
-
-
- recognition.onend=function(){
-
-  document.getElementById("voiceButton")
-   .classList.remove("listening");
-
- };
-
-}
-
-
-function activarMicrofono(){
-
- if(!recognition){
-
-  alert(
-   "El reconocimiento de voz no está disponible en este navegador."
-  );
-
-  return;
-
- }
-
-
- try{
-
-  recognition.start();
-
-  document.getElementById("voiceButton")
-   .classList.add("listening");
-
- }catch(e){}
-
-}
-
-
-/* =========================================================
+/* ============================================================
    INICIO
-========================================================= */
+============================================================ */
 
 document.addEventListener(
- "DOMContentLoaded",
- ()=>{
+  "DOMContentLoaded",
+  ()=>{
 
-  document.getElementById("suggestedView")
-   .classList.add("hidden");
+    /*
+      Permitir ENTER en el campo manual.
+    */
 
-  document.getElementById("freeView")
-   .classList.add("hidden");
+    const input =
+      document.getElementById("manualSku");
 
- }
+    input.addEventListener(
+      "keydown",
+      e=>{
+        if(e.key === "Enter"){
+          buscarSKUManual();
+        }
+      }
+    );
+
+
+    /*
+      Permitir ENTER en cantidad.
+    */
+
+    const qty =
+      document.getElementById("qtyPrepare");
+
+    qty.addEventListener(
+      "keydown",
+      e=>{
+        if(e.key === "Enter"){
+          confirmarPreparacion();
+        }
+      }
+    );
+
+  }
+);
+
+
+/* ============================================================
+   CONTROL DE ERROR GENERAL
+============================================================ */
+
+window.addEventListener(
+  "error",
+  function(e){
+
+    console.error(
+      "Error JavaScript:",
+      e.error || e.message
+    );
+
+    /*
+      No mostramos errores técnicos al operador
+      para no complicar el uso de la app.
+    */
+  }
 );
 
 </script>
