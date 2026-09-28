@@ -1060,11 +1060,11 @@ function findColumn(headers,candidates){
 
 function parseStockWorkbook(workbook){
 
-    const sheet = findSheet(workbook,"vStock");
+const sheet = findSheet(workbook,"legacy vStockPT");
 
-    if(!sheet){
-        throw new Error("No se encontró la hoja vStock.");
-    }
+if(!sheet){
+    throw new Error("No se encontró la hoja 'legacy vStockPT'.");
+}
 
     const rows = XLSX.utils.sheet_to_json(
         sheet,
