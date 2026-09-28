@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Picking PM - M2 Consultoría Digital</title>
+<title>Picking PM - Pallet Mixto</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
@@ -19,10 +19,11 @@ body{
     margin:0;
     font-family:Arial,Helvetica,sans-serif;
     background:#f3f5f7;
-    color:#17202a;
+    color:#1f2937;
 }
 
-button,input,select{
+button,
+input{
     font-family:inherit;
 }
 
@@ -31,28 +32,29 @@ button,input,select{
     color:white;
     padding:14px 12px;
     text-align:center;
+    font-size:20px;
+    font-weight:bold;
     position:sticky;
     top:0;
     z-index:20;
 }
 
-.header h1{
-    margin:0;
-    font-size:20px;
-}
-
-.header small{
-    display:block;
-    margin-top:4px;
-    opacity:.85;
+.subheader{
     font-size:12px;
+    font-weight:normal;
+    opacity:.9;
+    margin-top:4px;
 }
 
-.container{
-    width:100%;
+.screen{
+    display:none;
+    padding:12px;
     max-width:900px;
     margin:auto;
-    padding:12px;
+}
+
+.screen.active{
+    display:block;
 }
 
 .card{
@@ -60,17 +62,17 @@ button,input,select{
     border-radius:12px;
     padding:14px;
     margin-bottom:12px;
-    box-shadow:0 2px 8px rgba(0,0,0,.08);
+    box-shadow:0 2px 7px rgba(0,0,0,.08);
 }
 
 h2{
-    font-size:18px;
     margin:4px 0 12px;
+    font-size:19px;
 }
 
 h3{
+    margin:5px 0 10px;
     font-size:16px;
-    margin:4px 0 10px;
 }
 
 .file-row{
@@ -80,37 +82,38 @@ h3{
 .file-row label{
     display:block;
     font-weight:bold;
-    font-size:14px;
     margin-bottom:6px;
 }
 
-input[type=file]{
+.file-input{
     width:100%;
     padding:10px;
-    background:#f5f6f7;
-    border:1px solid #ccd3da;
+    background:#f8fafc;
+    border:1px solid #d1d5db;
     border-radius:8px;
 }
 
 .status{
     margin-top:5px;
-    font-size:12px;
-    color:#777;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.status.pending{
+    color:#b45309;
 }
 
 .status.ok{
-    color:#16803c;
-    font-weight:bold;
+    color:#15803d;
 }
 
 .status.error{
-    color:#c62828;
-    font-weight:bold;
+    color:#dc2626;
 }
 
 .btn{
     width:100%;
-    border:0;
+    border:none;
     border-radius:10px;
     padding:14px 12px;
     font-size:16px;
@@ -124,24 +127,14 @@ input[type=file]{
     color:white;
 }
 
-.btn-green{
+.btn-success{
     background:#2e7d32;
     color:white;
 }
 
-.btn-orange{
-    background:#ef8b00;
+.btn-warning{
+    background:#d97706;
     color:white;
-}
-
-.btn-gray{
-    background:#68727d;
-    color:white;
-}
-
-.btn-light{
-    background:#e8edf2;
-    color:#1e3a5f;
 }
 
 .btn-danger{
@@ -149,9 +142,18 @@ input[type=file]{
     color:white;
 }
 
+.btn-secondary{
+    background:#64748b;
+    color:white;
+}
+
+.btn-light{
+    background:#e5e7eb;
+    color:#111827;
+}
+
 .btn:disabled{
     opacity:.5;
-    cursor:not-allowed;
 }
 
 .summary-grid{
@@ -160,58 +162,60 @@ input[type=file]{
     gap:8px;
 }
 
-.summary-box{
-    background:#edf2f7;
+.summary-card{
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
     border-radius:10px;
     padding:10px;
     text-align:center;
 }
 
-.summary-box .label{
-    font-size:11px;
-    color:#59636e;
+.summary-title{
+    font-size:12px;
+    color:#64748b;
+}
+
+.summary-value{
+    font-size:21px;
     font-weight:bold;
+    margin-top:3px;
 }
 
-.summary-box .number{
-    font-size:23px;
-    font-weight:bold;
-    color:#1e3a5f;
-    margin-top:2px;
+.pm-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
 }
 
-.summary-box.prepared{
-    background:#e8f5e9;
-}
-
-.summary-box.prepared .number{
-    color:#2e7d32;
-}
-
-.zone-title{
+.pm-badge{
     background:#1e3a5f;
     color:white;
-    padding:8px 10px;
-    border-radius:8px;
-    margin-top:12px;
+    padding:8px 12px;
+    border-radius:20px;
     font-weight:bold;
-    font-size:14px;
 }
 
 .line-card{
-    background:white;
-    border:1px solid #d8dee4;
+    border:1px solid #dbe2ea;
     border-radius:10px;
     padding:10px;
-    margin-top:7px;
+    margin-bottom:8px;
+    background:white;
 }
 
 .line-card.prepared{
     border-left:6px solid #2e7d32;
+    font-weight:bold;
 }
 
-.line-card.completed{
-    background:#f0f8f1;
+.line-zone{
+    background:#eaf0f6;
+    border-radius:8px;
+    padding:7px 9px;
+    margin:12px 0 7px;
+    font-weight:bold;
+    color:#1e3a5f;
 }
 
 .line-top{
@@ -220,283 +224,205 @@ input[type=file]{
     gap:8px;
 }
 
-.location{
+.line-location{
     font-weight:bold;
     color:#1e3a5f;
-    font-size:14px;
-}
-
-.qty{
-    font-weight:bold;
-    font-size:17px;
-    white-space:nowrap;
 }
 
 .line-sku{
-    font-size:14px;
     font-weight:bold;
-    margin-top:4px;
 }
 
 .line-desc{
     font-size:13px;
-    color:#555;
-    margin-top:3px;
+    margin:4px 0;
 }
 
-.line-bottom{
-    display:flex;
-    justify-content:space-between;
-    gap:8px;
-    margin-top:8px;
-    font-size:12px;
-}
-
-.pm-badge{
-    background:#1e3a5f;
-    color:white;
-    border-radius:6px;
-    padding:4px 7px;
-    font-weight:bold;
-}
-
-.pending{
-    color:#c62828;
-    font-weight:bold;
-}
-
-.done{
-    color:#2e7d32;
-    font-weight:bold;
-}
-
-.hidden{
-    display:none !important;
-}
-
-.top-actions{
+.line-data{
     display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    margin-bottom:10px;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:5px;
+    font-size:12px;
+    margin-top:7px;
 }
 
-.top-actions .btn{
-    margin-top:0;
+.data-box{
+    background:#f8fafc;
+    border-radius:6px;
+    padding:6px;
 }
 
-.scan-box{
-    background:#101820;
-    border-radius:10px;
-    overflow:hidden;
-    margin-bottom:10px;
+.data-box b{
+    display:block;
+    font-size:15px;
+}
+
+.prepared-tag{
+    color:#15803d;
+    font-weight:bold;
+    margin-top:5px;
 }
 
 #reader{
     width:100%;
-    min-height:220px;
+    max-width:500px;
+    margin:auto;
 }
 
-.product-info{
-    background:#edf2f7;
+.scan-status{
+    text-align:center;
+    padding:8px;
+    font-weight:bold;
+    font-size:14px;
+}
+
+.product-card{
+    background:#eff6ff;
+    border:2px solid #bfdbfe;
     border-radius:10px;
     padding:12px;
-    margin-bottom:10px;
+    margin-bottom:12px;
 }
 
-.product-info .sku{
+.product-sku{
     font-size:20px;
     font-weight:bold;
     color:#1e3a5f;
 }
 
-.product-info .desc{
-    margin-top:4px;
+.product-desc{
     font-size:14px;
+    margin-top:4px;
 }
 
-.stock-title{
-    margin-top:12px;
-    font-weight:bold;
-    font-size:16px;
+.stock-list{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
 }
 
 .stock-row{
-    border:1px solid #d6dce2;
+    border:2px solid #dbe2ea;
     border-radius:9px;
     padding:10px;
-    margin-top:7px;
     background:white;
     cursor:pointer;
 }
 
-.stock-row.suggested{
-    border:2px solid #1e3a5f;
-    background:#eef4fa;
-}
-
 .stock-row.selected{
-    background:#dcecfb;
-    border:2px solid #1e3a5f;
+    border-color:#1e3a5f;
+    background:#eef4fb;
 }
 
-.stock-row.disabled{
-    opacity:.5;
-}
-
-.stock-main{
-    display:flex;
-    justify-content:space-between;
-    gap:8px;
-}
-
-.stock-location{
-    font-weight:bold;
-    color:#1e3a5f;
-}
-
-.stock-qty{
-    font-size:18px;
+.stock-row.suggested{
+    border-color:#d97706;
+    background:#fff7ed;
     font-weight:bold;
 }
 
-.stock-detail{
-    margin-top:5px;
+.stock-grid{
+    display:grid;
+    grid-template-columns:1.1fr 1.2fr 1fr .8fr;
+    gap:5px;
+    align-items:center;
     font-size:12px;
-    color:#555;
 }
 
-.stock-suggested{
-    color:#1e3a5f;
-    font-weight:bold;
-    font-size:11px;
-}
-
-.quantity-box{
-    margin-top:12px;
-    background:#f6f7f8;
-    padding:12px;
-    border-radius:10px;
-}
-
-.quantity-box label{
+.stock-grid b{
     display:block;
-    font-weight:bold;
     font-size:14px;
-    margin-bottom:6px;
 }
 
-.quantity-box input{
+.qty-input{
     width:100%;
     padding:13px;
-    font-size:22px;
-    border:2px solid #b8c1ca;
+    font-size:20px;
+    border:2px solid #cbd5e1;
     border-radius:9px;
     text-align:center;
 }
 
-.alert{
-    padding:11px;
+.message{
+    padding:10px;
     border-radius:9px;
     margin:8px 0;
-    font-size:13px;
     font-weight:bold;
+    display:none;
 }
 
-.alert-info{
-    background:#e3f2fd;
-    color:#145a86;
+.message.show{
+    display:block;
 }
 
-.alert-warning{
-    background:#fff3cd;
-    color:#856404;
+.message.error{
+    background:#fee2e2;
+    color:#991b1b;
 }
 
-.alert-error{
-    background:#fdecea;
-    color:#b71c1c;
+.message.ok{
+    background:#dcfce7;
+    color:#166534;
 }
 
-.alert-success{
-    background:#e8f5e9;
-    color:#1b5e20;
+.message.warning{
+    background:#fef3c7;
+    color:#92400e;
 }
 
 .modal{
+    display:none;
     position:fixed;
     inset:0;
     background:rgba(0,0,0,.55);
     z-index:100;
-    display:flex;
     align-items:center;
     justify-content:center;
     padding:15px;
 }
 
-.modal-content{
+.modal.show{
+    display:flex;
+}
+
+.modal-box{
     width:100%;
-    max-width:450px;
+    max-width:500px;
     background:white;
     border-radius:14px;
     padding:16px;
 }
 
-.modal-content input{
+.modal-box input{
     width:100%;
     padding:13px;
     font-size:18px;
-    border:1px solid #aaa;
+    border:1px solid #cbd5e1;
     border-radius:8px;
+    margin:8px 0;
 }
 
 .small{
     font-size:12px;
-    color:#68727d;
+    color:#64748b;
 }
 
-.loading{
-    text-align:center;
-    padding:20px;
-    font-weight:bold;
-    color:#1e3a5f;
-}
-
-.file-summary{
-    background:#f7f9fb;
-    border-radius:8px;
-    padding:8px;
-    margin-top:8px;
-    font-size:12px;
-}
-
-.pm-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    background:#1e3a5f;
-    color:white;
+.reclass-box{
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    border-radius:10px;
     padding:10px;
-    border-radius:9px;
-    margin-bottom:10px;
+    margin-top:10px;
 }
 
-.pm-number{
-    font-size:20px;
-    font-weight:bold;
+.empty{
+    text-align:center;
+    padding:20px 10px;
+    color:#64748b;
 }
 
 @media(min-width:700px){
-    .container{
-        padding:20px;
-    }
-
     .summary-grid{
         grid-template-columns:repeat(4,1fr);
-    }
-
-    .line-card{
-        padding:12px;
     }
 }
 </style>
@@ -505,244 +431,199 @@ input[type=file]{
 <body>
 
 <div class="header">
-    <h1>Picking PM</h1>
-    <small>M2 Consultoría Digital</small>
+    PICKING PM - PALLET MIXTO
+    <div class="subheader">Preparación de cajas por lote</div>
 </div>
 
-<!-- ============================= -->
-<!-- PANTALLA DE CARGA -->
-<!-- ============================= -->
+<!-- =========================
+     PANTALLA CARGA
+========================= -->
 
-<div id="screenLoad" class="container">
+<div id="screenLoad" class="screen active">
 
     <div class="card">
-        <h2>Cargar archivos</h2>
+        <h2>1. Cargar archivos</h2>
 
-        <div class="small">
-            Cargá los 3 archivos JDE para comenzar.
-        </div>
-
-        <div class="file-row" style="margin-top:15px;">
-            <label>1. Stock JDE</label>
-            <input type="file" id="fileStock" accept=".xls,.xlsx,.csv">
-            <div id="statusStock" class="status">Pendiente</div>
+        <div class="file-row">
+            <label>Stock JDE</label>
+            <input id="fileStock" class="file-input" type="file" accept=".xlsx,.xls">
+            <div id="statusStock" class="status pending">Pendiente</div>
         </div>
 
         <div class="file-row">
-            <label>2. MST Producto</label>
-            <input type="file" id="fileMst" accept=".xls,.xlsx,.csv">
-            <div id="statusMst" class="status">Pendiente</div>
+            <label>MST Producto</label>
+            <input id="fileMst" class="file-input" type="file" accept=".xlsx,.xls">
+            <div id="statusMst" class="status pending">Pendiente</div>
         </div>
 
         <div class="file-row">
-            <label>3. Surtido JDE</label>
-            <input type="file" id="fileSurtido" accept=".xls,.xlsx,.csv">
-            <div id="statusSurtido" class="status">Pendiente</div>
+            <label>Surtido JDE</label>
+            <input id="fileSurtido" class="file-input" type="file" accept=".xlsx,.xls">
+            <div id="statusSurtido" class="status pending">Pendiente</div>
         </div>
 
-        <button id="btnContinuar"
-                class="btn btn-primary"
-                disabled>
-            CARGAR Y CONTINUAR
-        </button>
-
-        <div id="loadMessage" style="margin-top:10px;"></div>
-    </div>
-
-    <div class="card">
-        <div class="small">
-            La aplicación funciona en el navegador. Los archivos se procesan localmente en el dispositivo.
-        </div>
+        <div id="loadMessage" class="message"></div>
     </div>
 
 </div>
 
 
-<!-- ============================= -->
-<!-- PANTALLA PRINCIPAL -->
-<!-- ============================= -->
+<!-- =========================
+     PANTALLA PRINCIPAL
+========================= -->
 
-<div id="screenMain" class="container hidden">
+<div id="screenMain" class="screen">
 
     <div class="card">
 
         <div class="pm-header">
             <div>
-                <div style="font-size:11px;">PALLET ACTUAL</div>
-                <div class="pm-number" id="mainPmNumber">PM 1</div>
+                <h2 style="margin:0;">Preparación</h2>
+                <div class="small">Pallet Mixto</div>
             </div>
 
-            <div style="text-align:right;">
-                <div style="font-size:11px;">LÍNEAS</div>
-                <div id="mainLineCount" style="font-size:20px;font-weight:bold;">0</div>
+            <div class="pm-badge">
+                PM <span id="currentPMLabel">1</span>
             </div>
         </div>
 
-        <h3>Total a preparar</h3>
-
-        <div id="summaryPrepare" class="summary-grid"></div>
-
-        <div style="height:8px;"></div>
-
-        <h3>Preparado</h3>
-
-        <div id="summaryPrepared" class="summary-grid"></div>
-
     </div>
 
-    <div class="top-actions">
-        <button id="btnPrepare" class="btn btn-green">
+    <div class="card">
+        <h3>Resumen de preparación</h3>
+
+        <div id="summaryGrid" class="summary-grid">
+        </div>
+    </div>
+
+    <div class="card">
+
+        <button id="btnPrepare" class="btn btn-success">
             PREPARAR PK
         </button>
 
-        <button id="btnAllLines" class="btn btn-light">
+        <button id="btnShowAll" class="btn btn-primary">
             VER TODAS LAS LÍNEAS
         </button>
-    </div>
 
-    <div id="mainModeMessage" class="alert alert-info hidden"></div>
+    </div>
 
     <div id="mainList"></div>
 
 </div>
 
 
-<!-- ============================= -->
-<!-- PANTALLA PREPARACIÓN -->
-<!-- ============================= -->
+<!-- =========================
+     PANTALLA PREPARACIÓN
+========================= -->
 
-<div id="screenPrepare" class="container hidden">
+<div id="screenPrepare" class="screen">
 
-    <div class="pm-header">
-        <button id="btnBackMain"
-                class="btn btn-light"
-                style="width:auto;margin:0;padding:8px 12px;">
-            ← VOLVER
-        </button>
+    <div class="card">
 
-        <div class="pm-number" id="preparePmNumber">
-            PM 1
+        <div class="pm-header">
+            <button id="btnBackMain" class="btn btn-light" style="width:auto;margin:0;">
+                ← Volver
+            </button>
+
+            <div class="pm-badge">
+                PM <span id="preparePMLabel">1</span>
+            </div>
         </div>
 
-        <div style="width:65px;"></div>
     </div>
 
     <div class="card">
 
-        <h3>Preparar picking</h3>
+        <h3>Escanear caja</h3>
 
-        <div class="small">
-            Escaneá la caja para identificar el SKU.
+        <div id="reader"></div>
+
+        <div id="scanStatus" class="scan-status">
+            Esperando escaneo...
         </div>
 
-        <div class="scan-box">
-            <div id="reader"></div>
-        </div>
-
-        <button id="btnStartScanner"
-                class="btn btn-primary">
-            INICIAR CÁMARA
-        </button>
-
-        <button id="btnStopScanner"
-                class="btn btn-gray hidden">
-            DETENER CÁMARA
-        </button>
-
-        <button id="btnManualSku"
-                class="btn btn-light">
+        <button id="btnManualSku" class="btn btn-secondary">
             INGRESAR SKU MANUALMENTE
         </button>
 
-        <div id="scanMessage"></div>
+    </div>
+
+    <div id="prepareMessage" class="message"></div>
+
+    <div id="productArea"></div>
+
+    <div class="card">
+
+        <h3>Stock disponible</h3>
+
+        <div id="stockList" class="stock-list">
+            <div class="empty">
+                Escaneá una caja para consultar el stock.
+            </div>
+        </div>
 
     </div>
 
-    <div id="productCard" class="card hidden">
+    <div class="card">
 
-        <div class="product-info">
-            <div class="sku" id="productSku"></div>
-            <div class="desc" id="productDesc"></div>
-        </div>
+        <h3>Cantidad a preparar</h3>
 
-        <div id="pendingProductInfo"></div>
+        <input
+            id="qtyPrepare"
+            class="qty-input"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Cantidad"
+        >
 
-        <div class="stock-title">
-            Stock disponible
-        </div>
-
-        <div class="small" style="margin-top:3px;">
-            Tocá el lote que vas a utilizar.
-        </div>
-
-        <div id="stockList"></div>
-
-        <div id="quantitySection" class="quantity-box hidden">
-
-            <label id="quantityLabel">
-                Cantidad a preparar
-            </label>
-
-            <input
-                type="number"
-                id="quantityInput"
-                min="1"
-                step="1"
-                inputmode="numeric"
-            >
-
-            <button id="btnConfirmQuantity"
-                    class="btn btn-green">
-                CONFIRMAR PREPARACIÓN
-            </button>
-        </div>
-
-        <div id="prepareMessage"></div>
-
-        <button id="btnReclassify"
-                class="btn btn-orange">
-            NO ENCUENTRO NINGÚN LOTE → RECLASIFICAR
+        <button id="btnConfirmPreparation" class="btn btn-success">
+            CONFIRMAR PREPARACIÓN
         </button>
 
-        <button id="btnClosePm"
-                class="btn btn-primary">
+        <button id="btnOpenReclass" class="btn btn-warning">
+            NO ENCUENTRO EL LOTE FÍSICO
+        </button>
+
+        <button id="btnClosePM" class="btn btn-danger">
             CERRAR PM
         </button>
 
     </div>
 
-    <div id="preparedHistory" class="card hidden">
+    <div class="card">
+
         <h3>Preparado en este PM</h3>
-        <div id="preparedHistoryList"></div>
+
+        <div id="preparedHistory">
+            <div class="empty">
+                Todavía no hay preparación registrada.
+            </div>
+        </div>
+
     </div>
 
 </div>
 
 
-<!-- ============================= -->
-<!-- MODAL SKU -->
-<!-- ============================= -->
+<!-- =========================
+     MODAL SKU MANUAL
+========================= -->
 
-<div id="skuModal" class="modal hidden">
+<div id="skuModal" class="modal">
 
-    <div class="modal-content">
+    <div class="modal-box">
 
         <h3>Ingresar SKU</h3>
 
-        <input
-            id="manualSkuInput"
-            type="text"
-            inputmode="numeric"
-            placeholder="Ingrese SKU"
-        >
+        <input id="manualSkuInput" type="text" placeholder="SKU">
 
-        <button id="btnAcceptSku"
-                class="btn btn-green">
-            BUSCAR SKU
+        <button id="btnConfirmManualSku" class="btn btn-primary">
+            BUSCAR
         </button>
 
-        <button id="btnCancelSku"
-                class="btn btn-gray">
+        <button id="btnCancelManualSku" class="btn btn-light">
             CANCELAR
         </button>
 
@@ -751,14 +632,53 @@ input[type=file]{
 </div>
 
 
-<!-- ========================================================= -->
-<!-- IMPORTANTE: DESDE ACÁ COMIENZA EL ÚNICO <script> -->
-<!-- ========================================================= -->
+<!-- =========================
+     MODAL RECLASIFICACIÓN
+========================= -->
+
+<div id="reclassModal" class="modal">
+
+    <div class="modal-box">
+
+        <h3>Solicitar reclasificación</h3>
+
+        <div class="small">
+            Ingresá solamente los últimos 3 dígitos del lote Julian.
+        </div>
+
+        <input
+            id="reclassJulian"
+            type="text"
+            inputmode="numeric"
+            maxlength="3"
+            placeholder="Últimos 3 dígitos"
+        >
+
+        <input
+            id="reclassQty"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Cantidad"
+        >
+
+        <button id="btnGenerateReclass" class="btn btn-warning">
+            GENERAR PDF
+        </button>
+
+        <button id="btnCancelReclass" class="btn btn-light">
+            CANCELAR
+        </button>
+
+    </div>
+
+</div>
+
 
 <script>
-// ============================================================
-// DATOS GLOBALES
-// ============================================================
+/* ============================================================
+   VARIABLES
+============================================================ */
 
 let stockData = [];
 let mstData = {};
@@ -771,24 +691,18 @@ let currentPM = 1;
 let currentProduct = null;
 let selectedStock = null;
 
-let scanner = null;
+let html5QrCode = null;
 let scannerRunning = false;
 
-let showingAllLines = false;
 
-
-// ============================================================
-// FUNCIONES GENERALES
-// ============================================================
+/* ============================================================
+   FUNCIONES GENERALES
+============================================================ */
 
 function cleanText(value){
-    if(value === null || value === undefined){
-        return "";
-    }
-
+    if(value === null || value === undefined) return "";
     return String(value).trim();
 }
-
 
 function normalizeText(value){
     return cleanText(value)
@@ -798,34 +712,14 @@ function normalizeText(value){
         .replace(/[^a-z0-9]/g,"");
 }
 
-
 function normalizeSku(value){
-
-    if(value === null || value === undefined){
-        return "";
-    }
-
-    let s = String(value).trim();
-
-    // Evita números tipo 12345.0
-    if(/^\d+\.0+$/.test(s)){
-        s = s.split(".")[0];
-    }
-
-    // Evita notación científica en números simples
-    if(/^\d+e\+\d+$/i.test(s)){
-        try{
-            s = BigInt(Number(s)).toString();
-        }catch(e){}
-    }
-
-    return s;
+    return cleanText(value)
+        .replace(/\s+/g,"")
+        .toUpperCase();
 }
 
-
 function parseNumber(value){
-
-    if(value === null || value === undefined || value === ""){
+    if(value === null || value === undefined || value === "") {
         return 0;
     }
 
@@ -833,22 +727,9 @@ function parseNumber(value){
         return isFinite(value) ? value : 0;
     }
 
-    let s = String(value)
-        .trim()
-        .replace(/\s/g,"");
+    let s = String(value).trim();
 
-    if(!s){
-        return 0;
-    }
-
-    /*
-       Soporta:
-       1.234
-       1,234
-       1234
-       1.234,56
-       1234,56
-    */
+    s = s.replace(/\s/g,"");
 
     if(s.includes(",") && s.includes(".")){
         if(s.lastIndexOf(",") > s.lastIndexOf(".")){
@@ -857,21 +738,7 @@ function parseNumber(value){
             s = s.replace(/,/g,"");
         }
     }else if(s.includes(",")){
-        let parts = s.split(",");
-
-        if(parts.length === 2 && parts[1].length <= 3){
-            s = s.replace(",",".");
-        }else{
-            s = s.replace(/,/g,"");
-        }
-    }else if(s.includes(".")){
-        let parts = s.split(".");
-
-        if(parts.length > 2){
-            s = s.replace(/\./g,"");
-        }else if(parts.length === 2 && parts[1].length === 3){
-            s = s.replace(/\./g,"");
-        }
+        s = s.replace(",",".");
     }
 
     let n = Number(s);
@@ -879,23 +746,13 @@ function parseNumber(value){
     return isFinite(n) ? n : 0;
 }
 
-
-function formatNumber(value){
-
-    let n = Number(value || 0);
-
-    if(Math.abs(n - Math.round(n)) < 0.000001){
-        return Math.round(n).toLocaleString("es-AR");
-    }
-
-    return n.toLocaleString("es-AR",{
+function formatNumber(n){
+    return Number(n || 0).toLocaleString("es-AR",{
         maximumFractionDigits:2
     });
 }
 
-
 function escapeHtml(value){
-
     return String(value ?? "")
         .replace(/&/g,"&amp;")
         .replace(/</g,"&lt;")
@@ -904,149 +761,174 @@ function escapeHtml(value){
         .replace(/'/g,"&#039;");
 }
 
-
-function setStatus(id,text,type=""){
+function setStatus(id,text,type){
     const el = document.getElementById(id);
 
     if(!el) return;
 
     el.textContent = text;
-    el.className = "status " + type;
+    el.className = "status " + (type || "");
 }
 
-
-// ============================================================
-// LECTURA DE ARCHIVOS
-// ============================================================
-
-function readExcelFile(file){
-
-    return new Promise((resolve,reject)=>{
-
-        if(!file){
-            reject(new Error("No se seleccionó ningún archivo."));
-            return;
-        }
-
-        const reader = new FileReader();
-
-        reader.onload = function(e){
-
-            try{
-
-                const data = new Uint8Array(e.target.result);
-
-                const workbook = XLSX.read(data,{
-                    type:"array",
-                    raw:true,
-                    cellDates:false
-                });
-
-                resolve(workbook);
-
-            }catch(error){
-                reject(error);
-            }
-        };
-
-        reader.onerror = function(){
-            reject(new Error("No se pudo leer el archivo."));
-        };
-
-        reader.readAsArrayBuffer(file);
+function showScreen(id){
+    document.querySelectorAll(".screen").forEach(el=>{
+        el.classList.remove("active");
     });
+
+    document.getElementById(id).classList.add("active");
+
+    window.scrollTo(0,0);
 }
 
 
-// ============================================================
-// BUSCAR HOJA
-// ============================================================
+/* ============================================================
+   MENSAJES
+============================================================ */
 
-function findSheet(workbook,preferred){
+function showLoadError(message){
+    const el = document.getElementById("loadMessage");
 
-    if(!workbook || !workbook.SheetNames.length){
+    el.textContent = "✕ Error: " + message;
+    el.className = "message error show";
+}
+
+function showPrepareMessage(message,type="error"){
+    const el = document.getElementById("prepareMessage");
+
+    el.textContent = message;
+    el.className = "message " + type + " show";
+}
+
+
+/* ============================================================
+   LECTURA EXCEL
+============================================================ */
+
+async function readExcelFile(file){
+
+    if(!file){
+        throw new Error("No se recibió ningún archivo.");
+    }
+
+    const buffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(buffer,{
+        type:"array",
+        cellDates:false,
+        raw:true
+    });
+
+    return workbook;
+}
+
+
+/* ============================================================
+   BUSCAR HOJA
+============================================================ */
+
+function findSheet(workbook, preferredNames){
+
+    if(!workbook || !workbook.SheetNames){
         return null;
     }
 
-    const wanted = normalizeText(preferred);
+    const normalizedSheets = workbook.SheetNames.map(name=>({
+        original:name,
+        normalized:normalizeText(name)
+    }));
 
-    let exact = workbook.SheetNames.find(
-        s => normalizeText(s) === wanted
-    );
+    for(const preferred of preferredNames){
 
-    if(exact){
-        return workbook.Sheets[exact];
+        const wanted = normalizeText(preferred);
+
+        const exact = normalizedSheets.find(
+            s => s.normalized === wanted
+        );
+
+        if(exact){
+            return workbook.Sheets[exact.original];
+        }
     }
 
-    let partial = workbook.SheetNames.find(
-        s => normalizeText(s).includes(wanted)
-    );
+    for(const preferred of preferredNames){
 
-    if(partial){
-        return workbook.Sheets[partial];
+        const wanted = normalizeText(preferred);
+
+        const partial = normalizedSheets.find(
+            s => s.normalized.includes(wanted) ||
+                 wanted.includes(s.normalized)
+        );
+
+        if(partial){
+            return workbook.Sheets[partial.original];
+        }
     }
 
-    return workbook.Sheets[workbook.SheetNames[0]];
+    return null;
 }
 
 
-// ============================================================
-// DETECTAR ENCABEZADOS
-// ============================================================
+/* ============================================================
+   BUSCAR ENCABEZADOS
+============================================================ */
 
-function findHeaderRow(rows,requiredNames){
+function findHeaderRow(rows){
 
-    const maxRows = Math.min(rows.length,40);
+    for(let i=0;i<Math.min(rows.length,30);i++){
 
-    for(let r=0;r<maxRows;r++){
+        const row = rows[i] || [];
 
-        const normalized = rows[r].map(x => normalizeText(x));
+        const normalized = row.map(normalizeText);
 
-        let found = 0;
+        const hasSku =
+            normalized.includes("articulo") ||
+            normalized.includes("sku") ||
+            normalized.includes("item");
 
-        for(const name of requiredNames){
+        const hasLocation =
+            normalized.includes("ubicacion") ||
+            normalized.includes("locacion");
 
-            if(normalized.some(x => x === name || x.includes(name))){
-                found++;
-            }
-        }
+        const hasQty =
+            normalized.includes("cantenmano") ||
+            normalized.includes("cantidad") ||
+            normalized.includes("cant");
 
-        if(found >= Math.min(2,requiredNames.length)){
-            return r;
+        if(hasSku && hasLocation && hasQty){
+            return i;
         }
     }
 
     return -1;
 }
-
 
 function findColumn(headers,candidates){
 
-    const normalizedHeaders = headers.map(x => normalizeText(x));
+    const normalizedHeaders = headers.map(normalizeText);
 
     for(const candidate of candidates){
 
-        const c = normalizeText(candidate);
+        const wanted = normalizeText(candidate);
 
-        let index = normalizedHeaders.findIndex(
-            h => h === c
-        );
+        const index = normalizedHeaders.indexOf(wanted);
 
         if(index >= 0){
             return index;
         }
     }
 
-    for(const candidate of candidates){
+    for(let i=0;i<normalizedHeaders.length;i++){
 
-        const c = normalizeText(candidate);
+        for(const candidate of candidates){
 
-        let index = normalizedHeaders.findIndex(
-            h => h.includes(c)
-        );
+            const wanted = normalizeText(candidate);
 
-        if(index >= 0){
-            return index;
+            if(
+                normalizedHeaders[i].includes(wanted) ||
+                wanted.includes(normalizedHeaders[i])
+            ){
+                return i;
+            }
         }
     }
 
@@ -1054,17 +936,36 @@ function findColumn(headers,candidates){
 }
 
 
-// ============================================================
-// PARSER STOCK JDE
-// ============================================================
+/* ============================================================
+   PARSER STOCK JDE
+   ============================================================ */
 
 function parseStockWorkbook(workbook){
 
-const sheet = findSheet(workbook,"legacy vStockPT");
+    /*
+       IMPORTANTE:
+       El Excel del usuario tiene esta hoja:
 
-if(!sheet){
-    throw new Error("No se encontró la hoja 'legacy vStockPT'.");
-}
+       legacy vStockPT [espacio]
+
+       normalizeText elimina espacios, por lo que se detecta
+       correctamente como "legacyvstockpt".
+    */
+
+    let sheet = findSheet(workbook,[
+        "legacy vStockPT",
+        "legacy vStockPT ",
+        "vStockPT",
+        "legacyvstockpt"
+    ]);
+
+    if(!sheet){
+
+        throw new Error(
+            "No se encontró la hoja 'legacy vStockPT'. Hojas encontradas: " +
+            workbook.SheetNames.join(" | ")
+        );
+    }
 
     const rows = XLSX.utils.sheet_to_json(
         sheet,
@@ -1075,225 +976,194 @@ if(!sheet){
         }
     );
 
-    if(!rows || rows.length === 0){
+    if(!rows.length){
         throw new Error("La hoja de Stock está vacía.");
     }
 
-
-    // --------------------------------------------------------
-    // BUSCAR LA FILA REAL DE ENCABEZADOS
-    // --------------------------------------------------------
-
-    let headerRowIndex = findHeaderRow(
-        rows,
-        [
-            "articulo",
-            "ubicacion",
-            "lote"
-        ]
-    );
-
+    let headerRowIndex = findHeaderRow(rows);
 
     /*
-       Si no encuentra encabezados por nombre,
-       usamos la estructura JDE conocida:
-       
-       A MCU              = 0
-       B Ubicación        = 1
-       C Lote             = 2
-       D LotStatus        = 3
-       E UM1              = 4
-       F CantEnMano       = 5
-       L articulo         = 11
-       M articulodescripcion = 12
-       U Paletizado       = 20
+       En el archivo enviado por el usuario los encabezados están
+       directamente en la primera fila.
     */
 
-    let colLocation = 1;
-    let colLot = 2;
-    let colUM = 4;
-    let colQty = 5;
-    let colSku = 11;
-    let colDesc = 12;
-    let colPalletizado = 20;
+    if(headerRowIndex < 0){
 
+        const first = rows[0] || [];
 
-    if(headerRowIndex >= 0){
+        const h = first.map(normalizeText);
 
-        const headers = rows[headerRowIndex];
-
-        const detectedSku = findColumn(
-            headers,
-            [
-                "articulo",
-                "articuloid",
-                "sku",
-                "item",
-                "itemnumber"
-            ]
-        );
-
-        const detectedLocation = findColumn(
-            headers,
-            [
-                "ubicacion",
-                "ubicación",
-                "locacion",
-                "locación"
-            ]
-        );
-
-        const detectedLot = findColumn(
-            headers,
-            [
-                "lote",
-                "lot"
-            ]
-        );
-
-        const detectedQty = findColumn(
-            headers,
-            [
-                "cantenmano",
-                "cantidadenmano",
-                "cantidad",
-                "cant",
-                "stock"
-            ]
-        );
-
-        const detectedUM = findColumn(
-            headers,
-            [
-                "um1",
-                "um",
-                "unidadmedida"
-            ]
-        );
-
-        const detectedDesc = findColumn(
-            headers,
-            [
-                "articulodescripcion",
-                "descripcion",
-                "descrip",
-                "description"
-            ]
-        );
-
-        const detectedPallet = findColumn(
-            headers,
-            [
-                "paletizado",
-                "palletizado"
-            ]
-        );
-
-
-        if(detectedSku >= 0) colSku = detectedSku;
-        if(detectedLocation >= 0) colLocation = detectedLocation;
-        if(detectedLot >= 0) colLot = detectedLot;
-        if(detectedQty >= 0) colQty = detectedQty;
-        if(detectedUM >= 0) colUM = detectedUM;
-        if(detectedDesc >= 0) colDesc = detectedDesc;
-        if(detectedPallet >= 0) colPalletizado = detectedPallet;
+        if(
+            h.includes("mcu") &&
+            h.includes("ubicacion") &&
+            h.includes("lote") &&
+            h.includes("cantenmano") &&
+            h.includes("articulo")
+        ){
+            headerRowIndex = 0;
+        }
     }
 
+    if(headerRowIndex < 0){
+
+        throw new Error(
+            "No pude identificar la fila de encabezados del Stock."
+        );
+    }
+
+    const headers = rows[headerRowIndex];
+
+    /*
+       Columnas reales del archivo enviado:
+
+       A MCU
+       B Ubicacion
+       C Lote
+       D LotStatus
+       E UM1
+       F CantEnMano
+       K ITM
+       L articulo
+       M articulodescripcion
+       U Paletizado
+    */
+
+    let idxLocation = findColumn(headers,[
+        "Ubicacion",
+        "Ubicación",
+        "Locacion"
+    ]);
+
+    let idxLot = findColumn(headers,[
+        "Lote",
+        "Lot"
+    ]);
+
+    let idxUM = findColumn(headers,[
+        "UM1",
+        "UM",
+        "UnidadMedida"
+    ]);
+
+    let idxQty = findColumn(headers,[
+        "CantEnMano",
+        "CantidadEnMano",
+        "Cantidad",
+        "Cant",
+        "Stock"
+    ]);
+
+    let idxSku = findColumn(headers,[
+        "articulo",
+        "SKU",
+        "Item",
+        "ItemNumber"
+    ]);
+
+    let idxDesc = findColumn(headers,[
+        "articulodescripcion",
+        "Descripcion",
+        "Descrip",
+        "Description"
+    ]);
+
+    let idxPalletizado = findColumn(headers,[
+        "Paletizado",
+        "Palletizado"
+    ]);
+
+    /*
+       Si por alguna razón no detecta algún encabezado,
+       usamos las posiciones reales del archivo JDE.
+    */
+
+    if(idxLocation < 0) idxLocation = 1;
+    if(idxLot < 0) idxLot = 2;
+    if(idxUM < 0) idxUM = 4;
+    if(idxQty < 0) idxQty = 5;
+    if(idxSku < 0) idxSku = 11;
+    if(idxDesc < 0) idxDesc = 12;
+    if(idxPalletizado < 0) idxPalletizado = 20;
 
     const result = [];
 
+    for(let i=headerRowIndex+1;i<rows.length;i++){
 
-    for(let r=headerRowIndex >= 0 ? headerRowIndex + 1 : 0;
-        r<rows.length;
-        r++){
+        const row = rows[i] || [];
 
-        const row = rows[r];
+        const sku = normalizeSku(row[idxSku]);
 
-        if(!row || row.length === 0){
+        if(!sku) continue;
+
+        if(normalizeText(sku) === "articulo"){
             continue;
         }
 
+        const qty = parseNumber(row[idxQty]);
 
-        const sku = normalizeSku(row[colSku]);
-        const location = cleanText(row[colLocation]);
-        const lot = cleanText(row[colLot]);
-        const um = cleanText(row[colUM]).toUpperCase() || "CA";
-        const qty = parseNumber(row[colQty]);
-        const desc = cleanText(row[colDesc]);
-        const palletizado = parseNumber(row[colPalletizado]);
+        if(qty <= 0) continue;
 
-
-        // Ignorar encabezados repetidos
-        const skuNorm = normalizeText(sku);
-
-        if(
-            skuNorm === "articulo" ||
-            skuNorm === "sku" ||
-            skuNorm === "item"
-        ){
-            continue;
-        }
-
-
-        // Sin SKU no es un registro de stock
-        if(!sku){
-            continue;
-        }
-
-
-        // Solo stock disponible
-        if(qty <= 0){
-            continue;
-        }
-
+        const location = cleanText(row[idxLocation]);
+        const lot = cleanText(row[idxLot]);
+        const um = cleanText(row[idxUM]).toUpperCase();
+        const desc = cleanText(row[idxDesc]);
+        const palletizado = parseNumber(row[idxPalletizado]);
 
         result.push({
-            sku:sku,
-            location:location,
-            lot:lot,
-            um:um,
-            qty:qty,
-            desc:desc,
-            palletizado:palletizado
+            sku,
+            location,
+            lot,
+            um,
+            qty,
+            desc,
+            palletizado
         });
     }
 
-
-    if(result.length === 0){
+    if(!result.length){
 
         throw new Error(
-            "No se encontraron registros de stock. " +
-            "Revisá que el archivo contenga las columnas Articulo, Ubicación, Lote y CantEnMano."
+            "La hoja de Stock fue encontrada, pero no se encontraron registros con stock."
         );
     }
-
 
     return result;
 }
 
 
-// ============================================================
-// PARSER MST PRODUCTO
-// ============================================================
+/* ============================================================
+   PARSER MST
+============================================================ */
 
 function parseMstWorkbook(workbook){
 
-    const sheet = findSheet(workbook,"MST");
+    let sheet = findSheet(workbook,[
+        "MST",
+        "MST Producto",
+        "Producto",
+        "MSTProducto"
+    ]);
 
     if(!sheet){
-        // No bloqueamos si el archivo tiene otra hoja.
-        const first = workbook.Sheets[workbook.SheetNames[0]];
 
-        if(!first){
-            throw new Error("No se encontró información en MST Producto.");
+        /*
+           Si no encuentra una hoja por nombre,
+           intenta utilizar la primera hoja.
+        */
+
+        const firstName = workbook.SheetNames[0];
+
+        if(firstName){
+            sheet = workbook.Sheets[firstName];
         }
+    }
 
-        return parseMstSheet(first);
+    if(!sheet){
+        throw new Error("No se encontró la hoja del MST Producto.");
     }
 
     return parseMstSheet(sheet);
 }
-
 
 function parseMstSheet(sheet){
 
@@ -1310,75 +1180,57 @@ function parseMstSheet(sheet){
         return {};
     }
 
+    let headerIndex = findHeaderRow(rows);
 
-    const headerRow = findHeaderRow(
-        rows,
-        [
-            "articulo",
-            "descripcion"
-        ]
-    );
-
-
-    let colSku = 0;
-    let colDesc = 1;
-    let colCap = -1;
-
-
-    if(headerRow >= 0){
-
-        const headers = rows[headerRow];
-
-        const skuCol = findColumn(
-            headers,
-            [
-                "articulo",
-                "sku",
-                "item",
-                "itemnumber"
-            ]
-        );
-
-        const descCol = findColumn(
-            headers,
-            [
-                "descripcion",
-                "articulodescripcion",
-                "descrip"
-            ]
-        );
-
-        const capCol = findColumn(
-            headers,
-            [
-                "capacidad",
-                "palletizado",
-                "paletizado"
-            ]
-        );
-
-        if(skuCol >= 0) colSku = skuCol;
-        if(descCol >= 0) colDesc = descCol;
-        if(capCol >= 0) colCap = capCol;
+    if(headerIndex < 0){
+        headerIndex = 0;
     }
 
+    const headers = rows[headerIndex];
+
+    let idxSku = findColumn(headers,[
+        "articulo",
+        "SKU",
+        "Item"
+    ]);
+
+    let idxDesc = findColumn(headers,[
+        "articulodescripcion",
+        "Descripcion",
+        "Description"
+    ]);
+
+    let idxCap = findColumn(headers,[
+        "Palletizado",
+        "Paletizado",
+        "Capacidad",
+        "CantidadPallet"
+    ]);
 
     const result = {};
 
-    for(let r=headerRow >= 0 ? headerRow + 1 : 0;
-        r<rows.length;
-        r++){
+    for(let i=headerIndex+1;i<rows.length;i++){
 
-        const row = rows[r];
+        const row = rows[i] || [];
 
-        const sku = normalizeSku(row[colSku]);
+        let sku = idxSku >= 0
+            ? normalizeSku(row[idxSku])
+            : "";
 
         if(!sku) continue;
 
+        let desc = idxDesc >= 0
+            ? cleanText(row[idxDesc])
+            : "";
+
+        let cap = idxCap >= 0
+            ? parseNumber(row[idxCap])
+            : 0;
+
         result[sku] = {
-            sku:sku,
-            desc:cleanText(row[colDesc]),
-            cap:colCap >= 0 ? parseNumber(row[colCap]) : 0
+            sku,
+            desc,
+            cap
         };
     }
 
@@ -1386,18 +1238,30 @@ function parseMstSheet(sheet){
 }
 
 
-// ============================================================
-// PARSER SURTIDO JDE
-// ============================================================
+/* ============================================================
+   PARSER SURTIDO
+============================================================ */
 
 function parseSurtidoWorkbook(workbook){
 
-    const sheet = findSheet(workbook,"Surtido");
+    let sheet = findSheet(workbook,[
+        "Surtido",
+        "Surtido JDE",
+        "SurtidoJDE"
+    ]);
 
     if(!sheet){
-        throw new Error("No se encontró la hoja de Surtido.");
+
+        const firstName = workbook.SheetNames[0];
+
+        if(firstName){
+            sheet = workbook.Sheets[firstName];
+        }
     }
 
+    if(!sheet){
+        throw new Error("No se encontró la hoja del Surtido.");
+    }
 
     const rows = XLSX.utils.sheet_to_json(
         sheet,
@@ -1408,291 +1272,354 @@ function parseSurtidoWorkbook(workbook){
         }
     );
 
-
     if(!rows.length){
-        throw new Error("El Surtido está vacío.");
+        throw new Error("El archivo de Surtido está vacío.");
     }
 
+    /*
+       Primero buscamos el resumen:
+       "Cantidad por unidad de medida"
+    */
 
-    // --------------------------------------------------------
-    // BUSCAR "CANTIDAD POR UNIDAD DE MEDIDA"
-    // --------------------------------------------------------
+    totalByUM = parseSurtidoTotals(rows);
 
-    totalByUM = {};
+    /*
+       Buscamos el encabezado real de la tabla.
+    */
 
-    let summaryRow = -1;
+    let headerIndex = -1;
 
-    for(let r=0;r<rows.length;r++){
+    for(let i=0;i<rows.length;i++){
 
-        const joined = rows[r]
-            .map(x => normalizeText(x))
-            .join(" ");
+        const row = rows[i] || [];
 
-        if(joined.includes("cantidadporunidaddemedida")){
-            summaryRow = r;
+        const normalized = row.map(normalizeText);
+
+        const hasLocation =
+            normalized.includes("ubicacion");
+
+        const hasArticle =
+            normalized.includes("articulo");
+
+        const hasQuantity =
+            normalized.includes("cantidad");
+
+        if(
+            hasLocation &&
+            hasArticle &&
+            hasQuantity
+        ){
+            headerIndex = i;
             break;
         }
     }
 
+    if(headerIndex < 0){
 
-    if(summaryRow >= 0){
-
-        for(let r=summaryRow + 1;
-            r<Math.min(summaryRow + 20,rows.length);
-            r++){
-
-            const row = rows[r];
-
-            if(!row) continue;
-
-            const um = cleanText(row[0]).toUpperCase();
-
-            if(
-                um === "CA" ||
-                um === "UN" ||
-                um === "PAL" ||
-                um === "BX"
-            ){
-
-                const qty = parseNumber(row[1]);
-
-                if(qty > 0){
-                    totalByUM[um] = qty;
-                }
-            }
-        }
-    }
-
-
-    // --------------------------------------------------------
-    // ENCONTRAR ENCABEZADO DE SURTIDO
-    // --------------------------------------------------------
-
-    let headerRow = -1;
-
-    for(let r=0;r<rows.length;r++){
-
-        const normalized = rows[r].map(x => normalizeText(x));
-
-        const hasUbicacion = normalized.some(
-            x => x === "ubicacion" || x.includes("ubicacion")
-        );
-
-        const hasArticulo = normalized.some(
-            x => x === "articulo" || x.includes("articulo")
-        );
-
-        const hasCantidad = normalized.some(
-            x => x === "cantidad" || x.includes("cantidad")
-        );
-
-        if(hasUbicacion && hasArticulo && hasCantidad){
-
-            headerRow = r;
-            break;
-        }
-    }
-
-
-    if(headerRow < 0){
         throw new Error(
-            "No se encontró el encabezado de las líneas del Surtido."
+            "No se encontró la tabla de líneas del Surtido."
         );
     }
 
+    const headers = rows[headerIndex];
 
-    const headers = rows[headerRow];
+    let idxLocation = findColumn(headers,[
+        "Ubicacion",
+        "Ubicación"
+    ]);
 
+    let idxSku = findColumn(headers,[
+        "Articulo",
+        "SKU"
+    ]);
 
-    let colLocation = findColumn(
-        headers,
-        ["ubicacion","ubicación"]
-    );
+    let idxLot = findColumn(headers,[
+        "Lote"
+    ]);
 
-    let colSku = findColumn(
-        headers,
-        ["articulo","sku","item"]
-    );
+    let idxDesc = findColumn(headers,[
+        "Descripcion",
+        "Descripción"
+    ]);
 
-    let colLot = findColumn(
-        headers,
-        ["lote","lot"]
-    );
+    let idxQty = findColumn(headers,[
+        "Cantidad"
+    ]);
 
-    let colDesc = findColumn(
-        headers,
-        ["descripcion","descripción","descrip"]
-    );
+    let idxUM = findColumn(headers,[
+        "UM"
+    ]);
 
-    let colQty = findColumn(
-        headers,
-        ["cantidad","cant"]
-    );
+    let idxRealizado = findColumn(headers,[
+        "Realizado"
+    ]);
 
-    let colUM = findColumn(
-        headers,
-        ["um","unidadmedida","unidad"]
-    );
+    /*
+       Posiciones del formato JDE suministrado:
+       A Ubicación
+       B Artículo
+       C Lote
+       D % Vida Util
+       E Descripción
+       F Cliente
+       G Orden
+       H Línea
+       I Cantidad
+       J UM
+       K Realizado
+    */
 
-    let colRealizado = findColumn(
-        headers,
-        ["realizado"]
-    );
-
-
-    // Fallback de estructura conocida
-    if(colLocation < 0) colLocation = 0;
-    if(colSku < 0) colSku = 1;
-    if(colLot < 0) colLot = 2;
-    if(colDesc < 0) colDesc = 4;
-    if(colQty < 0) colQty = 8;
-    if(colUM < 0) colUM = 9;
-    if(colRealizado < 0) colRealizado = 10;
-
+    if(idxLocation < 0) idxLocation = 0;
+    if(idxSku < 0) idxSku = 1;
+    if(idxLot < 0) idxLot = 2;
+    if(idxDesc < 0) idxDesc = 4;
+    if(idxQty < 0) idxQty = 8;
+    if(idxUM < 0) idxUM = 9;
+    if(idxRealizado < 0) idxRealizado = 10;
 
     const result = [];
 
+    let idCounter = 1;
 
-    for(let r=headerRow + 1;r<rows.length;r++){
+    for(let i=headerIndex+1;i<rows.length;i++){
 
-        const row = rows[r];
+        const row = rows[i] || [];
 
-        if(!row) continue;
+        /*
+           Si llegamos al resumen, terminamos las líneas.
+        */
 
+        const rowText = row.map(cleanText).join(" ");
 
-        const location = cleanText(row[colLocation]);
-        const sku = normalizeSku(row[colSku]);
-        const lot = cleanText(row[colLot]);
-        const desc = cleanText(row[colDesc]);
-        const qty = parseNumber(row[colQty]);
-        const um = cleanText(row[colUM]).toUpperCase();
-        const realizado = parseNumber(row[colRealizado]);
-
-
-        // Cuando aparece el resumen, terminó el detalle
-        const firstCell = normalizeText(row[0]);
-
-        if(firstCell === "cantidadporunidad" ||
-           firstCell === "cantidadporunidadmedida"){
+        if(
+            normalizeText(rowText).includes(
+                "cantidadporunidaddemedida"
+            )
+        ){
             break;
         }
 
+        const sku = normalizeSku(row[idxSku]);
 
-        // Ignorar filas sin SKU
         if(!sku) continue;
 
-        // Ignorar encabezados repetidos
-        if(
-            normalizeText(sku) === "articulo" ||
-            normalizeText(location) === "ubicacion"
-        ){
-            continue;
-        }
+        const location = cleanText(row[idxLocation]);
 
+        /*
+           Evitamos interpretar otras filas del Excel
+           como líneas.
+        */
 
-        // Solo cantidades a preparar
-        const pendiente = Math.max(0,qty - realizado);
+        if(!location) continue;
 
-        if(pendiente <= 0){
-            continue;
-        }
+        const qty = parseNumber(row[idxQty]);
+        const realizado = parseNumber(row[idxRealizado]);
 
+        const pendiente = Math.max(
+            0,
+            qty - realizado
+        );
 
-        // Solo líneas de picking / pallet mixto.
-        // La estructura del archivo que usás corresponde
-        // al bloque de Surtido PM Pallet Mixto.
+        if(pendiente <= 0) continue;
+
+        const um = cleanText(row[idxUM]).toUpperCase();
+
+        const lot = cleanText(row[idxLot]);
+
+        const desc = cleanText(row[idxDesc]);
+
+        const zone = location
+            .replace(/\s/g,"")
+            .substring(0,4);
+
         result.push({
-            id:"L" + r,
-            location:location,
-            zone:location.substring(0,4),
-            sku:sku,
-            lot:lot,
-            desc:desc,
-            qty:qty,
-            um:um || "CA",
-            realizado:realizado,
-            pendiente:pendiente,
+            id:idCounter++,
+            location,
+            zone,
+            sku,
+            lot,
+            desc,
+            qty,
+            um,
+            realizado,
+            pendiente,
             prepared:0,
             pmNumbers:[]
         });
     }
 
-
-    if(result.length === 0){
+    if(!result.length){
 
         throw new Error(
             "No se encontraron líneas pendientes para preparar en el Surtido."
         );
     }
 
-
     return result;
 }
 
 
-// ============================================================
-// CARGA DE LOS 3 ARCHIVOS
-// ============================================================
+/* ============================================================
+   TOTAL DEL SURTIDO
+============================================================ */
+
+function parseSurtidoTotals(rows){
+
+    const totals = {};
+
+    let summaryIndex = -1;
+
+    for(let i=0;i<rows.length;i++){
+
+        const text = normalizeText(
+            (rows[i] || []).join(" ")
+        );
+
+        if(
+            text.includes(
+                "cantidadporunidaddemedida"
+            )
+        ){
+            summaryIndex = i;
+            break;
+        }
+    }
+
+    if(summaryIndex < 0){
+        return totals;
+    }
+
+    /*
+       Buscamos las siguientes filas.
+       El formato habitual es:
+
+       CA | 1938
+       UN | 25
+    */
+
+    for(
+        let i=summaryIndex+1;
+        i<Math.min(rows.length,summaryIndex+25);
+        i++
+    ){
+
+        const row = rows[i] || [];
+
+        if(!row.length) continue;
+
+        for(let c=0;c<row.length;c++){
+
+            const value = cleanText(row[c]).toUpperCase();
+
+            if(
+                value === "CA" ||
+                value === "UN"
+            ){
+
+                /*
+                   Primero miramos la celda siguiente.
+                */
+
+                let qty = 0;
+
+                if(c+1 < row.length){
+                    qty = parseNumber(row[c+1]);
+                }
+
+                /*
+                   Si no está a la derecha, buscamos un número
+                   en cualquier otra celda de la misma fila.
+                */
+
+                if(qty <= 0){
+
+                    for(let j=0;j<row.length;j++){
+
+                        if(j === c) continue;
+
+                        const possible = parseNumber(row[j]);
+
+                        if(possible > 0){
+                            qty = possible;
+                            break;
+                        }
+                    }
+                }
+
+                if(qty > 0){
+                    totals[value] = qty;
+                }
+
+                break;
+            }
+        }
+    }
+
+    return totals;
+}
+
+
+/* ============================================================
+   CARGA DE LOS 3 ARCHIVOS
+============================================================ */
 
 async function loadAllFiles(){
 
-    const fileStock = document.getElementById("fileStock").files[0];
-    const fileMst = document.getElementById("fileMst").files[0];
-    const fileSurtido = document.getElementById("fileSurtido").files[0];
+    const fileStock =
+        document.getElementById("fileStock").files[0];
 
+    const fileMst =
+        document.getElementById("fileMst").files[0];
+
+    const fileSurtido =
+        document.getElementById("fileSurtido").files[0];
 
     if(!fileStock || !fileMst || !fileSurtido){
 
         showLoadError(
-            "Tenés que seleccionar los 3 archivos."
+            "Tenés que cargar los 3 archivos."
         );
 
         return;
     }
 
-
-    document.getElementById("btnContinuar").disabled = true;
-
-    document.getElementById("loadMessage").innerHTML =
-        '<div class="loading">Cargando archivos...</div>';
-
-
     try{
 
-        // ----------------------------------------------------
-        // STOCK
-        // ----------------------------------------------------
+        document.getElementById("loadMessage").className =
+            "message";
 
         setStatus(
             "statusStock",
-            "Leyendo Stock...",
-            ""
+            "Cargando...",
+            "pending"
         );
 
-        const wbStock = await readExcelFile(fileStock);
+        const stockWorkbook =
+            await readExcelFile(fileStock);
 
-        stockData = parseStockWorkbook(wbStock);
+        stockData =
+            parseStockWorkbook(stockWorkbook);
 
         setStatus(
             "statusStock",
-            "✓ Stock cargado: " + stockData.length + " registros",
+            "✓ Stock cargado: " +
+            stockData.length +
+            " registros",
             "ok"
         );
 
 
-        // ----------------------------------------------------
-        // MST
-        // ----------------------------------------------------
-
         setStatus(
             "statusMst",
-            "Leyendo MST...",
-            ""
+            "Cargando...",
+            "pending"
         );
 
-        const wbMst = await readExcelFile(fileMst);
+        const mstWorkbook =
+            await readExcelFile(fileMst);
 
-        mstData = parseMstWorkbook(wbMst);
+        mstData =
+            parseMstWorkbook(mstWorkbook);
 
         setStatus(
             "statusMst",
@@ -1703,19 +1630,28 @@ async function loadAllFiles(){
         );
 
 
-        // ----------------------------------------------------
-        // SURTIDO
-        // ----------------------------------------------------
-
         setStatus(
             "statusSurtido",
-            "Leyendo Surtido...",
-            ""
+            "Cargando...",
+            "pending"
         );
 
-        const wbSurtido = await readExcelFile(fileSurtido);
+        const surtidoWorkbook =
+            await readExcelFile(fileSurtido);
 
-        surtidoLines = parseSurtidoWorkbook(wbSurtido);
+        surtidoLines =
+            parseSurtidoWorkbook(surtidoWorkbook);
+
+        /*
+           Si por alguna razón el resumen no trae totales,
+           mostramos igualmente las líneas, pero avisamos.
+        */
+
+        preparedByUM = {};
+
+        Object.keys(totalByUM).forEach(um=>{
+            preparedByUM[um] = 0;
+        });
 
         setStatus(
             "statusSurtido",
@@ -1725,1106 +1661,962 @@ async function loadAllFiles(){
             "ok"
         );
 
-
-        // ----------------------------------------------------
-        // PREPARADOS
-        // ----------------------------------------------------
-
-        preparedByUM = {};
-
-        Object.keys(totalByUM).forEach(um=>{
-            preparedByUM[um] = 0;
-        });
-
-
         currentPM = 1;
 
-        showingAllLines = false;
-
-
-        document.getElementById("screenLoad")
-            .classList.add("hidden");
-
-        document.getElementById("screenMain")
-            .classList.remove("hidden");
-
-
+        renderSummary();
         renderMain();
 
+        showScreen("screenMain");
 
     }catch(error){
 
         console.error(error);
 
         showLoadError(
-            "✕ Error: " + error.message
+            error.message || String(error)
         );
-
-    }finally{
-
-        document.getElementById("btnContinuar").disabled = false;
     }
 }
 
 
-function showLoadError(message){
-
-    document.getElementById("loadMessage").innerHTML =
-        '<div class="alert alert-error">' +
-        escapeHtml(message) +
-        '</div>';
-}
-
-
-// ============================================================
-// RESUMEN CA / UN
-// ============================================================
+/* ============================================================
+   RESUMEN
+============================================================ */
 
 function renderSummary(){
 
-    const prepare = document.getElementById("summaryPrepare");
-    const prepared = document.getElementById("summaryPrepared");
+    const grid =
+        document.getElementById("summaryGrid");
 
+    grid.innerHTML = "";
 
-    prepare.innerHTML = "";
-    prepared.innerHTML = "";
-
-
-    const units = Object.keys(totalByUM);
-
+    const ums = Object.keys(totalByUM);
 
     /*
        MUY IMPORTANTE:
-       solo mostramos las unidades que realmente
-       aparecen en "Cantidad por unidad de medida"
-       del Surtido.
-       
-       Si el Surtido dice:
-       
-       CA 1938
-       
-       se muestra solamente CA.
-       
-       NO se calcula UN a partir de CA.
+       Solo mostramos las UM que aparecen en el resumen
+       "Cantidad por unidad de medida" del Surtido.
     */
 
+    if(!ums.length){
 
-    if(units.length === 0){
-
-        prepare.innerHTML =
-            '<div class="summary-box">' +
-                '<div class="label">A PREPARAR</div>' +
-                '<div class="number">0</div>' +
-            '</div>';
-
-        prepared.innerHTML =
-            '<div class="summary-box prepared">' +
-                '<div class="label">PREPARADO</div>' +
-                '<div class="number">0</div>' +
-            '</div>';
+        grid.innerHTML = `
+            <div class="summary-card">
+                <div class="summary-title">
+                    Cantidad a preparar
+                </div>
+                <div class="summary-value">
+                    -
+                </div>
+                <div class="small">
+                    No se encontró el resumen de UM.
+                </div>
+            </div>
+        `;
 
         return;
     }
 
-
-    units.forEach(um=>{
+    ums.forEach(um=>{
 
         const total = totalByUM[um] || 0;
-        const prep = preparedByUM[um] || 0;
+        const prepared = preparedByUM[um] || 0;
+        const pending = Math.max(
+            0,
+            total - prepared
+        );
 
+        grid.innerHTML += `
+            <div class="summary-card">
+                <div class="summary-title">
+                    ${escapeHtml(um)}
+                </div>
 
-        prepare.innerHTML +=
-            '<div class="summary-box">' +
-                '<div class="label">A PREPARAR ' +
-                    escapeHtml(um) +
-                '</div>' +
-                '<div class="number">' +
-                    formatNumber(total) +
-                '</div>' +
-            '</div>';
+                <div class="summary-value">
+                    ${formatNumber(total)}
+                </div>
 
+                <div class="small">
+                    Total a preparar
+                </div>
 
-        prepared.innerHTML +=
-            '<div class="summary-box prepared">' +
-                '<div class="label">PREPARADO ' +
-                    escapeHtml(um) +
-                '</div>' +
-                '<div class="number">' +
-                    formatNumber(prep) +
-                '</div>' +
-            '</div>';
+                <div style="margin-top:5px;color:#15803d;font-weight:bold;">
+                    Preparado: ${formatNumber(prepared)}
+                </div>
+
+                <div style="margin-top:3px;color:#b45309;">
+                    Pendiente: ${formatNumber(pending)}
+                </div>
+            </div>
+        `;
     });
+
+    document.getElementById("currentPMLabel").textContent =
+        currentPM;
+
+    document.getElementById("preparePMLabel").textContent =
+        currentPM;
 }
 
 
-// ============================================================
-// RENDER PRINCIPAL
-// ============================================================
+/* ============================================================
+   RENDER PRINCIPAL
+============================================================ */
 
 function renderMain(){
 
     renderSummary();
 
+    const container =
+        document.getElementById("mainList");
 
-    document.getElementById("mainPmNumber")
-        .textContent = "PM " + currentPM;
+    container.innerHTML = "";
 
-    document.getElementById("preparePmNumber")
-        .textContent = "PM " + currentPM;
+    /*
+       Agrupar por zona.
+    */
 
+    const zones = {};
 
-    document.getElementById("mainLineCount")
-        .textContent = surtidoLines.length;
+    surtidoLines.forEach(line=>{
 
+        if(line.prepared >= line.pendiente){
+            return;
+        }
 
-    const list = document.getElementById("mainList");
+        if(!zones[line.zone]){
+            zones[line.zone] = [];
+        }
 
-    list.innerHTML = "";
+        zones[line.zone].push(line);
+    });
 
+    const sortedZones =
+        Object.keys(zones).sort();
 
-    let lines = [...surtidoLines];
+    if(!sortedZones.length){
 
-
-    if(showingAllLines){
-
-        document.getElementById("mainModeMessage").classList.remove("hidden");
-
-        document.getElementById("mainModeMessage").textContent =
-            "Mostrando todas las líneas pendientes.";
-
-        lines.sort((a,b)=>{
-
-            const loc = a.location.localeCompare(
-                b.location,
-                undefined,
-                {numeric:true,sensitivity:"base"}
-            );
-
-            if(loc !== 0) return loc;
-
-            return b.pendiente - a.pendiente;
-        });
-
-
-        renderLinesFlat(lines);
-
-    }else{
-
-        document.getElementById("mainModeMessage").classList.add("hidden");
-
-        const zones = {};
-
-        lines.forEach(line=>{
-
-            if(!zones[line.zone]){
-                zones[line.zone] = [];
-            }
-
-            zones[line.zone].push(line);
-        });
-
-
-        const sortedZones = Object.keys(zones).sort();
-
-
-        sortedZones.forEach(zone=>{
-
-            zones[zone].sort(
-                (a,b)=>b.pendiente - a.pendiente
-            );
-
-
-            const title = document.createElement("div");
-
-            title.className = "zone-title";
-
-            title.textContent =
-                "ZONA " + zone;
-
-            list.appendChild(title);
-
-
-            zones[zone].forEach(line=>{
-                list.appendChild(createLineCard(line));
-            });
-        });
-    }
-}
-
-
-function renderLinesFlat(lines){
-
-    const list = document.getElementById("mainList");
-
-    if(lines.length === 0){
-
-        list.innerHTML =
-            '<div class="card">' +
-            '<div class="alert alert-success">' +
-            'No quedan líneas pendientes.' +
-            '</div>' +
-            '</div>';
+        container.innerHTML = `
+            <div class="card empty">
+                No quedan líneas pendientes.
+            </div>
+        `;
 
         return;
     }
 
+    sortedZones.forEach(zone=>{
 
-    lines.forEach(line=>{
-        list.appendChild(createLineCard(line));
+        const lines = zones[zone];
+
+        lines.sort((a,b)=>{
+            return b.pendiente - a.pendiente;
+        });
+
+        container.innerHTML += `
+            <div class="line-zone">
+                ZONA ${escapeHtml(zone)}
+            </div>
+        `;
+
+        lines.forEach(line=>{
+            container.innerHTML +=
+                createLineCard(line);
+        });
     });
 }
 
 
+/* ============================================================
+   TODAS LAS LÍNEAS
+============================================================ */
+
+function renderLinesFlat(){
+
+    const container =
+        document.getElementById("mainList");
+
+    container.innerHTML = "";
+
+    const lines =
+        [...surtidoLines]
+        .filter(line=>line.prepared < line.pendiente)
+        .sort((a,b)=>{
+
+            const locA =
+                cleanText(a.location);
+
+            const locB =
+                cleanText(b.location);
+
+            const locationCompare =
+                locA.localeCompare(
+                    locB,
+                    "es",
+                    {
+                        numeric:true
+                    }
+                );
+
+            if(locationCompare !== 0){
+                return locationCompare;
+            }
+
+            return b.pendiente - a.pendiente;
+        });
+
+    if(!lines.length){
+
+        container.innerHTML = `
+            <div class="card empty">
+                No quedan líneas pendientes.
+            </div>
+        `;
+
+        return;
+    }
+
+    lines.forEach(line=>{
+        container.innerHTML +=
+            createLineCard(line);
+    });
+}
+
+
+/* ============================================================
+   TARJETA DE LÍNEA
+============================================================ */
+
 function createLineCard(line){
 
-    const div = document.createElement("div");
+    const isPrepared =
+        line.prepared > 0;
 
-    const complete =
-        line.prepared >= line.pendiente;
+    const preparedText =
+        line.prepared > 0
+        ? `
+            <div class="prepared-tag">
+                Preparado: ${formatNumber(line.prepared)}
+                ${line.pmNumbers.length
+                    ? " | PM " + line.pmNumbers.join(", ")
+                    : ""
+                }
+            </div>
+          `
+        : "";
 
-    const partially =
-        line.prepared > 0 && !complete;
+    return `
+        <div class="line-card ${isPrepared ? "prepared" : ""}">
 
+            <div class="line-top">
 
-    div.className =
-        "line-card " +
-        (line.prepared > 0 ? "prepared " : "") +
-        (complete ? "completed" : "");
+                <div class="line-location">
+                    ${escapeHtml(line.location)}
+                </div>
 
+                <div class="line-sku">
+                    ${escapeHtml(line.sku)}
+                </div>
 
-    let pmText = "";
+            </div>
 
-    if(line.pmNumbers && line.pmNumbers.length){
+            <div class="line-desc">
+                ${escapeHtml(
+                    line.desc ||
+                    (mstData[line.sku]
+                        ? mstData[line.sku].desc
+                        : "")
+                )}
+            </div>
 
-        pmText =
-            '<span class="pm-badge">' +
-            'PM ' +
-            line.pmNumbers.join(", PM ") +
-            '</span>';
-    }
+            <div class="line-data">
 
+                <div class="data-box">
+                    Cantidad
+                    <b>${formatNumber(line.pendiente)}</b>
+                </div>
 
-    const pending = Math.max(
-        0,
-        line.pendiente - line.prepared
-    );
+                <div class="data-box">
+                    UM
+                    <b>${escapeHtml(line.um)}</b>
+                </div>
 
+                <div class="data-box">
+                    Lote sugerido
+                    <b>${escapeHtml(line.lot || "-")}</b>
+                </div>
 
-    let stateHtml = "";
+            </div>
 
-    if(complete){
+            ${preparedText}
 
-        stateHtml =
-            '<span class="done">✓ COMPLETO</span>';
-
-    }else if(partially){
-
-        stateHtml =
-            '<span class="pending">' +
-            'FALTA ' +
-            formatNumber(pending) +
-            ' ' +
-            escapeHtml(line.um) +
-            '</span>';
-
-    }else{
-
-        stateHtml =
-            '<span class="pending">' +
-            'PENDIENTE' +
-            '</span>';
-    }
-
-
-    div.innerHTML =
-
-        '<div class="line-top">' +
-
-            '<div class="location">' +
-                escapeHtml(line.location) +
-            '</div>' +
-
-            '<div class="qty">' +
-                formatNumber(line.pendiente) +
-                ' ' +
-                escapeHtml(line.um) +
-            '</div>' +
-
-        '</div>' +
-
-        '<div class="line-sku">' +
-            'SKU: ' +
-            escapeHtml(line.sku) +
-        '</div>' +
-
-        '<div class="line-desc">' +
-            escapeHtml(
-                line.desc ||
-                (mstData[line.sku]?.desc || "")
-            ) +
-        '</div>' +
-
-        '<div class="line-bottom">' +
-
-            '<div>' +
-                stateHtml +
-            '</div>' +
-
-            '<div>' +
-                pmText +
-            '</div>' +
-
-        '</div>';
-
-
-    return div;
+        </div>
+    `;
 }
-// ============================================================
-// PREPARACIÓN
-// ============================================================
+
+
+/* ============================================================
+   FIN BLOQUE 2
+============================================================ */
+/* ============================================================
+   PREPARACIÓN
+============================================================ */
 
 function openPreparation(){
 
-    document.getElementById("screenMain")
-        .classList.add("hidden");
+    showScreen("screenPrepare");
 
-    document.getElementById("screenPrepare")
-        .classList.remove("hidden");
+    document.getElementById("preparePMLabel").textContent =
+        currentPM;
 
-    document.getElementById("preparePmNumber")
-        .textContent = "PM " + currentPM;
-
-    clearCurrentProduct();
+    startScanner();
 
     renderPreparedHistory();
 }
-
 
 function backToMain(){
 
     stopScanner();
 
-    document.getElementById("screenPrepare")
-        .classList.add("hidden");
-
-    document.getElementById("screenMain")
-        .classList.remove("hidden");
+    clearCurrentProduct();
 
     renderMain();
-}
 
+    renderSummary();
+
+    showScreen("screenMain");
+}
 
 function clearCurrentProduct(){
 
     currentProduct = null;
     selectedStock = null;
 
-    document.getElementById("productCard")
-        .classList.add("hidden");
+    document.getElementById("productArea").innerHTML = "";
 
-    document.getElementById("scanMessage").innerHTML = "";
+    document.getElementById("stockList").innerHTML = `
+        <div class="empty">
+            Escaneá una caja para consultar el stock.
+        </div>
+    `;
 
-    document.getElementById("prepareMessage").innerHTML = "";
+    document.getElementById("qtyPrepare").value = "";
 
-    document.getElementById("stockList").innerHTML = "";
-
-    document.getElementById("quantitySection")
-        .classList.add("hidden");
+    document.getElementById("prepareMessage").className =
+        "message";
 }
 
 
-// ============================================================
-// BUSCAR PRODUCTO
-// ============================================================
+/* ============================================================
+   SKU ESCANEADO
+============================================================ */
 
-function processScannedSku(rawValue){
+function processScannedSku(rawCode){
 
-    const sku = normalizeSku(rawValue);
+    const sku = normalizeSku(rawCode);
 
     if(!sku){
-
-        showScanMessage(
-            "No se pudo identificar el SKU.",
-            "error"
+        showPrepareMessage(
+            "No se pudo identificar el SKU."
         );
-
         return;
     }
-
-
-    stopScanner();
 
     loadProduct(sku);
 }
 
-
 function loadProduct(sku){
 
-    sku = normalizeSku(sku);
+    const normalized = normalizeSku(sku);
 
+    /*
+       Primero verificamos que el SKU exista en el Surtido.
+    */
 
-    // Buscar descripción
-    let desc = "";
+    const pendingLines =
+        getPendingForProduct(normalized);
 
-    if(mstData[sku]){
-        desc = mstData[sku].desc || "";
-    }
+    if(!pendingLines.length){
 
-
-    // Si no está en MST, buscar en Stock
-    if(!desc){
-
-        const stockItem = stockData.find(
-            x => normalizeSku(x.sku) === sku
-        );
-
-        if(stockItem){
-            desc = stockItem.desc || "";
-        }
-    }
-
-
-    // Buscar líneas pendientes de ese SKU
-    const productLines = surtidoLines.filter(
-        line =>
-            normalizeSku(line.sku) === sku &&
-            (line.pendiente - line.prepared) > 0
-    );
-
-
-    if(productLines.length === 0){
-
-        showScanMessage(
-            "El SKU " + sku +
-            " no tiene cantidad pendiente para preparar.",
+        showPrepareMessage(
+            "Ya preparaste la cantidad ordenada de este SKU o no existe en el Surtido.",
             "warning"
         );
 
         return;
     }
 
+    /*
+       Descripción.
+    */
+
+    let desc = "";
+
+    const firstLine = pendingLines[0];
+
+    if(firstLine && firstLine.desc){
+        desc = firstLine.desc;
+    }
+
+    if(!desc && mstData[normalized]){
+        desc = mstData[normalized].desc;
+    }
 
     currentProduct = {
-        sku:sku,
-        desc:desc,
-        lines:productLines
+        sku:normalized,
+        desc
     };
 
-
-    document.getElementById("productSku")
-        .textContent = "SKU " + sku;
-
-    document.getElementById("productDesc")
-        .textContent =
-            desc || "Descripción no disponible";
-
-
-    document.getElementById("productCard")
-        .classList.remove("hidden");
-
+    selectedStock = null;
 
     renderPendingProduct();
 
     renderStockForProduct();
 
-    renderPreparedHistory();
+    document.getElementById("qtyPrepare").value = "";
 
-    document.getElementById("quantitySection")
-        .classList.add("hidden");
-
-    document.getElementById("prepareMessage")
-        .innerHTML = "";
+    showPrepareMessage(
+        "Seleccioná el lote físico que vas a preparar.",
+        "ok"
+    );
 }
 
+
+/* ============================================================
+   PRODUCTO
+============================================================ */
 
 function renderPendingProduct(){
 
-    if(!currentProduct) return;
+    if(!currentProduct){
+        return;
+    }
 
+    const pendingLines =
+        getPendingForProduct(
+            currentProduct.sku
+        );
 
-    let html =
-        '<div class="alert alert-info">' +
-        '<strong>Pendiente para este SKU:</strong><br>';
+    const totalPending =
+        pendingLines.reduce(
+            (sum,line)=>{
+                return sum + Math.max(
+                    0,
+                    line.pendiente - line.prepared
+                );
+            },
+            0
+        );
 
+    const suggestedLots =
+        [...new Set(
+            pendingLines
+                .map(x=>cleanText(x.lot))
+                .filter(Boolean)
+        )];
 
-    currentProduct.lines.forEach(line=>{
+    document.getElementById("productArea").innerHTML = `
 
-        const remaining =
-            Math.max(
-                0,
-                line.pendiente - line.prepared
-            );
+        <div class="product-card">
 
+            <div class="product-sku">
+                SKU ${escapeHtml(currentProduct.sku)}
+            </div>
 
-        if(remaining <= 0) return;
+            <div class="product-desc">
+                ${escapeHtml(currentProduct.desc || "-")}
+            </div>
 
+            <div style="margin-top:8px;font-weight:bold;">
+                Pendiente de preparar:
+                ${formatNumber(totalPending)}
+            </div>
 
-        html +=
-            '<div style="margin-top:5px;">' +
-                escapeHtml(line.location) +
-                ' → ' +
-                formatNumber(remaining) +
-                ' ' +
-                escapeHtml(line.um) +
-            '</div>';
-    });
+            <div class="small" style="margin-top:4px;">
+                Lote/s sugerido/s:
+                ${suggestedLots.length
+                    ? suggestedLots.map(escapeHtml).join(" / ")
+                    : "-"
+                }
+            </div>
 
-
-    html += '</div>';
-
-
-    document.getElementById("pendingProductInfo")
-        .innerHTML = html;
+        </div>
+    `;
 }
 
 
-// ============================================================
-// STOCK DEL SKU
-// ============================================================
+/* ============================================================
+   STOCK
+============================================================ */
 
 function renderStockForProduct(){
+
+    if(!currentProduct){
+        return;
+    }
+
+    const sku =
+        currentProduct.sku;
+
+    const lines =
+        stockData
+            .filter(x=>
+                normalizeSku(x.sku) === sku &&
+                x.qty > 0
+            )
+            .sort((a,b)=>{
+
+                /*
+                   Primero mostramos lotes sugeridos
+                   y después el resto.
+                */
+
+                const aSuggested =
+                    isSuggestedLot(a.lot);
+
+                const bSuggested =
+                    isSuggestedLot(b.lot);
+
+                if(aSuggested !== bSuggested){
+                    return bSuggested - aSuggested;
+                }
+
+                /*
+                   Después por ubicación.
+                */
+
+                return cleanText(a.location)
+                    .localeCompare(
+                        cleanText(b.location),
+                        "es",
+                        {
+                            numeric:true
+                        }
+                    );
+            });
 
     const container =
         document.getElementById("stockList");
 
     container.innerHTML = "";
 
+    if(!lines.length){
 
-    if(!currentProduct){
-        return;
-    }
-
-
-    const sku = currentProduct.sku;
-
-
-    let rows = stockData.filter(
-        x => normalizeSku(x.sku) === sku &&
-             x.qty > 0
-    );
-
-
-    if(rows.length === 0){
-
-        container.innerHTML =
-            '<div class="alert alert-warning">' +
-            'No se encontró stock en el archivo JDE para este SKU.' +
-            '</div>';
+        container.innerHTML = `
+            <div class="empty">
+                No hay stock registrado para este SKU.
+            </div>
+        `;
 
         return;
     }
 
+    lines.forEach((stock,index)=>{
 
-    // Ordenar primero ubicaciones de picking
-    // y después cantidad descendente.
-    rows.sort((a,b)=>{
-
-        const aPick = isPickingLocation(a.location);
-        const bPick = isPickingLocation(b.location);
-
-        if(aPick !== bPick){
-            return aPick ? -1 : 1;
-        }
-
-        return b.qty - a.qty;
-    });
-
-
-    rows.forEach(stock=>{
-
-        const row = document.createElement("div");
-
-        row.className = "stock-row";
-
-
-        // Determinar si es lote sugerido
         const suggested =
-            currentProduct.lines.some(
-                line =>
-                    normalizeSku(line.sku) === sku &&
-                    normalizeLot(line.lot) ===
-                    normalizeLot(stock.lot) &&
-                    (line.pendiente - line.prepared) > 0
-            );
+            isSuggestedLot(stock.lot);
 
+        const row =
+            document.createElement("div");
 
-        if(suggested){
-            row.classList.add("suggested");
-        }
+        row.className =
+            "stock-row" +
+            (suggested ? " suggested" : "");
 
+        row.dataset.index = index;
 
-        const pickingText =
-            isPickingLocation(stock.location)
-                ? " · PICKING"
-                : "";
+        row.innerHTML = `
 
+            <div class="stock-grid">
 
-        row.innerHTML =
+                <div>
+                    Ubicación
+                    <b>${escapeHtml(stock.location)}</b>
+                </div>
 
-            '<div class="stock-main">' +
+                <div>
+                    Lote
+                    <b>${escapeHtml(stock.lot)}</b>
+                </div>
 
-                '<div class="stock-location">' +
-                    escapeHtml(stock.location) +
-                    escapeHtml(pickingText) +
-                '</div>' +
+                <div>
+                    Lote caja
+                    <b>${escapeHtml(
+                        getBoxLotDisplay(stock.lot)
+                    )}</b>
+                </div>
 
-                '<div class="stock-qty">' +
-                    formatNumber(stock.qty) +
-                    ' ' +
-                    escapeHtml(stock.um) +
-                '</div>' +
+                <div>
+                    Cantidad
+                    <b>${formatNumber(stock.qty)}</b>
+                </div>
 
-            '</div>' +
+            </div>
 
-            '<div class="stock-detail">' +
-                '<strong>Lote:</strong> ' +
-                escapeHtml(stock.lot || "-") +
-            '</div>' +
-
-            '<div class="stock-detail">' +
-                '<strong>Lote caja:</strong> ' +
-                escapeHtml(
-                    getBoxLotDisplay(stock.lot)
-                ) +
-            '</div>' +
-
-            (
+            ${
                 suggested
-                ?
-                '<div class="stock-suggested">' +
-                '★ LOTE SUGERIDO POR SURTIDO' +
-                '</div>'
-                :
-                ''
-            );
+                ? `
+                    <div style="
+                        margin-top:7px;
+                        color:#b45309;
+                        font-weight:bold;
+                    ">
+                        ★ LOTE SUGERIDO
+                    </div>
+                  `
+                : ""
+            }
 
+        `;
 
-        row.addEventListener("click",()=>{
-
-            selectStock(stock,row);
-        });
-
+        row.addEventListener(
+            "click",
+            ()=>{
+                selectStock(stock,row);
+            }
+        );
 
         container.appendChild(row);
     });
 }
 
 
-function normalizeLot(value){
+/* ============================================================
+   LOTE SUGERIDO
+============================================================ */
 
-    return cleanText(value)
-        .toUpperCase()
-        .replace(/\s/g,"");
-}
+function isSuggestedLot(lot){
 
-
-function getBoxLotDisplay(systemLot){
-
-    /*
-       No inventamos un lote físico.
-       Mostramos el lote del sistema como referencia.
-    */
-
-    if(!systemLot){
-        return "-";
-    }
-
-    return systemLot;
-}
-
-
-// ============================================================
-// UBICACIONES DE PICKING
-// ============================================================
-
-function isPickingLocation(location){
-
-    const loc = cleanText(location).toUpperCase();
-
-
-    /*
-       La aplicación prioriza las ubicaciones cuyo
-       código comienza con los mismos 4 caracteres
-       que una ubicación del Surtido.
-    */
-
-    if(!currentProduct || !currentProduct.lines){
+    if(!currentProduct){
         return false;
     }
 
+    const pending =
+        getPendingForProduct(
+            currentProduct.sku
+        );
 
-    return currentProduct.lines.some(line=>{
+    const wanted =
+        normalizeText(lot);
 
-        const zone = cleanText(line.location)
-            .substring(0,4)
-            .toUpperCase();
+    if(!wanted){
+        return false;
+    }
 
-        return zone &&
-               loc.substring(0,4).toUpperCase() === zone;
-    });
+    return pending.some(line=>
+        normalizeText(line.lot) === wanted
+    );
 }
 
 
-// ============================================================
-// SELECCIONAR STOCK
-// ============================================================
+/* ============================================================
+   LOTE CAJA
+============================================================ */
 
-function selectStock(stock,rowElement){
+function normalizeLot(lot){
 
-    selectedStock = stock;
+    return cleanText(lot)
+        .replace(/\s+/g,"")
+        .toUpperCase();
+}
 
+function getBoxLotDisplay(lot){
+
+    /*
+       El stock JDE contiene el lote del sistema.
+
+       En esta versión mostramos el lote limpio.
+       La carga del lote físico Julian se utiliza
+       en la reclasificación.
+    */
+
+    return normalizeLot(lot) || "-";
+}
+
+
+/* ============================================================
+   SELECCIONAR STOCK
+============================================================ */
+
+function selectStock(stock,row){
 
     document.querySelectorAll(".stock-row")
         .forEach(el=>{
             el.classList.remove("selected");
         });
 
+    row.classList.add("selected");
 
-    if(rowElement){
-        rowElement.classList.add("selected");
-    }
+    selectedStock = stock;
 
-
-    const pending = getPendingForProduct();
-
-
-    let maxQty = Math.min(
-        Number(stock.qty || 0),
-        pending.total
-    );
-
-
-    if(maxQty <= 0){
-
-        showPrepareMessage(
-            "Este SKU ya tiene toda la cantidad preparada.",
-            "success"
+    const pending =
+        getPendingForProduct(
+            currentProduct.sku
         );
 
-        return;
-    }
-
-
-    const input =
-        document.getElementById("quantityInput");
-
-
-    input.max = maxQty;
-    input.value = maxQty;
-
-
-    document.getElementById("quantityLabel")
-        .textContent =
-        "Cantidad a preparar (" +
-        stock.um +
-        ") — máximo " +
-        formatNumber(maxQty);
-
-
-    document.getElementById("quantitySection")
-        .classList.remove("hidden");
-
-
-    showPrepareMessage(
-        "Seleccionaste " +
-        stock.location +
-        " / lote " +
-        (stock.lot || "-") +
-        ". Podés preparar hasta " +
-        formatNumber(maxQty) +
-        " " +
-        stock.um +
-        ".",
-        "info"
-    );
-}
-
-
-function getPendingForProduct(){
-
-    if(!currentProduct){
-
-        return {
-            total:0,
-            lines:[]
-        };
-    }
-
-
-    const lines = currentProduct.lines
-        .map(line=>{
-
-            const remaining =
-                Math.max(
+    const totalPending =
+        pending.reduce(
+            (sum,line)=>{
+                return sum + Math.max(
                     0,
                     line.pendiente - line.prepared
                 );
+            },
+            0
+        );
 
-            return {
-                line:line,
-                remaining:remaining
-            };
-        })
-        .filter(x=>x.remaining > 0);
+    /*
+       Si el lote tiene menos stock que lo pendiente,
+       mostramos automáticamente la cantidad disponible.
+    */
 
+    const qtyInput =
+        document.getElementById("qtyPrepare");
 
-    const total = lines.reduce(
-        (sum,x)=>sum + x.remaining,
-        0
-    );
+    if(stock.qty < totalPending){
 
+        qtyInput.value =
+            Math.floor(stock.qty);
 
-    return {
-        total:total,
-        lines:lines
-    };
+        showPrepareMessage(
+            "Este lote tiene solamente " +
+            formatNumber(stock.qty) +
+            " cajas disponibles. Podés preparar esa cantidad o ingresar una cantidad menor.",
+            "warning"
+        );
+
+    }else{
+
+        qtyInput.value =
+            Math.floor(totalPending);
+
+        showPrepareMessage(
+            "Lote seleccionado. Cantidad sugerida: " +
+            formatNumber(totalPending),
+            "ok"
+        );
+    }
 }
 
 
-// ============================================================
-// CONFIRMAR CANTIDAD
-// ============================================================
+/* ============================================================
+   LÍNEAS PENDIENTES DEL SKU
+============================================================ */
+
+function getPendingForProduct(sku){
+
+    return surtidoLines.filter(line=>
+        normalizeSku(line.sku) ===
+        normalizeSku(sku) &&
+        line.prepared < line.pendiente
+    );
+}
+
+
+/* ============================================================
+   CONFIRMAR PREPARACIÓN
+============================================================ */
 
 function confirmPreparation(){
 
     if(!currentProduct){
+
+        showPrepareMessage(
+            "Primero escaneá una caja."
+        );
+
         return;
     }
-
 
     if(!selectedStock){
 
         showPrepareMessage(
-            "Primero seleccioná un lote de stock.",
-            "warning"
+            "Seleccioná primero un lote de stock."
         );
 
         return;
     }
 
-
-    const input =
-        document.getElementById("quantityInput");
-
-
-    const qty = parseNumber(input.value);
-
+    let qty =
+        parseNumber(
+            document.getElementById(
+                "qtyPrepare"
+            ).value
+        );
 
     if(qty <= 0){
 
         showPrepareMessage(
-            "Ingresá una cantidad válida.",
-            "warning"
+            "Ingresá una cantidad válida."
         );
 
         return;
     }
 
-
-    const pending = getPendingForProduct();
-
-
-    if(pending.total <= 0){
-
-        showPrepareMessage(
-            "Ya preparaste la cantidad ordenada para este SKU.",
-            "success"
-        );
-
-        return;
-    }
-
+    /*
+       No permitir más stock del disponible.
+    */
 
     if(qty > selectedStock.qty){
 
         showPrepareMessage(
             "El lote seleccionado tiene solamente " +
             formatNumber(selectedStock.qty) +
-            " " +
-            selectedStock.um +
-            " disponibles.",
-            "warning"
+            " unidades disponibles."
         );
 
         return;
     }
 
+    const pendingLines =
+        getPendingForProduct(
+            currentProduct.sku
+        );
 
-    if(qty > pending.total){
+    if(!pendingLines.length){
 
         showPrepareMessage(
-            "Ya preparaste la cantidad ordenada. " +
-            "No podés agregar más de " +
-            formatNumber(pending.total) +
-            " " +
-            selectedStock.um +
-            ".",
+            "Ya preparaste la cantidad ordenada de este SKU.",
             "warning"
         );
 
         return;
     }
 
-
-    // --------------------------------------------------------
-    // DESCONTAR STOCK
-    // --------------------------------------------------------
-
-    selectedStock.qty -= qty;
-
-
-    // --------------------------------------------------------
-    // ASIGNAR LA CANTIDAD A LAS LÍNEAS
-    // --------------------------------------------------------
-
-    let remainingToAssign = qty;
-
-
     /*
-       Primero intenta asignar al lote sugerido
-       y luego al resto de las líneas.
+       La cantidad que vamos a asignar.
     */
 
-    const sortedLines = [...pending.lines].sort(
-        (a,b)=>{
+    let remaining = qty;
 
-            const aSuggested =
-                normalizeLot(a.line.lot) ===
-                normalizeLot(selectedStock.lot);
+    /*
+       Primero intentamos completar la línea
+       cuyo lote coincide con el lote seleccionado.
+    */
 
-            const bSuggested =
-                normalizeLot(b.line.lot) ===
-                normalizeLot(selectedStock.lot);
+    const sortedLines =
+        [...pendingLines].sort((a,b)=>{
 
-            if(aSuggested !== bSuggested){
-                return aSuggested ? -1 : 1;
+            const aMatch =
+                normalizeText(a.lot) ===
+                normalizeText(selectedStock.lot);
+
+            const bMatch =
+                normalizeText(b.lot) ===
+                normalizeText(selectedStock.lot);
+
+            if(aMatch !== bMatch){
+                return bMatch - aMatch;
             }
 
-            return b.remaining - a.remaining;
-        }
-    );
+            return (
+                (b.pendiente - b.prepared) -
+                (a.pendiente - a.prepared)
+            );
+        });
 
+    const allocations = [];
 
-    for(const item of sortedLines){
+    for(const line of sortedLines){
 
-        if(remainingToAssign <= 0){
+        if(remaining <= 0){
             break;
         }
 
+        const linePending =
+            Math.max(
+                0,
+                line.pendiente - line.prepared
+            );
 
-        const line = item.line;
-
-
-        // Si las UM no coinciden, no mezclamos.
-        if(
-            line.um &&
-            selectedStock.um &&
-            line.um.toUpperCase() !==
-            selectedStock.um.toUpperCase()
-        ){
+        if(linePending <= 0){
             continue;
         }
 
+        const amount =
+            Math.min(
+                remaining,
+                linePending
+            );
 
-        const amount = Math.min(
-            remainingToAssign,
-            item.remaining
+        allocations.push({
+            line,
+            amount
+        });
+
+        remaining -= amount;
+    }
+
+    if(remaining > 0){
+
+        showPrepareMessage(
+            "La cantidad ingresada supera lo que queda pendiente para este SKU.",
+            "warning"
         );
 
+        return;
+    }
 
-        if(amount <= 0){
-            continue;
-        }
+    /*
+       Aplicamos la preparación.
+    */
 
+    let totalApplied = 0;
+
+    allocations.forEach(item=>{
+
+        const line = item.line;
+        const amount = item.amount;
 
         line.prepared += amount;
-
 
         if(!line.pmNumbers.includes(currentPM)){
             line.pmNumbers.push(currentPM);
         }
 
+        totalApplied += amount;
 
-        if(!preparedByUM[line.um]){
-            preparedByUM[line.um] = 0;
+        /*
+           Actualizamos el total preparado por UM
+           solamente con la UM correspondiente
+           a la línea.
+        */
+
+        const um =
+            cleanText(line.um).toUpperCase();
+
+        if(preparedByUM[um] === undefined){
+            preparedByUM[um] = 0;
         }
 
-
-        preparedByUM[line.um] += amount;
-
-
-        remainingToAssign -= amount;
-    }
-
+        preparedByUM[um] += amount;
+    });
 
     /*
-       Si por alguna diferencia de UM quedó cantidad
-       sin asignar, la devolvemos al stock.
+       Descontamos del stock.
     */
 
-    if(remainingToAssign > 0){
+    selectedStock.qty -= totalApplied;
 
-        selectedStock.qty += remainingToAssign;
-
-        preparedByUM[selectedStock.um] =
-            Math.max(
-                0,
-                (preparedByUM[selectedStock.um] || 0)
-                - (qty - remainingToAssign)
-            );
-
-
-        showPrepareMessage(
-            "La cantidad no pudo asignarse completamente " +
-            "porque la unidad de medida del stock no coincide " +
-            "con la línea pendiente.",
-            "warning"
-        );
-
-        renderStockForProduct();
-        renderPendingProduct();
-        renderMain();
-        return;
+    if(selectedStock.qty < 0){
+        selectedStock.qty = 0;
     }
 
+    /*
+       Si el lote quedó en cero, sigue visible pero
+       con cantidad cero hasta volver a consultar.
+    */
 
-    // --------------------------------------------------------
-    // RESULTADO
-    // --------------------------------------------------------
-
-    const newPending = getPendingForProduct();
-
-
-    if(newPending.total <= 0){
-
-        showPrepareMessage(
-            "✓ Ya preparaste la cantidad ordenada para este SKU.",
-            "success"
-        );
-
-    }else{
-
-        showPrepareMessage(
-            "✓ Preparaste " +
-            formatNumber(qty) +
-            " " +
-            selectedStock.um +
-            ". Todavía faltan " +
-            formatNumber(newPending.total) +
-            " " +
-            selectedStock.um +
-            ". Podés utilizar otro lote.",
-            "info"
-        );
-    }
-
-
-    selectedStock = null;
-
-
-    document.getElementById("quantitySection")
-        .classList.add("hidden");
-
+    showPrepareMessage(
+        "✓ Preparaste " +
+        formatNumber(totalApplied) +
+        " " +
+        (allocations[0]
+            ? allocations[0].line.um
+            : "") +
+        ".",
+        "ok"
+    );
 
     renderPendingProduct();
 
@@ -2832,453 +2624,318 @@ function confirmPreparation(){
 
     renderPreparedHistory();
 
-    renderMain();
+    renderSummary();
 }
 
 
-// ============================================================
-// HISTORIAL DEL PM
-// ============================================================
+/* ============================================================
+   HISTORIAL DEL PM
+============================================================ */
 
 function renderPreparedHistory(){
 
     const container =
-        document.getElementById("preparedHistoryList");
+        document.getElementById(
+            "preparedHistory"
+        );
 
-    const card =
-        document.getElementById("preparedHistory");
+    const lines =
+        surtidoLines.filter(line=>
+            line.pmNumbers.includes(currentPM) &&
+            line.prepared > 0
+        );
 
+    if(!lines.length){
 
-    container.innerHTML = "";
+        container.innerHTML = `
+            <div class="empty">
+                Todavía no hay preparación registrada.
+            </div>
+        `;
 
-
-    const prepared = surtidoLines.filter(
-        line =>
-            line.prepared > 0 &&
-            line.pmNumbers.includes(currentPM)
-    );
-
-
-    if(prepared.length === 0){
-
-        card.classList.add("hidden");
         return;
     }
 
+    container.innerHTML = "";
 
-    card.classList.remove("hidden");
+    lines.forEach(line=>{
 
+        container.innerHTML += `
+            <div class="line-card prepared">
 
-    prepared.forEach(line=>{
+                <div class="line-top">
+                    <div>
+                        ${escapeHtml(line.location)}
+                    </div>
 
-        const remaining =
-            Math.max(
-                0,
-                line.pendiente - line.prepared
-            );
+                    <div>
+                        ${escapeHtml(line.sku)}
+                    </div>
+                </div>
 
+                <div class="line-desc">
+                    ${escapeHtml(line.desc)}
+                </div>
 
-        const div =
-            document.createElement("div");
+                <div class="line-data">
 
-        div.className = "line-card";
+                    <div class="data-box">
+                        Preparado
+                        <b>
+                            ${formatNumber(line.prepared)}
+                        </b>
+                    </div>
 
+                    <div class="data-box">
+                        UM
+                        <b>
+                            ${escapeHtml(line.um)}
+                        </b>
+                    </div>
 
-        div.innerHTML =
-            '<div class="line-top">' +
+                    <div class="data-box">
+                        Pendiente
+                        <b>
+                            ${formatNumber(
+                                Math.max(
+                                    0,
+                                    line.pendiente -
+                                    line.prepared
+                                )
+                            )}
+                        </b>
+                    </div>
 
-                '<div class="location">' +
-                    escapeHtml(line.location) +
-                '</div>' +
+                </div>
 
-                '<div class="qty">' +
-                    formatNumber(line.prepared) +
-                    ' ' +
-                    escapeHtml(line.um) +
-                '</div>' +
-
-            '</div>' +
-
-            '<div class="line-sku">' +
-                'SKU: ' +
-                escapeHtml(line.sku) +
-            '</div>' +
-
-            '<div class="line-desc">' +
-                escapeHtml(line.desc) +
-            '</div>' +
-
-            '<div class="line-bottom">' +
-                '<span class="done">PREPARADO</span>' +
-
-                (
-                    remaining > 0
-                    ?
-                    '<span class="pending">' +
-                    'Falta ' +
-                    formatNumber(remaining) +
-                    ' ' +
-                    escapeHtml(line.um) +
-                    '</span>'
-                    :
-                    '<span class="done">COMPLETO</span>'
-                ) +
-
-            '</div>';
-
-
-        container.appendChild(div);
+            </div>
+        `;
     });
 }
 
 
-// ============================================================
-// CERRAR PM
-// ============================================================
+/* ============================================================
+   CERRAR PM
+============================================================ */
 
 function closeCurrentPm(){
 
-    const preparedThisPm =
-        surtidoLines.some(
-            line =>
-                line.prepared > 0 &&
-                line.pmNumbers.includes(currentPM)
+    const pmLines =
+        surtidoLines.filter(line=>
+            line.pmNumbers.includes(currentPM)
         );
 
-
-    if(!preparedThisPm){
+    if(!pmLines.length){
 
         showPrepareMessage(
-            "Todavía no preparaste ninguna línea en este PM.",
-            "warning"
+            "No hay ninguna preparación registrada en este PM."
         );
 
         return;
     }
 
+    const confirmClose =
+        confirm(
+            "¿Querés cerrar el PM " +
+            currentPM +
+            " y comenzar el PM " +
+            (currentPM + 1) +
+            "?"
+        );
 
-    stopScanner();
-
+    if(!confirmClose){
+        return;
+    }
 
     currentPM++;
 
-
-    document.getElementById("preparePmNumber")
-        .textContent = "PM " + currentPM;
-
-
-    document.getElementById("mainPmNumber")
-        .textContent = "PM " + currentPM;
-
-
     clearCurrentProduct();
 
-    renderMain();
+    document.getElementById(
+        "currentPMLabel"
+    ).textContent = currentPM;
 
+    document.getElementById(
+        "preparePMLabel"
+    ).textContent = currentPM;
+
+    renderSummary();
+
+    renderPreparedHistory();
 
     showPrepareMessage(
         "✓ PM cerrado. Ahora estás trabajando en PM " +
-        currentPM +
-        ".",
-        "success"
+        currentPM + ".",
+        "ok"
     );
 }
 
 
-// ============================================================
-// RECLASIFICACIÓN
-// ============================================================
+/* ============================================================
+   RECLASIFICACIÓN
+============================================================ */
 
 function openReclassification(){
 
     if(!currentProduct){
 
         showPrepareMessage(
-            "Primero tenés que seleccionar un SKU.",
-            "warning"
+            "Primero escaneá el SKU."
         );
 
         return;
     }
 
+    document.getElementById(
+        "reclassJulian"
+    ).value = "";
 
-    const pending = getPendingForProduct();
+    document.getElementById(
+        "reclassQty"
+    ).value = "";
 
+    document.getElementById(
+        "reclassModal"
+    ).classList.add("show");
+}
 
-    if(pending.total <= 0){
+function generateReclassificationPDF(){
 
-        showPrepareMessage(
-            "Este SKU ya está completo. No necesita reclasificación.",
-            "success"
+    if(!currentProduct){
+        return;
+    }
+
+    const julian =
+        cleanText(
+            document.getElementById(
+                "reclassJulian"
+            ).value
+        );
+
+    const qty =
+        parseNumber(
+            document.getElementById(
+                "reclassQty"
+            ).value
+        );
+
+    if(!/^\d{3}$/.test(julian)){
+
+        alert(
+            "Ingresá los últimos 3 dígitos del lote Julian."
         );
 
         return;
     }
-
-
-    const physicalLot =
-        prompt(
-            "Ingresá el lote físico de la caja.\n\n" +
-            "Ingresá solamente los últimos 3 dígitos del lote Julian."
-        );
-
-
-    if(physicalLot === null){
-        return;
-    }
-
-
-    const lot = physicalLot.trim();
-
-
-    if(!lot){
-
-        showPrepareMessage(
-            "Tenés que ingresar el lote físico.",
-            "warning"
-        );
-
-        return;
-    }
-
-
-    const qtyText =
-        prompt(
-            "Ingresá la cantidad a reclasificar.\n\n" +
-            "Pendiente: " +
-            formatNumber(pending.total) +
-            " " +
-            (pending.lines[0]?.line.um || "CA")
-        );
-
-
-    if(qtyText === null){
-        return;
-    }
-
-
-    const qty = parseNumber(qtyText);
-
 
     if(qty <= 0){
 
-        showPrepareMessage(
-            "La cantidad debe ser mayor a 0.",
-            "warning"
+        alert(
+            "Ingresá una cantidad válida."
         );
 
         return;
     }
 
+    /*
+       Ubicación:
+       usamos la ubicación de la línea pendiente.
+    */
 
-    if(qty > pending.total){
-
-        showPrepareMessage(
-            "La cantidad no puede superar el pendiente: " +
-            formatNumber(pending.total),
-            "warning"
+    const pending =
+        getPendingForProduct(
+            currentProduct.sku
         );
 
-        return;
-    }
+    const location =
+        pending.length
+            ? pending[0].location
+            : "";
 
+    const { jsPDF } =
+        window.jspdf;
 
-    generateReclassificationPDF(
-        currentProduct,
-        lot,
-        qty
-    );
-}
-
-
-// ============================================================
-// PDF RECLASIFICACIÓN
-// ============================================================
-
-function generateReclassificationPDF(
-    product,
-    physicalLot,
-    qty
-){
-
-    if(!window.jspdf){
-
-        showPrepareMessage(
-            "No se pudo cargar el generador PDF.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    const {jsPDF} = window.jspdf;
-
-    const doc = new jsPDF();
-
-
-    const firstLine =
-        product.lines[0];
-
+    const doc =
+        new jsPDF();
 
     doc.setFontSize(18);
 
     doc.text(
         "SOLICITUD DE RECLASIFICACIÓN",
-        15,
-        20
+        20,
+        25
     );
 
-
-    doc.setFontSize(11);
+    doc.setFontSize(12);
 
     doc.text(
-        "Picking PM",
-        15,
-        30
+        "PM: " + currentPM,
+        20,
+        45
     );
-
-
-    doc.line(
-        15,
-        34,
-        195,
-        34
-    );
-
-
-    let y = 48;
-
-
-    const data = [
-
-        ["PM",String(currentPM)],
-
-        ["SKU",product.sku],
-
-        [
-            "Descripción",
-            product.desc || "-"
-        ],
-
-        [
-            "Ubicación",
-            firstLine ? firstLine.location : "-"
-        ],
-
-        [
-            "Lote físico",
-            physicalLot
-        ],
-
-        [
-            "Cantidad",
-            formatNumber(qty) +
-            " " +
-            (firstLine?.um || "CA")
-        ]
-
-    ];
-
-
-    data.forEach(row=>{
-
-        doc.setFont("helvetica","bold");
-
-        doc.text(
-            row[0] + ":",
-            15,
-            y
-        );
-
-        doc.setFont("helvetica","normal");
-
-        doc.text(
-            String(row[1]),
-            60,
-            y
-        );
-
-        y += 10;
-    });
-
-
-    y += 10;
-
-
-    doc.setFont("helvetica","bold");
 
     doc.text(
-        "Solicitud:",
-        15,
-        y
+        "SKU: " + currentProduct.sku,
+        20,
+        55
     );
-
-
-    y += 8;
-
-
-    doc.setFont("helvetica","normal");
-
-    const text =
-        "Reclasificar " +
-        formatNumber(qty) +
-        " " +
-        (firstLine?.um || "CA") +
-        " del lote físico " +
-        physicalLot +
-        " en la ubicación " +
-        (firstLine?.location || "-") +
-        ".";
-
-
-    const wrapped =
-        doc.splitTextToSize(
-            text,
-            175
-        );
-
 
     doc.text(
-        wrapped,
-        15,
-        y
+        "Descripción: " +
+        (currentProduct.desc || ""),
+        20,
+        65
     );
-
-
-    y += wrapped.length * 7 + 15;
-
-
-    doc.setFontSize(9);
 
     doc.text(
-        "Generado por Picking PM - M2 Consultoría Digital",
-        15,
-        y
+        "Ubicación: " +
+        location,
+        20,
+        80
     );
 
+    doc.text(
+        "Lote físico Julian: " +
+        julian,
+        20,
+        90
+    );
 
-    const fileName =
-        "Reclasificacion_PM" +
+    doc.text(
+        "Cantidad: " +
+        formatNumber(qty),
+        20,
+        100
+    );
+
+    doc.text(
+        "Solicitar reclasificación de la mercadería",
+        20,
+        120
+    );
+
+    doc.save(
+        "Reclasificacion_PM_" +
         currentPM +
         "_" +
-        product.sku +
-        ".pdf";
+        currentProduct.sku +
+        ".pdf"
+    );
 
-
-    doc.save(fileName);
-
+    document.getElementById(
+        "reclassModal"
+    ).classList.remove("show");
 
     showPrepareMessage(
         "✓ PDF de reclasificación generado.",
-        "success"
+        "ok"
     );
 }
 
 
-// ============================================================
-// SCANNER
-// ============================================================
+/* ============================================================
+   SCANNER
+============================================================ */
 
 async function startScanner(){
 
@@ -3286,355 +2943,352 @@ async function startScanner(){
         return;
     }
 
-
     try{
 
-        scanner =
+        html5QrCode =
             new Html5Qrcode("reader");
 
+        const config = {
+            fps:10,
+            qrbox:{
+                width:250,
+                height:180
+            }
+        };
 
-        await scanner.start(
-
+        await html5QrCode.start(
             {
                 facingMode:"environment"
             },
-
-            {
-                fps:10,
-
-                qrbox:{
-                    width:250,
-                    height:150
-                }
-            },
-
-            decodedText =>{
-
+            config,
+            decodedText=>{
                 processScannedSku(decodedText);
-
             },
-
-            errorMessage => {
-                // Errores normales de lectura:
-                // no mostramos nada para no molestar.
+            errorMessage=>{
+                /*
+                   Ignoramos los errores normales de lectura.
+                */
             }
-
         );
-
 
         scannerRunning = true;
 
-
-        document.getElementById("btnStartScanner")
-            .classList.add("hidden");
-
-        document.getElementById("btnStopScanner")
-            .classList.remove("hidden");
-
-
-        showScanMessage(
-            "Cámara activa. Apuntá al código de la caja.",
-            "info"
-        );
-
+        document.getElementById(
+            "scanStatus"
+        ).textContent =
+            "Cámara activa. Escaneá la caja.";
 
     }catch(error){
 
         console.error(error);
 
-        showScanMessage(
-            "No se pudo iniciar la cámara. " +
-            "Podés ingresar el SKU manualmente.",
-            "error"
-        );
+        document.getElementById(
+            "scanStatus"
+        ).textContent =
+            "No se pudo activar la cámara. Podés ingresar el SKU manualmente.";
     }
 }
-
 
 async function stopScanner(){
 
-    if(!scanner || !scannerRunning){
+    if(!html5QrCode || !scannerRunning){
         return;
     }
 
-
     try{
-        await scanner.stop();
-    }catch(e){}
 
+        await html5QrCode.stop();
 
-    try{
-        await scanner.clear();
-    }catch(e){}
+        html5QrCode.clear();
 
+    }catch(error){
+
+        console.warn(error);
+    }
 
     scannerRunning = false;
-
-
-    document.getElementById("btnStartScanner")
-        .classList.remove("hidden");
-
-    document.getElementById("btnStopScanner")
-        .classList.add("hidden");
 }
 
 
-// ============================================================
-// MENSAJES
-// ============================================================
+/* ============================================================
+   UBICACIÓN DE PICKING
+============================================================ */
 
-function showScanMessage(text,type="info"){
+function isPickingLocation(location){
 
-    const cls =
-        type === "error"
-            ? "alert-error"
-            : type === "warning"
-                ? "alert-warning"
-                : type === "success"
-                    ? "alert-success"
-                    : "alert-info";
+    const loc =
+        cleanText(location)
+        .toUpperCase();
 
+    /*
+       Se deja preparado para futuras reglas.
+    */
 
-    document.getElementById("scanMessage")
-        .innerHTML =
-        '<div class="alert ' +
-        cls +
-        '">' +
-        escapeHtml(text) +
-        '</div>';
+    return true;
 }
 
 
-function showPrepareMessage(text,type="info"){
+/* ============================================================
+   BOTONES
+============================================================ */
 
-    const cls =
-        type === "error"
-            ? "alert-error"
-            : type === "warning"
-                ? "alert-warning"
-                : type === "success"
-                    ? "alert-success"
-                    : "alert-info";
+document.getElementById(
+    "fileStock"
+).addEventListener(
+    "change",
+    ()=>{
+        setStatus(
+            "statusStock",
+            "Archivo seleccionado",
+            "pending"
+        );
 
-
-    document.getElementById("prepareMessage")
-        .innerHTML =
-        '<div class="alert ' +
-        cls +
-        '">' +
-        escapeHtml(text) +
-        '</div>';
-}
-
-
-// ============================================================
-// EVENTOS ARCHIVOS
-// ============================================================
-
-function updateContinueButton(){
-
-    const stock =
-        document.getElementById("fileStock").files.length > 0;
-
-    const mst =
-        document.getElementById("fileMst").files.length > 0;
-
-    const surtido =
-        document.getElementById("fileSurtido").files.length > 0;
-
-
-    document.getElementById("btnContinuar").disabled =
-        !(stock && mst && surtido);
-}
-
-
-document.getElementById("fileStock")
-    .addEventListener("change",function(){
-
-        if(this.files.length){
-
-            setStatus(
-                "statusStock",
-                "Archivo seleccionado: " +
-                this.files[0].name,
-                ""
-            );
-        }else{
-
-            setStatus(
-                "statusStock",
-                "Pendiente",
-                ""
-            );
+        if(
+            document.getElementById(
+                "fileStock"
+            ).files.length &&
+            document.getElementById(
+                "fileMst"
+            ).files.length &&
+            document.getElementById(
+                "fileSurtido"
+            ).files.length
+        ){
+            loadAllFiles();
         }
+    }
+);
 
-        updateContinueButton();
-    });
+document.getElementById(
+    "fileMst"
+).addEventListener(
+    "change",
+    ()=>{
+        setStatus(
+            "statusMst",
+            "Archivo seleccionado",
+            "pending"
+        );
 
-
-document.getElementById("fileMst")
-    .addEventListener("change",function(){
-
-        if(this.files.length){
-
-            setStatus(
-                "statusMst",
-                "Archivo seleccionado: " +
-                this.files[0].name,
-                ""
-            );
-        }else{
-
-            setStatus(
-                "statusMst",
-                "Pendiente",
-                ""
-            );
+        if(
+            document.getElementById(
+                "fileStock"
+            ).files.length &&
+            document.getElementById(
+                "fileMst"
+            ).files.length &&
+            document.getElementById(
+                "fileSurtido"
+            ).files.length
+        ){
+            loadAllFiles();
         }
+    }
+);
 
-        updateContinueButton();
-    });
+document.getElementById(
+    "fileSurtido"
+).addEventListener(
+    "change",
+    ()=>{
+        setStatus(
+            "statusSurtido",
+            "Archivo seleccionado",
+            "pending"
+        );
 
-
-document.getElementById("fileSurtido")
-    .addEventListener("change",function(){
-
-        if(this.files.length){
-
-            setStatus(
-                "statusSurtido",
-                "Archivo seleccionado: " +
-                this.files[0].name,
-                ""
-            );
-        }else{
-
-            setStatus(
-                "statusSurtido",
-                "Pendiente",
-                ""
-            );
+        if(
+            document.getElementById(
+                "fileStock"
+            ).files.length &&
+            document.getElementById(
+                "fileMst"
+            ).files.length &&
+            document.getElementById(
+                "fileSurtido"
+            ).files.length
+        ){
+            loadAllFiles();
         }
-
-        updateContinueButton();
-    });
-
-
-// ============================================================
-// BOTONES
-// ============================================================
-
-document.getElementById("btnContinuar")
-    .addEventListener("click",loadAllFiles);
+    }
+);
 
 
-document.getElementById("btnPrepare")
-    .addEventListener("click",openPreparation);
+document.getElementById(
+    "btnPrepare"
+).addEventListener(
+    "click",
+    openPreparation
+);
 
 
-document.getElementById("btnBackMain")
-    .addEventListener("click",backToMain);
+document.getElementById(
+    "btnShowAll"
+).addEventListener(
+    "click",
+    renderLinesFlat
+);
 
 
-document.getElementById("btnAllLines")
-    .addEventListener("click",function(){
-
-        showingAllLines = !showingAllLines;
-
-        this.textContent =
-            showingAllLines
-                ? "VER POR ZONA"
-                : "VER TODAS LAS LÍNEAS";
-
-        renderMain();
-    });
+document.getElementById(
+    "btnBackMain"
+).addEventListener(
+    "click",
+    backToMain
+);
 
 
-document.getElementById("btnStartScanner")
-    .addEventListener("click",startScanner);
+document.getElementById(
+    "btnConfirmPreparation"
+).addEventListener(
+    "click",
+    confirmPreparation
+);
 
 
-document.getElementById("btnStopScanner")
-    .addEventListener("click",stopScanner);
+document.getElementById(
+    "btnClosePM"
+).addEventListener(
+    "click",
+    closeCurrentPm
+);
 
 
-document.getElementById("btnManualSku")
-    .addEventListener("click",function(){
-
-        document.getElementById("manualSkuInput").value = "";
-
-        document.getElementById("skuModal")
-            .classList.remove("hidden");
-
-        setTimeout(()=>{
-            document.getElementById("manualSkuInput").focus();
-        },100);
-    });
+document.getElementById(
+    "btnOpenReclass"
+).addEventListener(
+    "click",
+    openReclassification
+);
 
 
-document.getElementById("btnCancelSku")
-    .addEventListener("click",function(){
+/* ============================================================
+   SKU MANUAL
+============================================================ */
 
-        document.getElementById("skuModal")
-            .classList.add("hidden");
-    });
+document.getElementById(
+    "btnManualSku"
+).addEventListener(
+    "click",
+    ()=>{
+        document.getElementById(
+            "manualSkuInput"
+        ).value = "";
+
+        document.getElementById(
+            "skuModal"
+        ).classList.add("show");
+
+        document.getElementById(
+            "manualSkuInput"
+        ).focus();
+    }
+);
 
 
-document.getElementById("btnAcceptSku")
-    .addEventListener("click",function(){
+document.getElementById(
+    "btnCancelManualSku"
+).addEventListener(
+    "click",
+    ()=>{
+        document.getElementById(
+            "skuModal"
+        ).classList.remove("show");
+    }
+);
+
+
+document.getElementById(
+    "btnConfirmManualSku"
+).addEventListener(
+    "click",
+    ()=>{
 
         const sku =
-            document.getElementById("manualSkuInput").value;
+            document.getElementById(
+                "manualSkuInput"
+            ).value;
 
-        document.getElementById("skuModal")
-            .classList.add("hidden");
+        document.getElementById(
+            "skuModal"
+        ).classList.remove("show");
 
         processScannedSku(sku);
-    });
+    }
+);
 
 
-document.getElementById("manualSkuInput")
-    .addEventListener("keydown",function(e){
+/* ============================================================
+   RECLASIFICACIÓN
+============================================================ */
 
-        if(e.key === "Enter"){
+document.getElementById(
+    "btnCancelReclass"
+).addEventListener(
+    "click",
+    ()=>{
+        document.getElementById(
+            "reclassModal"
+        ).classList.remove("show");
+    }
+);
 
-            document.getElementById("btnAcceptSku")
-                .click();
+
+document.getElementById(
+    "btnGenerateReclass"
+).addEventListener(
+    "click",
+    generateReclassificationPDF
+);
+
+
+/* ============================================================
+   ENTER EN SKU
+============================================================ */
+
+document.getElementById(
+    "manualSkuInput"
+).addEventListener(
+    "keydown",
+    event=>{
+
+        if(event.key === "Enter"){
+
+            event.preventDefault();
+
+            document.getElementById(
+                "btnConfirmManualSku"
+            ).click();
         }
-    });
+    }
+);
 
 
-document.getElementById("btnConfirmQuantity")
-    .addEventListener(
-        "click",
-        confirmPreparation
-    );
+/* ============================================================
+   INICIO
+============================================================ */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    ()=>{
+
+        currentPM = 1;
+
+        document.getElementById(
+            "currentPMLabel"
+        ).textContent = currentPM;
+
+        document.getElementById(
+            "preparePMLabel"
+        ).textContent = currentPM;
+    }
+);
 
 
-document.getElementById("btnReclassify")
-    .addEventListener(
-        "click",
-        openReclassification
-    );
+/* ============================================================
+   FIN
+============================================================ */
 
-
-document.getElementById("btnClosePm")
-    .addEventListener(
-        "click",
-        closeCurrentPm
-    );
-
-
-// ============================================================
-// INICIO
-// ============================================================
-
-document.addEventListener("DOMContentLoaded",function(){
-
-    updateContinueButton();
-
-});
 </script>
-
 </body>
 </html>
