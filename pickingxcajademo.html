@@ -943,187 +943,250 @@ function findColumn(headers,candidates){
 function parseStockWorkbook(workbook){
 
     /*
-       IMPORTANTE:
-       El Excel del usuario tiene esta hoja:
+       El archivo de Stock del usuario tiene la hoja:
 
-       legacy vStockPT [espacio]
+       legacy vStockPT
 
-       normalizeText elimina espacios, por lo que se detecta
-       correctamente como "legacyvstockpt".
+       La tomamos directamente por el nombre que
+       devuelve XLSX.
     */
 
-    let sheet = findSheet(workbook,[
-        "legacy vStockPT",
-        "legacy vStockPT ",
-        "vStockPT",
-        "legacyvstockpt"
-    ]);
+    let sheetName = null;
 
-    if(!sheet){
+    // 1. Primero buscamos coincidencia exacta
+    for(const name of workbook.SheetNames){
+
+        if(String(name).trim() === "legacy vStockPT"){
+            sheetName = name;
+            break;
+        }
+    }
+
+    // 2. Si no la encontró, buscamos ignorando mayúsculas,
+    // espacios y caracteres especiales.
+    if(!sheetName){
+
+        const normalizeSheetName = value =>
+            String(value || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g,"")
+                .replace(/[\s\u00A0\u200B\uFEFF]+/g,"")
+                .toLowerCase();
+
+        const wanted =
+            normalizeSheetName("legacy vStockPT");
+
+        for(const name of workbook.SheetNames){
+
+            if(
+                normalizeSheetName(name) === wanted
+            ){
+                sheetName = name;
+                break;
+            }
+        }
+    }
+
+    // 3. Si todavía no la encuentra, mostramos
+    // exactamente las hojas que leyó el navegador.
+    if(!sheetName){
 
         throw new Error(
-            "No se encontró la hoja 'legacy vStockPT'. Hojas encontradas: " +
+            "No se pudo identificar la hoja de Stock. " +
+            "Hojas encontradas: " +
             workbook.SheetNames.join(" | ")
         );
     }
 
-    const rows = XLSX.utils.sheet_to_json(
-        sheet,
-        {
-            header:1,
-            defval:"",
-            raw:true
-        }
-    );
+    const sheet =
+        workbook.Sheets[sheetName];
 
-    if(!rows.length){
-        throw new Error("La hoja de Stock está vacía.");
-    }
-
-    let headerRowIndex = findHeaderRow(rows);
-
-    /*
-       En el archivo enviado por el usuario los encabezados están
-       directamente en la primera fila.
-    */
-
-    if(headerRowIndex < 0){
-
-        const first = rows[0] || [];
-
-        const h = first.map(normalizeText);
-
-        if(
-            h.includes("mcu") &&
-            h.includes("ubicacion") &&
-            h.includes("lote") &&
-            h.includes("cantenmano") &&
-            h.includes("articulo")
-        ){
-            headerRowIndex = 0;
-        }
-    }
-
-    if(headerRowIndex < 0){
+    if(!sheet){
 
         throw new Error(
-            "No pude identificar la fila de encabezados del Stock."
+            "La hoja '" +
+            sheetName +
+            "' fue detectada pero no se pudo leer."
         );
     }
 
-    const headers = rows[headerRowIndex];
+    const rows =
+        XLSX.utils.sheet_to_json(
+            sheet,
+            {
+                header:1,
+                defval:"",
+                raw:true
+            }
+        );
+
+    if(!rows.length){
+
+        throw new Error(
+            "La hoja de Stock está vacía."
+        );
+    }
 
     /*
-       Columnas reales del archivo enviado:
+       El archivo que me pasaste tiene los encabezados
+       en la primera fila.
 
-       A MCU
-       B Ubicacion
-       C Lote
-       D LotStatus
-       E UM1
-       F CantEnMano
-       K ITM
-       L articulo
-       M articulodescripcion
-       U Paletizado
+       Columnas:
+
+       A = MCU
+       B = Ubicacion
+       C = Lote
+       D = LotStatus
+       E = UM1
+       F = CantEnMano
+       ...
+       K = ITM
+       L = articulo
+       M = articulodescripcion
+       ...
+       U = Paletizado
     */
 
-    let idxLocation = findColumn(headers,[
-        "Ubicacion",
-        "Ubicación",
-        "Locacion"
-    ]);
+    const headers = rows[0];
 
-    let idxLot = findColumn(headers,[
-        "Lote",
-        "Lot"
-    ]);
+    let idxLocation = findColumn(
+        headers,
+        [
+            "Ubicacion",
+            "Ubicación",
+            "Locacion",
+            "Locación"
+        ]
+    );
 
-    let idxUM = findColumn(headers,[
-        "UM1",
-        "UM",
-        "UnidadMedida"
-    ]);
+    let idxLot = findColumn(
+        headers,
+        [
+            "Lote",
+            "Lot"
+        ]
+    );
 
-    let idxQty = findColumn(headers,[
-        "CantEnMano",
-        "CantidadEnMano",
-        "Cantidad",
-        "Cant",
-        "Stock"
-    ]);
+    let idxUM = findColumn(
+        headers,
+        [
+            "UM1",
+            "UM",
+            "UnidadMedida"
+        ]
+    );
 
-    let idxSku = findColumn(headers,[
-        "articulo",
-        "SKU",
-        "Item",
-        "ItemNumber"
-    ]);
+    let idxQty = findColumn(
+        headers,
+        [
+            "CantEnMano",
+            "CantidadEnMano",
+            "Cantidad",
+            "Cant",
+            "Stock"
+        ]
+    );
 
-    let idxDesc = findColumn(headers,[
-        "articulodescripcion",
-        "Descripcion",
-        "Descrip",
-        "Description"
-    ]);
+    let idxSku = findColumn(
+        headers,
+        [
+            "articulo",
+            "Artículo",
+            "SKU",
+            "Item"
+        ]
+    );
 
-    let idxPalletizado = findColumn(headers,[
-        "Paletizado",
-        "Palletizado"
-    ]);
+    let idxDesc = findColumn(
+        headers,
+        [
+            "articulodescripcion",
+            "ArticuloDescripcion",
+            "Descripción",
+            "Descripcion"
+        ]
+    );
+
+    let idxPalletizado = findColumn(
+        headers,
+        [
+            "Paletizado",
+            "Palletizado"
+        ]
+    );
 
     /*
-       Si por alguna razón no detecta algún encabezado,
-       usamos las posiciones reales del archivo JDE.
+       Si algún encabezado no fuera detectado,
+       usamos las posiciones reales del Excel
+       que me pasaste.
     */
 
-    if(idxLocation < 0) idxLocation = 1;
-    if(idxLot < 0) idxLot = 2;
-    if(idxUM < 0) idxUM = 4;
-    if(idxQty < 0) idxQty = 5;
-    if(idxSku < 0) idxSku = 11;
-    if(idxDesc < 0) idxDesc = 12;
-    if(idxPalletizado < 0) idxPalletizado = 20;
+    if(idxLocation < 0) idxLocation = 1;      // B
+    if(idxLot < 0) idxLot = 2;                // C
+    if(idxUM < 0) idxUM = 4;                  // E
+    if(idxQty < 0) idxQty = 5;                // F
+    if(idxSku < 0) idxSku = 11;               // L
+    if(idxDesc < 0) idxDesc = 12;             // M
+    if(idxPalletizado < 0) idxPalletizado = 20; // U
 
     const result = [];
 
-    for(let i=headerRowIndex+1;i<rows.length;i++){
+    for(
+        let i = 1;
+        i < rows.length;
+        i++
+    ){
 
         const row = rows[i] || [];
 
-        const sku = normalizeSku(row[idxSku]);
+        const sku =
+            normalizeSku(row[idxSku]);
 
-        if(!sku) continue;
-
-        if(normalizeText(sku) === "articulo"){
+        if(!sku){
             continue;
         }
 
-        const qty = parseNumber(row[idxQty]);
+        if(
+            normalizeText(sku) === "articulo"
+        ){
+            continue;
+        }
 
-        if(qty <= 0) continue;
+        const qty =
+            parseNumber(row[idxQty]);
 
-        const location = cleanText(row[idxLocation]);
-        const lot = cleanText(row[idxLot]);
-        const um = cleanText(row[idxUM]).toUpperCase();
-        const desc = cleanText(row[idxDesc]);
-        const palletizado = parseNumber(row[idxPalletizado]);
+        if(qty <= 0){
+            continue;
+        }
 
         result.push({
+
             sku,
-            location,
-            lot,
-            um,
+
+            location:
+                cleanText(row[idxLocation]),
+
+            lot:
+                cleanText(row[idxLot]),
+
+            um:
+                cleanText(row[idxUM]).toUpperCase(),
+
             qty,
-            desc,
-            palletizado
+
+            desc:
+                cleanText(row[idxDesc]),
+
+            palletizado:
+                parseNumber(row[idxPalletizado])
         });
     }
 
     if(!result.length){
 
         throw new Error(
-            "La hoja de Stock fue encontrada, pero no se encontraron registros con stock."
+            "La hoja 'legacy vStockPT' fue encontrada, " +
+            "pero no se encontraron registros con stock."
         );
     }
 
