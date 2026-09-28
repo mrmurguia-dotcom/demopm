@@ -2,3898 +2,3638 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Picking PK - Pallet Mixto</title>
+<title>Picking PM - M2 Consultoría Digital</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 *{
-  box-sizing:border-box;
-  -webkit-tap-highlight-color:transparent;
-}
-
-html,body{
-  margin:0;
-  padding:0;
-  background:#f3f6f9;
-  font-family:Arial,Helvetica,sans-serif;
-  color:#17202a;
+    box-sizing:border-box;
 }
 
 body{
-  min-height:100vh;
+    margin:0;
+    font-family:Arial,Helvetica,sans-serif;
+    background:#f3f5f7;
+    color:#17202a;
 }
 
-button,
-input{
-  font-family:inherit;
-}
-
-button{
-  cursor:pointer;
-}
-
-.app{
-  width:100%;
-  max-width:1100px;
-  margin:auto;
-  padding:10px;
+button,input,select{
+    font-family:inherit;
 }
 
 .header{
-  background:#1e3a5f;
-  color:white;
-  border-radius:14px;
-  padding:15px;
-  margin-bottom:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.12);
+    background:#1e3a5f;
+    color:white;
+    padding:14px 12px;
+    text-align:center;
+    position:sticky;
+    top:0;
+    z-index:20;
 }
 
 .header h1{
-  margin:0;
-  font-size:1.25rem;
+    margin:0;
+    font-size:20px;
 }
 
-.header p{
-  margin:4px 0 0;
-  opacity:.85;
-  font-size:.82rem;
+.header small{
+    display:block;
+    margin-top:4px;
+    opacity:.85;
+    font-size:12px;
+}
+
+.container{
+    width:100%;
+    max-width:900px;
+    margin:auto;
+    padding:12px;
 }
 
 .card{
-  background:white;
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.08);
+    background:white;
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
-.section-title{
-  margin:0 0 12px;
-  font-size:1rem;
-  color:#1e3a5f;
+h2{
+    font-size:18px;
+    margin:4px 0 12px;
 }
 
-.hidden{
-  display:none !important;
+h3{
+    font-size:16px;
+    margin:4px 0 10px;
 }
 
-/* CARGA */
-
-.load-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
+.file-row{
+    margin-bottom:14px;
 }
 
-.load-box{
-  border:1px solid #d7dee7;
-  border-radius:12px;
-  padding:12px;
-  background:#fafbfc;
+.file-row label{
+    display:block;
+    font-weight:bold;
+    font-size:14px;
+    margin-bottom:6px;
 }
 
-.load-box label{
-  display:block;
-  font-weight:bold;
-  font-size:.82rem;
-  margin-bottom:8px;
-}
-
-.file-input{
-  width:100%;
-  font-size:.76rem;
+input[type=file]{
+    width:100%;
+    padding:10px;
+    background:#f5f6f7;
+    border:1px solid #ccd3da;
+    border-radius:8px;
 }
 
 .status{
-  display:block;
-  margin-top:8px;
-  font-size:.76rem;
-  color:#68737d;
+    margin-top:5px;
+    font-size:12px;
+    color:#777;
 }
 
 .status.ok{
-  color:#198754;
-  font-weight:bold;
+    color:#16803c;
+    font-weight:bold;
 }
 
 .status.error{
-  color:#c0392b;
-  font-weight:bold;
+    color:#c62828;
+    font-weight:bold;
 }
-
-.load-actions{
-  margin-top:12px;
-}
-
-/* BOTONES */
 
 .btn{
-  border:0;
-  border-radius:10px;
-  min-height:44px;
-  padding:10px 14px;
-  font-size:.82rem;
-  font-weight:bold;
+    width:100%;
+    border:0;
+    border-radius:10px;
+    padding:14px 12px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:8px;
 }
 
 .btn-primary{
-  background:#1e3a5f;
-  color:white;
-}
-
-.btn-primary:disabled{
-  opacity:.45;
+    background:#1e3a5f;
+    color:white;
 }
 
 .btn-green{
-  background:#198754;
-  color:white;
+    background:#2e7d32;
+    color:white;
 }
 
 .btn-orange{
-  background:#f59e0b;
-  color:white;
+    background:#ef8b00;
+    color:white;
 }
 
-.btn-red{
-  background:#dc3545;
-  color:white;
+.btn-gray{
+    background:#68727d;
+    color:white;
 }
 
 .btn-light{
-  background:#edf1f5;
-  color:#25313d;
+    background:#e8edf2;
+    color:#1e3a5f;
 }
 
-.btn-blue{
-  background:#2563eb;
-  color:white;
+.btn-danger{
+    background:#c62828;
+    color:white;
 }
 
-.btn-full{
-  width:100%;
+.btn:disabled{
+    opacity:.5;
+    cursor:not-allowed;
 }
 
-.top-actions{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;
 }
 
-/* RESUMEN */
-
-.summary{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  margin-bottom:10px;
+.summary-box{
+    background:#edf2f7;
+    border-radius:10px;
+    padding:10px;
+    text-align:center;
 }
 
-.summary-card{
-  border-radius:12px;
-  padding:10px;
-  background:#f5f7fa;
-  border:1px solid #e0e5eb;
-  text-align:center;
+.summary-box .label{
+    font-size:11px;
+    color:#59636e;
+    font-weight:bold;
 }
 
-.summary-title{
-  font-size:.68rem;
-  color:#68737d;
-  font-weight:bold;
-  text-transform:uppercase;
+.summary-box .number{
+    font-size:23px;
+    font-weight:bold;
+    color:#1e3a5f;
+    margin-top:2px;
 }
 
-.summary-values{
-  margin-top:4px;
-  font-size:1rem;
-  font-weight:bold;
+.summary-box.prepared{
+    background:#e8f5e9;
 }
 
-.summary-values div{
-  margin:2px 0;
+.summary-box.prepared .number{
+    color:#2e7d32;
 }
-
-.ca{
-  color:#1e3a5f;
-}
-
-.un{
-  color:#198754;
-}
-
-/* LINEAS */
 
 .zone-title{
-  margin:14px 0 7px;
-  padding:8px 10px;
-  background:#1e3a5f;
-  color:white;
-  border-radius:8px;
-  font-size:.82rem;
-  font-weight:bold;
+    background:#1e3a5f;
+    color:white;
+    padding:8px 10px;
+    border-radius:8px;
+    margin-top:12px;
+    font-weight:bold;
+    font-size:14px;
 }
 
 .line-card{
-  border:1px solid #dfe5eb;
-  border-radius:11px;
-  background:white;
-  padding:10px;
-  margin-bottom:7px;
+    background:white;
+    border:1px solid #d8dee4;
+    border-radius:10px;
+    padding:10px;
+    margin-top:7px;
 }
 
 .line-card.prepared{
-  border-left:5px solid #198754;
-  background:#f4fbf7;
+    border-left:6px solid #2e7d32;
 }
 
-.line-card.partial{
-  border-left:5px solid #f59e0b;
-  background:#fffaf0;
+.line-card.completed{
+    background:#f0f8f1;
 }
 
-.line-card.done{
-  opacity:.9;
+.line-top{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
 }
 
-.line-main{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:8px;
-  align-items:center;
+.location{
+    font-weight:bold;
+    color:#1e3a5f;
+    font-size:14px;
 }
 
-.line-title{
-  font-size:.9rem;
-  font-weight:bold;
+.qty{
+    font-weight:bold;
+    font-size:17px;
+    white-space:nowrap;
+}
+
+.line-sku{
+    font-size:14px;
+    font-weight:bold;
+    margin-top:4px;
 }
 
 .line-desc{
-  margin-top:3px;
-  font-size:.76rem;
-  color:#68737d;
+    font-size:13px;
+    color:#555;
+    margin-top:3px;
 }
 
-.line-location{
-  font-size:.75rem;
-  margin-top:4px;
-  color:#46525e;
+.line-bottom{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:8px;
+    font-size:12px;
 }
 
-.line-qty{
-  text-align:right;
-  white-space:nowrap;
+.pm-badge{
+    background:#1e3a5f;
+    color:white;
+    border-radius:6px;
+    padding:4px 7px;
+    font-weight:bold;
 }
 
-.line-qty .ordered{
-  font-size:1.1rem;
-  font-weight:bold;
+.pending{
+    color:#c62828;
+    font-weight:bold;
 }
 
-.line-qty .prepared{
-  font-size:.72rem;
-  color:#198754;
+.done{
+    color:#2e7d32;
+    font-weight:bold;
 }
 
-.line-footer{
-  margin-top:7px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:8px;
-  font-size:.72rem;
+.hidden{
+    display:none !important;
 }
 
-.pm-tag{
-  display:inline-block;
-  background:#1e3a5f;
-  color:white;
-  border-radius:6px;
-  padding:4px 7px;
-  margin:2px;
-  font-weight:bold;
+.top-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-bottom:10px;
 }
 
-/* PREPARACION */
-
-.prep-header{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:8px;
-  align-items:center;
+.top-actions .btn{
+    margin-top:0;
 }
 
-.sku-big{
-  font-size:1.35rem;
-  font-weight:bold;
-  color:#1e3a5f;
-}
-
-.desc-big{
-  font-size:.82rem;
-  color:#68737d;
-  margin-top:3px;
-}
-
-.target-box{
-  background:#eef4fa;
-  border-radius:10px;
-  padding:10px;
-  margin-top:10px;
-  border:1px solid #d7e2ed;
-}
-
-.target-label{
-  font-size:.68rem;
-  color:#68737d;
-  text-transform:uppercase;
-  font-weight:bold;
-}
-
-.target-qty{
-  font-size:1.45rem;
-  font-weight:bold;
-  color:#1e3a5f;
-}
-
-.scanner-box{
-  background:#111827;
-  border-radius:12px;
-  overflow:hidden;
-  margin-bottom:10px;
+.scan-box{
+    background:#101820;
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:10px;
 }
 
 #reader{
-  width:100%;
-  min-height:150px;
+    width:100%;
+    min-height:220px;
 }
 
-.manual-box{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:8px;
-  margin-top:8px;
+.product-info{
+    background:#edf2f7;
+    border-radius:10px;
+    padding:12px;
+    margin-bottom:10px;
 }
 
-.manual-box input{
-  width:100%;
-  min-height:44px;
-  border:1px solid #cfd7df;
-  border-radius:9px;
-  padding:10px;
-  font-size:1rem;
+.product-info .sku{
+    font-size:20px;
+    font-weight:bold;
+    color:#1e3a5f;
 }
 
-.stock-table-wrap{
-  width:100%;
-  overflow-x:auto;
-  border:1px solid #dfe5eb;
-  border-radius:10px;
+.product-info .desc{
+    margin-top:4px;
+    font-size:14px;
 }
 
-.stock-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:.72rem;
-  min-width:520px;
-}
-
-.stock-table th{
-  background:#1e3a5f;
-  color:white;
-  padding:8px 6px;
-  text-align:left;
-}
-
-.stock-table td{
-  padding:8px 6px;
-  border-bottom:1px solid #e4e8ec;
+.stock-title{
+    margin-top:12px;
+    font-weight:bold;
+    font-size:16px;
 }
 
 .stock-row{
-  cursor:pointer;
-}
-
-.stock-row:hover,
-.stock-row.selected{
-  background:#eaf2fb;
+    border:1px solid #d6dce2;
+    border-radius:9px;
+    padding:10px;
+    margin-top:7px;
+    background:white;
+    cursor:pointer;
 }
 
 .stock-row.suggested{
-  font-weight:bold;
-  background:#fff6d8;
+    border:2px solid #1e3a5f;
+    background:#eef4fa;
 }
 
-.stock-row.suggested.selected{
-  background:#ffe7a0;
+.stock-row.selected{
+    background:#dcecfb;
+    border:2px solid #1e3a5f;
 }
 
-.stock-empty{
-  padding:15px;
-  text-align:center;
-  color:#68737d;
-  font-size:.8rem;
+.stock-row.disabled{
+    opacity:.5;
 }
 
-.qty-panel{
-  margin-top:10px;
-  background:#f7f9fb;
-  border:1px solid #dfe5eb;
-  border-radius:10px;
-  padding:10px;
+.stock-main{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
 }
 
-.qty-panel label{
-  font-size:.76rem;
-  font-weight:bold;
-  display:block;
-  margin-bottom:5px;
+.stock-location{
+    font-weight:bold;
+    color:#1e3a5f;
 }
 
-.qty-panel input{
-  width:100%;
-  min-height:48px;
-  border:2px solid #1e3a5f;
-  border-radius:9px;
-  padding:8px;
-  font-size:1.25rem;
-  text-align:center;
-  font-weight:bold;
+.stock-qty{
+    font-size:18px;
+    font-weight:bold;
 }
 
-.qty-info{
-  font-size:.75rem;
-  margin:6px 0;
-  color:#46525e;
+.stock-detail{
+    margin-top:5px;
+    font-size:12px;
+    color:#555;
 }
 
-.prep-actions{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin-top:9px;
+.stock-suggested{
+    color:#1e3a5f;
+    font-weight:bold;
+    font-size:11px;
 }
 
-.prep-actions .wide{
-  grid-column:1/-1;
+.quantity-box{
+    margin-top:12px;
+    background:#f6f7f8;
+    padding:12px;
+    border-radius:10px;
 }
 
-/* MODALES */
+.quantity-box label{
+    display:block;
+    font-weight:bold;
+    font-size:14px;
+    margin-bottom:6px;
+}
+
+.quantity-box input{
+    width:100%;
+    padding:13px;
+    font-size:22px;
+    border:2px solid #b8c1ca;
+    border-radius:9px;
+    text-align:center;
+}
+
+.alert{
+    padding:11px;
+    border-radius:9px;
+    margin:8px 0;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.alert-info{
+    background:#e3f2fd;
+    color:#145a86;
+}
+
+.alert-warning{
+    background:#fff3cd;
+    color:#856404;
+}
+
+.alert-error{
+    background:#fdecea;
+    color:#b71c1c;
+}
+
+.alert-success{
+    background:#e8f5e9;
+    color:#1b5e20;
+}
 
 .modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.55);
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  z-index:10000;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:15px;
 }
 
-.modal-box{
-  width:100%;
-  max-width:650px;
-  background:white;
-  border-radius:16px 16px 0 0;
-  padding:16px;
-  max-height:90vh;
-  overflow:auto;
+.modal-content{
+    width:100%;
+    max-width:450px;
+    background:white;
+    border-radius:14px;
+    padding:16px;
 }
 
-.modal-title{
-  margin:0 0 10px;
-  color:#1e3a5f;
-  font-size:1rem;
+.modal-content input{
+    width:100%;
+    padding:13px;
+    font-size:18px;
+    border:1px solid #aaa;
+    border-radius:8px;
 }
 
-.modal-buttons{
-  display:grid;
-  gap:8px;
-  margin-top:12px;
+.small{
+    font-size:12px;
+    color:#68727d;
 }
 
-/* TOAST */
-
-.toast{
-  position:fixed;
-  left:50%;
-  bottom:20px;
-  transform:translateX(-50%);
-  z-index:11000;
-  background:#111827;
-  color:white;
-  border-radius:10px;
-  padding:11px 15px;
-  font-size:.78rem;
-  max-width:90%;
-  text-align:center;
-  display:none;
+.loading{
+    text-align:center;
+    padding:20px;
+    font-weight:bold;
+    color:#1e3a5f;
 }
 
-.toast.show{
-  display:block;
+.file-summary{
+    background:#f7f9fb;
+    border-radius:8px;
+    padding:8px;
+    margin-top:8px;
+    font-size:12px;
 }
 
-/* PROGRESO */
-
-.progress{
-  height:7px;
-  background:#e5e7eb;
-  border-radius:20px;
-  overflow:hidden;
-  margin-top:7px;
+.pm-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#1e3a5f;
+    color:white;
+    padding:10px;
+    border-radius:9px;
+    margin-bottom:10px;
 }
 
-.progress-bar{
-  height:100%;
-  background:#198754;
-  width:0;
+.pm-number{
+    font-size:20px;
+    font-weight:bold;
 }
 
-/* RESPONSIVE */
+@media(min-width:700px){
+    .container{
+        padding:20px;
+    }
 
-@media(max-width:760px){
+    .summary-grid{
+        grid-template-columns:repeat(4,1fr);
+    }
 
-  .app{
-    padding:7px;
-  }
-
-  .header{
-    padding:12px;
-  }
-
-  .header h1{
-    font-size:1.05rem;
-  }
-
-  .load-grid{
-    grid-template-columns:1fr;
-  }
-
-  .summary{
-    grid-template-columns:repeat(3,1fr);
-  }
-
-  .summary-card{
-    padding:8px 4px;
-  }
-
-  .summary-values{
-    font-size:.85rem;
-  }
-
-  .top-actions{
-    grid-template-columns:1fr;
-  }
-
-  .line-main{
-    grid-template-columns:1fr auto;
-  }
-
-  .prep-actions{
-    grid-template-columns:1fr;
-  }
-
-  .prep-actions .wide{
-    grid-column:auto;
-  }
-}
-
-@media(max-width:390px){
-
-  .summary{
-    gap:4px;
-  }
-
-  .summary-title{
-    font-size:.59rem;
-  }
-
-  .summary-values{
-    font-size:.75rem;
-  }
-
-  .line-title{
-    font-size:.82rem;
-  }
-
-  .line-desc{
-    font-size:.7rem;
-  }
+    .line-card{
+        padding:12px;
+    }
 }
 </style>
 </head>
 
 <body>
 
-<div class="app">
+<div class="header">
+    <h1>Picking PM</h1>
+    <small>M2 Consultoría Digital</small>
+</div>
 
-  <div class="header">
-    <h1>Picking PK - Pallet Mixto</h1>
-    <p>Preparación de picking validada contra stock JDE</p>
-  </div>
+<!-- ============================= -->
+<!-- PANTALLA DE CARGA -->
+<!-- ============================= -->
 
-  <!-- =====================================================
-       PANTALLA DE CARGA
-  ====================================================== -->
+<div id="screenLoad" class="container">
 
-  <section id="screenLoad">
+    <div class="card">
+        <h2>Cargar archivos</h2>
+
+        <div class="small">
+            Cargá los 3 archivos JDE para comenzar.
+        </div>
+
+        <div class="file-row" style="margin-top:15px;">
+            <label>1. Stock JDE</label>
+            <input type="file" id="fileStock" accept=".xls,.xlsx,.csv">
+            <div id="statusStock" class="status">Pendiente</div>
+        </div>
+
+        <div class="file-row">
+            <label>2. MST Producto</label>
+            <input type="file" id="fileMst" accept=".xls,.xlsx,.csv">
+            <div id="statusMst" class="status">Pendiente</div>
+        </div>
+
+        <div class="file-row">
+            <label>3. Surtido JDE</label>
+            <input type="file" id="fileSurtido" accept=".xls,.xlsx,.csv">
+            <div id="statusSurtido" class="status">Pendiente</div>
+        </div>
+
+        <button id="btnContinuar"
+                class="btn btn-primary"
+                disabled>
+            CARGAR Y CONTINUAR
+        </button>
+
+        <div id="loadMessage" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+        <div class="small">
+            La aplicación funciona en el navegador. Los archivos se procesan localmente en el dispositivo.
+        </div>
+    </div>
+
+</div>
+
+
+<!-- ============================= -->
+<!-- PANTALLA PRINCIPAL -->
+<!-- ============================= -->
+
+<div id="screenMain" class="container hidden">
 
     <div class="card">
 
-      <h2 class="section-title">Carga de archivos</h2>
+        <div class="pm-header">
+            <div>
+                <div style="font-size:11px;">PALLET ACTUAL</div>
+                <div class="pm-number" id="mainPmNumber">PM 1</div>
+            </div>
 
-      <div class="load-grid">
-
-        <div class="load-box">
-          <label>1. Stock JDE</label>
-
-          <input
-            class="file-input"
-            type="file"
-            id="fileStock"
-            accept=".xlsx,.xls,.csv"
-          >
-
-          <small
-            id="statusStock"
-            class="status"
-          >
-            Pendiente de carga...
-          </small>
+            <div style="text-align:right;">
+                <div style="font-size:11px;">LÍNEAS</div>
+                <div id="mainLineCount" style="font-size:20px;font-weight:bold;">0</div>
+            </div>
         </div>
 
-        <div class="load-box">
-          <label>2. MST Producto</label>
+        <h3>Total a preparar</h3>
 
-          <input
-            class="file-input"
-            type="file"
-            id="fileMaestro"
-            accept=".xlsx,.xls,.csv"
-          >
+        <div id="summaryPrepare" class="summary-grid"></div>
 
-          <small
-            id="statusMaestro"
-            class="status"
-          >
-            Pendiente de carga...
-          </small>
-        </div>
+        <div style="height:8px;"></div>
 
-        <div class="load-box">
-          <label>3. Surtido JDE</label>
+        <h3>Preparado</h3>
 
-          <input
-            class="file-input"
-            type="file"
-            id="fileSurtido"
-            accept=".xlsx,.xls,.html,.htm,.csv"
-          >
-
-          <small
-            id="statusSurtido"
-            class="status"
-          >
-            Pendiente de carga...
-          </small>
-        </div>
-
-      </div>
-
-      <div class="load-actions">
-
-        <button
-          id="btnContinuar"
-          class="btn btn-primary btn-full"
-          disabled
-        >
-          CARGAR Y CONTINUAR
-        </button>
-
-      </div>
+        <div id="summaryPrepared" class="summary-grid"></div>
 
     </div>
 
-  </section>
+    <div class="top-actions">
+        <button id="btnPrepare" class="btn btn-green">
+            PREPARAR PK
+        </button>
+
+        <button id="btnAllLines" class="btn btn-light">
+            VER TODAS LAS LÍNEAS
+        </button>
+    </div>
+
+    <div id="mainModeMessage" class="alert alert-info hidden"></div>
+
+    <div id="mainList"></div>
+
+</div>
 
 
-  <!-- =====================================================
-       PANTALLA PRINCIPAL
-  ====================================================== -->
+<!-- ============================= -->
+<!-- PANTALLA PREPARACIÓN -->
+<!-- ============================= -->
 
-  <section id="screenMain" class="hidden">
+<div id="screenPrepare" class="container hidden">
 
-    <div class="card">
+    <div class="pm-header">
+        <button id="btnBackMain"
+                class="btn btn-light"
+                style="width:auto;margin:0;padding:8px 12px;">
+            ← VOLVER
+        </button>
 
-      <div class="prep-header">
-
-        <div>
-          <h2 class="section-title" style="margin-bottom:3px">
-            Pallet mixto
-          </h2>
-
-          <div
-            id="pmActualMain"
-            style="font-size:.75rem;color:#68737d"
-          >
+        <div class="pm-number" id="preparePmNumber">
             PM 1
-          </div>
         </div>
 
-        <button
-          class="btn btn-orange"
-          onclick="cerrarPM()"
-        >
-          CERRAR PM
-        </button>
-
-      </div>
-
+        <div style="width:65px;"></div>
     </div>
-
-
-    <!-- RESUMEN GENERAL -->
-
-    <div class="summary">
-
-      <div class="summary-card">
-
-        <div class="summary-title">
-          A preparar
-        </div>
-
-        <div
-          id="summaryTotal"
-          class="summary-values"
-        >
-          -
-        </div>
-
-      </div>
-
-
-      <div class="summary-card">
-
-        <div class="summary-title">
-          Preparado
-        </div>
-
-        <div
-          id="summaryPrepared"
-          class="summary-values"
-        >
-          -
-        </div>
-
-      </div>
-
-
-      <div class="summary-card">
-
-        <div class="summary-title">
-          Pendiente
-        </div>
-
-        <div
-          id="summaryPending"
-          class="summary-values"
-        >
-          -
-        </div>
-
-      </div>
-
-    </div>
-
 
     <div class="card">
 
-      <div class="top-actions">
+        <h3>Preparar picking</h3>
 
-        <button
-          class="btn btn-primary"
-          onclick="mostrarLineasTodas()"
-        >
-          VER TODAS LAS LÍNEAS
+        <div class="small">
+            Escaneá la caja para identificar el SKU.
+        </div>
+
+        <div class="scan-box">
+            <div id="reader"></div>
+        </div>
+
+        <button id="btnStartScanner"
+                class="btn btn-primary">
+            INICIAR CÁMARA
         </button>
 
-        <button
-          class="btn btn-green"
-          onclick="abrirPreparacion()"
-        >
-          PREPARAR PK
+        <button id="btnStopScanner"
+                class="btn btn-gray hidden">
+            DETENER CÁMARA
         </button>
 
-      </div>
+        <button id="btnManualSku"
+                class="btn btn-light">
+            INGRESAR SKU MANUALMENTE
+        </button>
+
+        <div id="scanMessage"></div>
 
     </div>
 
+    <div id="productCard" class="card hidden">
 
-    <div
-      id="mainLines"
-      class="card"
-    >
-    </div>
-
-  </section>
-
-
-  <!-- =====================================================
-       PANTALLA PREPARACION
-  ====================================================== -->
-
-  <section id="screenPrep" class="hidden">
-
-    <div class="card">
-
-      <div class="prep-header">
-
-        <div>
-
-          <div class="sku-big">
-            <span id="prepSku">
-              Escanear SKU
-            </span>
-          </div>
-
-          <div
-            id="prepDesc"
-            class="desc-big"
-          >
-            Escaneá la caja para comenzar
-          </div>
-
+        <div class="product-info">
+            <div class="sku" id="productSku"></div>
+            <div class="desc" id="productDesc"></div>
         </div>
 
-        <button
-          class="btn btn-light"
-          onclick="volverPrincipal()"
-        >
-          VOLVER
+        <div id="pendingProductInfo"></div>
+
+        <div class="stock-title">
+            Stock disponible
+        </div>
+
+        <div class="small" style="margin-top:3px;">
+            Tocá el lote que vas a utilizar.
+        </div>
+
+        <div id="stockList"></div>
+
+        <div id="quantitySection" class="quantity-box hidden">
+
+            <label id="quantityLabel">
+                Cantidad a preparar
+            </label>
+
+            <input
+                type="number"
+                id="quantityInput"
+                min="1"
+                step="1"
+                inputmode="numeric"
+            >
+
+            <button id="btnConfirmQuantity"
+                    class="btn btn-green">
+                CONFIRMAR PREPARACIÓN
+            </button>
+        </div>
+
+        <div id="prepareMessage"></div>
+
+        <button id="btnReclassify"
+                class="btn btn-orange">
+            NO ENCUENTRO NINGÚN LOTE → RECLASIFICAR
         </button>
 
-      </div>
-
-
-      <div
-        id="targetBox"
-        class="target-box hidden"
-      >
-
-        <div class="target-label">
-          Cantidad pendiente del SKU
-        </div>
-
-        <div
-          id="targetQty"
-          class="target-qty"
-        >
-          -
-        </div>
-
-        <div
-          id="targetDetail"
-          style="font-size:.72rem;color:#68737d"
-        >
-        </div>
-
-      </div>
+        <button id="btnClosePm"
+                class="btn btn-primary">
+            CERRAR PM
+        </button>
 
     </div>
 
+    <div id="preparedHistory" class="card hidden">
+        <h3>Preparado en este PM</h3>
+        <div id="preparedHistoryList"></div>
+    </div>
 
-    <!-- SCANNER -->
+</div>
 
-    <div class="card">
 
-      <h2 class="section-title">
-        Escanear caja
-      </h2>
+<!-- ============================= -->
+<!-- MODAL SKU -->
+<!-- ============================= -->
 
-      <div class="scanner-box">
+<div id="skuModal" class="modal hidden">
 
-        <div id="reader"></div>
+    <div class="modal-content">
 
-      </div>
-
-      <div class="manual-box">
+        <h3>Ingresar SKU</h3>
 
         <input
-          id="manualSku"
-          type="text"
-          inputmode="numeric"
-          placeholder="Ingresar SKU / EAN"
-          autocomplete="off"
+            id="manualSkuInput"
+            type="text"
+            inputmode="numeric"
+            placeholder="Ingrese SKU"
         >
 
-        <button
-          class="btn btn-primary"
-          onclick="buscarSKUManual()"
-        >
-          BUSCAR
+        <button id="btnAcceptSku"
+                class="btn btn-green">
+            BUSCAR SKU
         </button>
 
-      </div>
-
-    </div>
-
-
-    <!-- STOCK -->
-
-    <div
-      id="stockSection"
-      class="card hidden"
-    >
-
-      <h2 class="section-title">
-        Stock disponible
-      </h2>
-
-      <div
-        id="stockInfo"
-        style="font-size:.74rem;color:#68737d;margin-bottom:8px"
-      >
-      </div>
-
-      <div class="stock-table-wrap">
-
-        <table class="stock-table">
-
-          <thead>
-            <tr>
-              <th>Ubicación</th>
-              <th>Lote</th>
-              <th>Lote caja</th>
-              <th>Cantidad</th>
-            </tr>
-          </thead>
-
-          <tbody id="stockBody">
-          </tbody>
-
-        </table>
-
-      </div>
-
-
-      <div
-        id="qtyPanel"
-        class="qty-panel hidden"
-      >
-
-        <label>
-          Cantidad a preparar
-        </label>
-
-        <input
-          id="qtyPrepare"
-          type="number"
-          min="0"
-          step="1"
-          inputmode="numeric"
-        >
-
-        <div
-          id="qtyInfo"
-          class="qty-info"
-        >
-        </div>
-
-        <div class="prep-actions">
-
-          <button
-            class="btn btn-green"
-            onclick="confirmarPreparacion()"
-          >
-            CONFIRMAR CANTIDAD
-          </button>
-
-          <button
-            class="btn btn-light"
-            onclick="cancelarSeleccionLote()"
-          >
+        <button id="btnCancelSku"
+                class="btn btn-gray">
             CANCELAR
-          </button>
-
-          <button
-            class="btn btn-orange wide"
-            onclick="abrirReclasificacion()"
-          >
-            NO ENCUENTRO NINGÚN LOTE
-          </button>
-
-          <button
-            class="btn btn-red wide"
-            onclick="cerrarPreparacionActual()"
-          >
-            CERRAR PREPARACIÓN
-          </button>
-
-        </div>
-
-      </div>
+        </button>
 
     </div>
-
-
-    <!-- LINEAS DEL SKU -->
-
-    <div
-      id="skuLinesSection"
-      class="card hidden"
-    >
-
-      <h2 class="section-title">
-        Líneas a preparar
-      </h2>
-
-      <div id="skuLines">
-      </div>
-
-    </div>
-
-  </section>
 
 </div>
 
 
-<!-- =====================================================
-     MODAL RECLASIFICACION
-====================================================== -->
-
-<div
-  id="modalReclas"
-  class="modal hidden"
->
-
-  <div class="modal-box">
-
-    <h2 class="modal-title">
-      Solicitud de reclasificación
-    </h2>
-
-    <div
-      id="reclasInfo"
-      style="font-size:.78rem;color:#46525e"
-    >
-    </div>
-
-    <div style="margin-top:10px">
-
-      <label style="font-size:.76rem;font-weight:bold">
-        Lote físico / Julian
-      </label>
-
-      <input
-        id="reclasLote"
-        type="text"
-        placeholder="Ingresar últimos 3 dígitos"
-        style="
-          width:100%;
-          min-height:45px;
-          margin-top:5px;
-          padding:9px;
-          border:1px solid #ccd5de;
-          border-radius:9px;
-        "
-      >
-
-    </div>
-
-    <div style="margin-top:10px">
-
-      <label style="font-size:.76rem;font-weight:bold">
-        Cantidad
-      </label>
-
-      <input
-        id="reclasCantidad"
-        type="number"
-        min="1"
-        step="1"
-        style="
-          width:100%;
-          min-height:45px;
-          margin-top:5px;
-          padding:9px;
-          border:1px solid #ccd5de;
-          border-radius:9px;
-        "
-      >
-
-    </div>
-
-    <div class="modal-buttons">
-
-      <button
-        class="btn btn-green"
-        onclick="generarReclasificacion()"
-      >
-        GENERAR PDF
-      </button>
-
-      <button
-        class="btn btn-light"
-        onclick="cerrarModalReclas()"
-      >
-        CANCELAR
-      </button>
-
-    </div>
-
-  </div>
-
-</div>
-
-
-<div
-  id="toast"
-  class="toast"
->
-</div>
-
+<!-- ========================================================= -->
+<!-- IMPORTANTE: DESDE ACÁ COMIENZA EL ÚNICO <script> -->
+<!-- ========================================================= -->
 
 <script>
- /* ============================================================
-   VARIABLES GENERALES
-============================================================ */
+// ============================================================
+// DATOS GLOBALES
+// ============================================================
 
 let stockData = [];
-let maestroData = {};
+let mstData = {};
 let surtidoLines = [];
 
-let surtidoTotals = {
-  CA: 0,
-  UN: 0
-};
+let totalByUM = {};
+let preparedByUM = {};
 
-let surtidoUM = {};
-
-let eanMap = {};
-
-let currentSKU = "";
-let currentDescription = "";
+let currentPM = 1;
+let currentProduct = null;
 let selectedStock = null;
-
-let pmActual = 1;
-
-let mostrarTodas = false;
 
 let scanner = null;
 let scannerRunning = false;
 
-
-/* ============================================================
-   UTILIDADES
-============================================================ */
-
-function esc(v){
-  return String(v ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
-}
+let showingAllLines = false;
 
 
-function normalizar(v){
-  return String(v ?? "")
-    .trim()
-    .toUpperCase();
-}
+// ============================================================
+// FUNCIONES GENERALES
+// ============================================================
 
-
-function normalizarSKU(v){
-  return String(v ?? "")
-    .trim()
-    .replace(/^0+/,"") || "0";
-}
-
-
-function numero(v){
-  if(typeof v === "number") return v;
-
-  let s = String(v ?? "")
-    .trim()
-    .replace(/\s/g,"");
-
-  if(!s) return 0;
-
-  if(s.includes(",") && s.includes(".")){
-    if(s.lastIndexOf(",") > s.lastIndexOf(".")){
-      s = s.replace(/\./g,"").replace(",",".");
-    }else{
-      s = s.replace(/,/g,"");
-    }
-  }else if(s.includes(",")){
-    s = s.replace(",",".");
-  }
-
-  const n = parseFloat(s);
-
-  return Number.isFinite(n) ? n : 0;
-}
-
-
-function formatoNumero(v){
-  const n = Number(v) || 0;
-
-  if(Number.isInteger(n)){
-    return n.toLocaleString("es-AR");
-  }
-
-  return n.toLocaleString("es-AR",{
-    maximumFractionDigits:2
-  });
-}
-
-
-function mostrarToast(msg,ms=2800){
-  const t = document.getElementById("toast");
-
-  t.textContent = msg;
-  t.classList.add("show");
-
-  clearTimeout(window.toastTimer);
-
-  window.toastTimer = setTimeout(()=>{
-    t.classList.remove("show");
-  },ms);
-}
-
-
-/* ============================================================
-   ESTADO DE ARCHIVOS
-============================================================ */
-
-function estado(id,text,tipo=""){
-  const el = document.getElementById(id);
-
-  if(!el) return;
-
-  el.textContent = text;
-  el.className = "status";
-
-  if(tipo){
-    el.classList.add(tipo);
-  }
-}
-
-
-function todosCargados(){
-  return (
-    stockData.length > 0 &&
-    surtidoLines.length > 0 &&
-    Object.keys(maestroData).length >= 0 &&
-    Object.keys(surtidoUM).length > 0
-  );
-}
-
-
-function actualizarBotonContinuar(){
-
-  const btn = document.getElementById("btnContinuar");
-
-  /*
-    MST puede existir incluso sin registros de capacidad.
-    Lo obligatorio para continuar es:
-    STOCK + SURTIDO + TOTALES DEL SURTIDO.
-  */
-
-  const ok =
-    stockData.length > 0 &&
-    surtidoLines.length > 0 &&
-    Object.keys(surtidoUM).length > 0;
-
-  btn.disabled = !ok;
-}
-
-
-/* ============================================================
-   LECTURA DE ARCHIVOS
-============================================================ */
-
-async function leerWorkbook(file){
-
-  const buffer = await file.arrayBuffer();
-
-  try{
-
-    const wb = XLSX.read(buffer,{
-      type:"array",
-      cellDates:false,
-      raw:true
-    });
-
-    if(wb && wb.SheetNames && wb.SheetNames.length){
-      return wb;
+function cleanText(value){
+    if(value === null || value === undefined){
+        return "";
     }
 
-  }catch(e){
-    console.log("No se pudo leer como XLSX:",e);
-  }
-
-  throw new Error(
-    "No se pudo leer el archivo como Excel."
-  );
+    return String(value).trim();
 }
 
 
-async function leerArchivoComoMatriz(file){
-
-  const nombre = String(file.name || "").toLowerCase();
-
-  /*
-    HTML / HTM / XLS generado desde reporte HTML
-  */
-
-  if(
-    nombre.endsWith(".html") ||
-    nombre.endsWith(".htm")
-  ){
-
-    const texto = await file.text();
-
-    const parser = new DOMParser();
-
-    const doc = parser.parseFromString(
-      texto,
-      "text/html"
-    );
-
-    const tablas = [...doc.querySelectorAll("table")];
-
-    if(!tablas.length){
-      throw new Error(
-        "No se encontró ninguna tabla en el Surtido."
-      );
-    }
-
-    let mejor = null;
-
-    for(const tabla of tablas){
-
-      const filas = [...tabla.querySelectorAll("tr")];
-
-      const matriz = filas.map(tr =>
-        [...tr.querySelectorAll("th,td")]
-          .map(td => td.innerText.trim())
-      );
-
-      const textoTabla = matriz
-        .flat()
-        .join(" ")
-        .toUpperCase();
-
-      if(
-        textoTabla.includes("UBICACIÓN") &&
-        textoTabla.includes("ARTÍCULO") &&
-        textoTabla.includes("CANTIDAD")
-      ){
-        mejor = matriz;
-        break;
-      }
-
-      if(!mejor && matriz.length){
-        mejor = matriz;
-      }
-    }
-
-    if(!mejor){
-      throw new Error(
-        "No se pudo extraer la tabla del Surtido."
-      );
-    }
-
-    return mejor;
-  }
-
-
-  /*
-    CSV
-  */
-
-  if(nombre.endsWith(".csv")){
-
-    const texto = await file.text();
-
-    const lineas = texto.split(/\r?\n/);
-
-    return lineas.map(linea => {
-
-      if(linea.includes(";")){
-        return linea.split(";").map(x=>x.trim());
-      }
-
-      return linea.split(",").map(x=>x.trim());
-
-    });
-  }
-
-
-  /*
-    Excel
-  */
-
-  const wb = await leerWorkbook(file);
-
-  let sheetName =
-    wb.SheetNames.find(n =>
-      normalizar(n).includes("VSTOCK")
-    );
-
-  if(!sheetName){
-    sheetName = wb.SheetNames[0];
-  }
-
-  return XLSX.utils.sheet_to_json(
-    wb.Sheets[sheetName],
-    {
-      header:1,
-      raw:true,
-      defval:""
-    }
-  );
+function normalizeText(value){
+    return cleanText(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g,"");
 }
 
 
-/* ============================================================
-   STOCK JDE
-============================================================ */
+function normalizeSku(value){
 
-function procesarStock(data){
-
-  const res = [];
-
-  /*
-    FORMATO CONFIRMADO DEL STOCK:
-
-    A MCU
-    B Ubicación
-    C Lote
-    D LotStatus
-    E UM1
-    F CantEnMano
-    ...
-    L articulo
-    M articulodescripcion
-    ...
-    U Paletizado
-  */
-
-  for(let i=0;i<data.length;i++){
-
-    const r = data[i];
-
-    if(!Array.isArray(r)) continue;
-
-    const sku = String(r[11] ?? "").trim();
-
-    if(!sku) continue;
-
-    if(
-      normalizar(sku) === "ARTICULO" ||
-      normalizar(sku) === "SKU"
-    ){
-      continue;
+    if(value === null || value === undefined){
+        return "";
     }
 
-    const ubi = String(r[1] ?? "")
-      .trim()
-      .toUpperCase();
+    let s = String(value).trim();
 
-    const lote = String(r[2] ?? "")
-      .trim()
-      .toUpperCase();
+    // Evita números tipo 12345.0
+    if(/^\d+\.0+$/.test(s)){
+        s = s.split(".")[0];
+    }
 
-    const qty = numero(r[5]);
+    // Evita notación científica en números simples
+    if(/^\d+e\+\d+$/i.test(s)){
+        try{
+            s = BigInt(Number(s)).toString();
+        }catch(e){}
+    }
 
-    const desc = String(r[12] ?? "")
-      .trim();
+    return s;
+}
 
-    if(qty <= 0) continue;
 
-    res.push({
+function parseNumber(value){
 
-      sku:normalizarSKU(sku),
+    if(value === null || value === undefined || value === ""){
+        return 0;
+    }
 
-      skuOriginal:sku,
+    if(typeof value === "number"){
+        return isFinite(value) ? value : 0;
+    }
 
-      ubi:ubi || "S/U",
-
-      lote:lote || "SIN LOTE",
-
-      qty:qty,
-
-      qtyOriginal:qty,
-
-      desc:desc,
-
-      um:String(r[4] ?? "")
+    let s = String(value)
         .trim()
-        .toUpperCase(),
+        .replace(/\s/g,"");
 
-      paletizado:numero(r[20]),
-
-      observado:r.some(c =>
-        /OBSERV|OBS\b/i.test(String(c ?? ""))
-      )
-
-    });
-  }
-
-  return res;
-}
-
-
-/* ============================================================
-   MST PRODUCTO
-============================================================ */
-
-function procesarMaestro(data){
-
-  const maestro = {};
-
-  /*
-    Formato histórico:
-
-    B = SKU
-    F = factor
-    G = factor
-
-    Se conserva esta lectura únicamente para
-    información del producto.
-
-    NO se utiliza para convertir CA a UN.
-  */
-
-  for(let i=1;i<data.length;i++){
-
-    const r = data[i];
-
-    if(!Array.isArray(r)) continue;
-
-    const sku = normalizarSKU(r[1]);
-
-    if(!sku || sku === "0") continue;
-
-    const capacidad =
-      Math.max(
-        1,
-        Math.floor(
-          numero(r[5]) * numero(r[6])
-        ) || 1
-      );
-
-    maestro[sku] = {
-      sku:sku,
-      capacidad:capacidad,
-      descripcion:String(r[2] ?? "").trim()
-    };
-  }
-
-  return maestro;
-}
-
-
-/* ============================================================
-   MST PRODUCTO / EAN
-============================================================ */
-
-function procesarEAN(data){
-
-  const mapa = {};
-
-  for(let i=1;i<data.length;i++){
-
-    const r = data[i];
-
-    if(!Array.isArray(r)) continue;
-
-    /*
-      Según el formato utilizado anteriormente:
-
-      B = SKU
-      J = EAN
-    */
-
-    const sku = normalizarSKU(r[1]);
-
-    const ean = String(r[9] ?? "")
-      .trim();
-
-    if(!sku || sku === "0") continue;
-
-    if(ean){
-      mapa[normalizarSKU(ean)] = sku;
+    if(!s){
+        return 0;
     }
-  }
 
-  return mapa;
+    /*
+       Soporta:
+       1.234
+       1,234
+       1234
+       1.234,56
+       1234,56
+    */
+
+    if(s.includes(",") && s.includes(".")){
+        if(s.lastIndexOf(",") > s.lastIndexOf(".")){
+            s = s.replace(/\./g,"").replace(",",".");
+        }else{
+            s = s.replace(/,/g,"");
+        }
+    }else if(s.includes(",")){
+        let parts = s.split(",");
+
+        if(parts.length === 2 && parts[1].length <= 3){
+            s = s.replace(",",".");
+        }else{
+            s = s.replace(/,/g,"");
+        }
+    }else if(s.includes(".")){
+        let parts = s.split(".");
+
+        if(parts.length > 2){
+            s = s.replace(/\./g,"");
+        }else if(parts.length === 2 && parts[1].length === 3){
+            s = s.replace(/\./g,"");
+        }
+    }
+
+    let n = Number(s);
+
+    return isFinite(n) ? n : 0;
 }
 
 
-/* ============================================================
-   PARSER DEL SURTIDO
-============================================================ */
+function formatNumber(value){
 
-function procesarSurtido(data){
+    let n = Number(value || 0);
 
-  const lineas = [];
+    if(Math.abs(n - Math.round(n)) < 0.000001){
+        return Math.round(n).toLocaleString("es-AR");
+    }
 
-  const totales = {};
+    return n.toLocaleString("es-AR",{
+        maximumFractionDigits:2
+    });
+}
 
-  let dentroLineas = false;
 
-  let headerEncontrado = false;
+function escapeHtml(value){
 
-  let lineId = 1;
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
 
-  for(let i=0;i<data.length;i++){
 
-    const r = data[i];
+function setStatus(id,text,type=""){
+    const el = document.getElementById(id);
 
-    if(!Array.isArray(r)) continue;
+    if(!el) return;
 
-    const texto = r
-      .map(x=>String(x ?? "").trim())
-      .join(" ")
-      .toUpperCase();
+    el.textContent = text;
+    el.className = "status " + type;
+}
+
+
+// ============================================================
+// LECTURA DE ARCHIVOS
+// ============================================================
+
+function readExcelFile(file){
+
+    return new Promise((resolve,reject)=>{
+
+        if(!file){
+            reject(new Error("No se seleccionó ningún archivo."));
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function(e){
+
+            try{
+
+                const data = new Uint8Array(e.target.result);
+
+                const workbook = XLSX.read(data,{
+                    type:"array",
+                    raw:true,
+                    cellDates:false
+                });
+
+                resolve(workbook);
+
+            }catch(error){
+                reject(error);
+            }
+        };
+
+        reader.onerror = function(){
+            reject(new Error("No se pudo leer el archivo."));
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+
+// ============================================================
+// BUSCAR HOJA
+// ============================================================
+
+function findSheet(workbook,preferred){
+
+    if(!workbook || !workbook.SheetNames.length){
+        return null;
+    }
+
+    const wanted = normalizeText(preferred);
+
+    let exact = workbook.SheetNames.find(
+        s => normalizeText(s) === wanted
+    );
+
+    if(exact){
+        return workbook.Sheets[exact];
+    }
+
+    let partial = workbook.SheetNames.find(
+        s => normalizeText(s).includes(wanted)
+    );
+
+    if(partial){
+        return workbook.Sheets[partial];
+    }
+
+    return workbook.Sheets[workbook.SheetNames[0]];
+}
+
+
+// ============================================================
+// DETECTAR ENCABEZADOS
+// ============================================================
+
+function findHeaderRow(rows,requiredNames){
+
+    const maxRows = Math.min(rows.length,40);
+
+    for(let r=0;r<maxRows;r++){
+
+        const normalized = rows[r].map(x => normalizeText(x));
+
+        let found = 0;
+
+        for(const name of requiredNames){
+
+            if(normalized.some(x => x === name || x.includes(name))){
+                found++;
+            }
+        }
+
+        if(found >= Math.min(2,requiredNames.length)){
+            return r;
+        }
+    }
+
+    return -1;
+}
+
+
+function findColumn(headers,candidates){
+
+    const normalizedHeaders = headers.map(x => normalizeText(x));
+
+    for(const candidate of candidates){
+
+        const c = normalizeText(candidate);
+
+        let index = normalizedHeaders.findIndex(
+            h => h === c
+        );
+
+        if(index >= 0){
+            return index;
+        }
+    }
+
+    for(const candidate of candidates){
+
+        const c = normalizeText(candidate);
+
+        let index = normalizedHeaders.findIndex(
+            h => h.includes(c)
+        );
+
+        if(index >= 0){
+            return index;
+        }
+    }
+
+    return -1;
+}
+
+
+// ============================================================
+// PARSER STOCK JDE
+// ============================================================
+
+function parseStockWorkbook(workbook){
+
+    const sheet = findSheet(workbook,"vStock");
+
+    if(!sheet){
+        throw new Error("No se encontró la hoja vStock.");
+    }
+
+    const rows = XLSX.utils.sheet_to_json(
+        sheet,
+        {
+            header:1,
+            defval:"",
+            raw:true
+        }
+    );
+
+    if(!rows || rows.length === 0){
+        throw new Error("La hoja de Stock está vacía.");
+    }
+
+
+    // --------------------------------------------------------
+    // BUSCAR LA FILA REAL DE ENCABEZADOS
+    // --------------------------------------------------------
+
+    let headerRowIndex = findHeaderRow(
+        rows,
+        [
+            "articulo",
+            "ubicacion",
+            "lote"
+        ]
+    );
+
 
     /*
-      DETECTAR BLOQUE FINAL
-      "Cantidad por unidad de medida"
+       Si no encuentra encabezados por nombre,
+       usamos la estructura JDE conocida:
+       
+       A MCU              = 0
+       B Ubicación        = 1
+       C Lote             = 2
+       D LotStatus        = 3
+       E UM1              = 4
+       F CantEnMano       = 5
+       L articulo         = 11
+       M articulodescripcion = 12
+       U Paletizado       = 20
     */
 
-    if(
-      texto.includes("CANTIDAD") &&
-      texto.includes("POR UNIDAD") &&
-      texto.includes("MEDIDA")
-    ){
+    let colLocation = 1;
+    let colLot = 2;
+    let colUM = 4;
+    let colQty = 5;
+    let colSku = 11;
+    let colDesc = 12;
+    let colPalletizado = 20;
 
-      /*
-        Las filas siguientes contienen:
 
-        CA | 1938
-        UN | xxx
+    if(headerRowIndex >= 0){
 
-        Se procesan hasta encontrar un bloque vacío
-        o una nueva sección.
-      */
+        const headers = rows[headerRowIndex];
 
-      for(let j=i+1;j<Math.min(i+15,data.length);j++){
+        const detectedSku = findColumn(
+            headers,
+            [
+                "articulo",
+                "articuloid",
+                "sku",
+                "item",
+                "itemnumber"
+            ]
+        );
 
-        const rr = data[j] || [];
+        const detectedLocation = findColumn(
+            headers,
+            [
+                "ubicacion",
+                "ubicación",
+                "locacion",
+                "locación"
+            ]
+        );
 
-        const um = normalizar(rr[0]);
+        const detectedLot = findColumn(
+            headers,
+            [
+                "lote",
+                "lot"
+            ]
+        );
 
-        const cant = numero(rr[1]);
+        const detectedQty = findColumn(
+            headers,
+            [
+                "cantenmano",
+                "cantidadenmano",
+                "cantidad",
+                "cant",
+                "stock"
+            ]
+        );
+
+        const detectedUM = findColumn(
+            headers,
+            [
+                "um1",
+                "um",
+                "unidadmedida"
+            ]
+        );
+
+        const detectedDesc = findColumn(
+            headers,
+            [
+                "articulodescripcion",
+                "descripcion",
+                "descrip",
+                "description"
+            ]
+        );
+
+        const detectedPallet = findColumn(
+            headers,
+            [
+                "paletizado",
+                "palletizado"
+            ]
+        );
+
+
+        if(detectedSku >= 0) colSku = detectedSku;
+        if(detectedLocation >= 0) colLocation = detectedLocation;
+        if(detectedLot >= 0) colLot = detectedLot;
+        if(detectedQty >= 0) colQty = detectedQty;
+        if(detectedUM >= 0) colUM = detectedUM;
+        if(detectedDesc >= 0) colDesc = detectedDesc;
+        if(detectedPallet >= 0) colPalletizado = detectedPallet;
+    }
+
+
+    const result = [];
+
+
+    for(let r=headerRowIndex >= 0 ? headerRowIndex + 1 : 0;
+        r<rows.length;
+        r++){
+
+        const row = rows[r];
+
+        if(!row || row.length === 0){
+            continue;
+        }
+
+
+        const sku = normalizeSku(row[colSku]);
+        const location = cleanText(row[colLocation]);
+        const lot = cleanText(row[colLot]);
+        const um = cleanText(row[colUM]).toUpperCase() || "CA";
+        const qty = parseNumber(row[colQty]);
+        const desc = cleanText(row[colDesc]);
+        const palletizado = parseNumber(row[colPalletizado]);
+
+
+        // Ignorar encabezados repetidos
+        const skuNorm = normalizeText(sku);
 
         if(
-          (um === "CA" || um === "UN") &&
-          cant > 0
+            skuNorm === "articulo" ||
+            skuNorm === "sku" ||
+            skuNorm === "item"
         ){
-          totales[um] =
-            (totales[um] || 0) + cant;
+            continue;
         }
-      }
 
-      continue;
+
+        // Sin SKU no es un registro de stock
+        if(!sku){
+            continue;
+        }
+
+
+        // Solo stock disponible
+        if(qty <= 0){
+            continue;
+        }
+
+
+        result.push({
+            sku:sku,
+            location:location,
+            lot:lot,
+            um:um,
+            qty:qty,
+            desc:desc,
+            palletizado:palletizado
+        });
     }
+
+
+    if(result.length === 0){
+
+        throw new Error(
+            "No se encontraron registros de stock. " +
+            "Revisá que el archivo contenga las columnas Articulo, Ubicación, Lote y CantEnMano."
+        );
+    }
+
+
+    return result;
+}
+
+
+// ============================================================
+// PARSER MST PRODUCTO
+// ============================================================
+
+function parseMstWorkbook(workbook){
+
+    const sheet = findSheet(workbook,"MST");
+
+    if(!sheet){
+        // No bloqueamos si el archivo tiene otra hoja.
+        const first = workbook.Sheets[workbook.SheetNames[0]];
+
+        if(!first){
+            throw new Error("No se encontró información en MST Producto.");
+        }
+
+        return parseMstSheet(first);
+    }
+
+    return parseMstSheet(sheet);
+}
+
+
+function parseMstSheet(sheet){
+
+    const rows = XLSX.utils.sheet_to_json(
+        sheet,
+        {
+            header:1,
+            defval:"",
+            raw:true
+        }
+    );
+
+    if(!rows.length){
+        return {};
+    }
+
+
+    const headerRow = findHeaderRow(
+        rows,
+        [
+            "articulo",
+            "descripcion"
+        ]
+    );
+
+
+    let colSku = 0;
+    let colDesc = 1;
+    let colCap = -1;
+
+
+    if(headerRow >= 0){
+
+        const headers = rows[headerRow];
+
+        const skuCol = findColumn(
+            headers,
+            [
+                "articulo",
+                "sku",
+                "item",
+                "itemnumber"
+            ]
+        );
+
+        const descCol = findColumn(
+            headers,
+            [
+                "descripcion",
+                "articulodescripcion",
+                "descrip"
+            ]
+        );
+
+        const capCol = findColumn(
+            headers,
+            [
+                "capacidad",
+                "palletizado",
+                "paletizado"
+            ]
+        );
+
+        if(skuCol >= 0) colSku = skuCol;
+        if(descCol >= 0) colDesc = descCol;
+        if(capCol >= 0) colCap = capCol;
+    }
+
+
+    const result = {};
+
+    for(let r=headerRow >= 0 ? headerRow + 1 : 0;
+        r<rows.length;
+        r++){
+
+        const row = rows[r];
+
+        const sku = normalizeSku(row[colSku]);
+
+        if(!sku) continue;
+
+        result[sku] = {
+            sku:sku,
+            desc:cleanText(row[colDesc]),
+            cap:colCap >= 0 ? parseNumber(row[colCap]) : 0
+        };
+    }
+
+    return result;
+}
+
+
+// ============================================================
+// PARSER SURTIDO JDE
+// ============================================================
+
+function parseSurtidoWorkbook(workbook){
+
+    const sheet = findSheet(workbook,"Surtido");
+
+    if(!sheet){
+        throw new Error("No se encontró la hoja de Surtido.");
+    }
+
+
+    const rows = XLSX.utils.sheet_to_json(
+        sheet,
+        {
+            header:1,
+            defval:"",
+            raw:true
+        }
+    );
+
+
+    if(!rows.length){
+        throw new Error("El Surtido está vacío.");
+    }
+
+
+    // --------------------------------------------------------
+    // BUSCAR "CANTIDAD POR UNIDAD DE MEDIDA"
+    // --------------------------------------------------------
+
+    totalByUM = {};
+
+    let summaryRow = -1;
+
+    for(let r=0;r<rows.length;r++){
+
+        const joined = rows[r]
+            .map(x => normalizeText(x))
+            .join(" ");
+
+        if(joined.includes("cantidadporunidaddemedida")){
+            summaryRow = r;
+            break;
+        }
+    }
+
+
+    if(summaryRow >= 0){
+
+        for(let r=summaryRow + 1;
+            r<Math.min(summaryRow + 20,rows.length);
+            r++){
+
+            const row = rows[r];
+
+            if(!row) continue;
+
+            const um = cleanText(row[0]).toUpperCase();
+
+            if(
+                um === "CA" ||
+                um === "UN" ||
+                um === "PAL" ||
+                um === "BX"
+            ){
+
+                const qty = parseNumber(row[1]);
+
+                if(qty > 0){
+                    totalByUM[um] = qty;
+                }
+            }
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // ENCONTRAR ENCABEZADO DE SURTIDO
+    // --------------------------------------------------------
+
+    let headerRow = -1;
+
+    for(let r=0;r<rows.length;r++){
+
+        const normalized = rows[r].map(x => normalizeText(x));
+
+        const hasUbicacion = normalized.some(
+            x => x === "ubicacion" || x.includes("ubicacion")
+        );
+
+        const hasArticulo = normalized.some(
+            x => x === "articulo" || x.includes("articulo")
+        );
+
+        const hasCantidad = normalized.some(
+            x => x === "cantidad" || x.includes("cantidad")
+        );
+
+        if(hasUbicacion && hasArticulo && hasCantidad){
+
+            headerRow = r;
+            break;
+        }
+    }
+
+
+    if(headerRow < 0){
+        throw new Error(
+            "No se encontró el encabezado de las líneas del Surtido."
+        );
+    }
+
+
+    const headers = rows[headerRow];
+
+
+    let colLocation = findColumn(
+        headers,
+        ["ubicacion","ubicación"]
+    );
+
+    let colSku = findColumn(
+        headers,
+        ["articulo","sku","item"]
+    );
+
+    let colLot = findColumn(
+        headers,
+        ["lote","lot"]
+    );
+
+    let colDesc = findColumn(
+        headers,
+        ["descripcion","descripción","descrip"]
+    );
+
+    let colQty = findColumn(
+        headers,
+        ["cantidad","cant"]
+    );
+
+    let colUM = findColumn(
+        headers,
+        ["um","unidadmedida","unidad"]
+    );
+
+    let colRealizado = findColumn(
+        headers,
+        ["realizado"]
+    );
+
+
+    // Fallback de estructura conocida
+    if(colLocation < 0) colLocation = 0;
+    if(colSku < 0) colSku = 1;
+    if(colLot < 0) colLot = 2;
+    if(colDesc < 0) colDesc = 4;
+    if(colQty < 0) colQty = 8;
+    if(colUM < 0) colUM = 9;
+    if(colRealizado < 0) colRealizado = 10;
+
+
+    const result = [];
+
+
+    for(let r=headerRow + 1;r<rows.length;r++){
+
+        const row = rows[r];
+
+        if(!row) continue;
+
+
+        const location = cleanText(row[colLocation]);
+        const sku = normalizeSku(row[colSku]);
+        const lot = cleanText(row[colLot]);
+        const desc = cleanText(row[colDesc]);
+        const qty = parseNumber(row[colQty]);
+        const um = cleanText(row[colUM]).toUpperCase();
+        const realizado = parseNumber(row[colRealizado]);
+
+
+        // Cuando aparece el resumen, terminó el detalle
+        const firstCell = normalizeText(row[0]);
+
+        if(firstCell === "cantidadporunidad" ||
+           firstCell === "cantidadporunidadmedida"){
+            break;
+        }
+
+
+        // Ignorar filas sin SKU
+        if(!sku) continue;
+
+        // Ignorar encabezados repetidos
+        if(
+            normalizeText(sku) === "articulo" ||
+            normalizeText(location) === "ubicacion"
+        ){
+            continue;
+        }
+
+
+        // Solo cantidades a preparar
+        const pendiente = Math.max(0,qty - realizado);
+
+        if(pendiente <= 0){
+            continue;
+        }
+
+
+        // Solo líneas de picking / pallet mixto.
+        // La estructura del archivo que usás corresponde
+        // al bloque de Surtido PM Pallet Mixto.
+        result.push({
+            id:"L" + r,
+            location:location,
+            zone:location.substring(0,4),
+            sku:sku,
+            lot:lot,
+            desc:desc,
+            qty:qty,
+            um:um || "CA",
+            realizado:realizado,
+            pendiente:pendiente,
+            prepared:0,
+            pmNumbers:[]
+        });
+    }
+
+
+    if(result.length === 0){
+
+        throw new Error(
+            "No se encontraron líneas pendientes para preparar en el Surtido."
+        );
+    }
+
+
+    return result;
+}
+
+
+// ============================================================
+// CARGA DE LOS 3 ARCHIVOS
+// ============================================================
+
+async function loadAllFiles(){
+
+    const fileStock = document.getElementById("fileStock").files[0];
+    const fileMst = document.getElementById("fileMst").files[0];
+    const fileSurtido = document.getElementById("fileSurtido").files[0];
+
+
+    if(!fileStock || !fileMst || !fileSurtido){
+
+        showLoadError(
+            "Tenés que seleccionar los 3 archivos."
+        );
+
+        return;
+    }
+
+
+    document.getElementById("btnContinuar").disabled = true;
+
+    document.getElementById("loadMessage").innerHTML =
+        '<div class="loading">Cargando archivos...</div>';
+
+
+    try{
+
+        // ----------------------------------------------------
+        // STOCK
+        // ----------------------------------------------------
+
+        setStatus(
+            "statusStock",
+            "Leyendo Stock...",
+            ""
+        );
+
+        const wbStock = await readExcelFile(fileStock);
+
+        stockData = parseStockWorkbook(wbStock);
+
+        setStatus(
+            "statusStock",
+            "✓ Stock cargado: " + stockData.length + " registros",
+            "ok"
+        );
+
+
+        // ----------------------------------------------------
+        // MST
+        // ----------------------------------------------------
+
+        setStatus(
+            "statusMst",
+            "Leyendo MST...",
+            ""
+        );
+
+        const wbMst = await readExcelFile(fileMst);
+
+        mstData = parseMstWorkbook(wbMst);
+
+        setStatus(
+            "statusMst",
+            "✓ MST cargado: " +
+            Object.keys(mstData).length +
+            " artículos",
+            "ok"
+        );
+
+
+        // ----------------------------------------------------
+        // SURTIDO
+        // ----------------------------------------------------
+
+        setStatus(
+            "statusSurtido",
+            "Leyendo Surtido...",
+            ""
+        );
+
+        const wbSurtido = await readExcelFile(fileSurtido);
+
+        surtidoLines = parseSurtidoWorkbook(wbSurtido);
+
+        setStatus(
+            "statusSurtido",
+            "✓ Surtido cargado: " +
+            surtidoLines.length +
+            " líneas",
+            "ok"
+        );
+
+
+        // ----------------------------------------------------
+        // PREPARADOS
+        // ----------------------------------------------------
+
+        preparedByUM = {};
+
+        Object.keys(totalByUM).forEach(um=>{
+            preparedByUM[um] = 0;
+        });
+
+
+        currentPM = 1;
+
+        showingAllLines = false;
+
+
+        document.getElementById("screenLoad")
+            .classList.add("hidden");
+
+        document.getElementById("screenMain")
+            .classList.remove("hidden");
+
+
+        renderMain();
+
+
+    }catch(error){
+
+        console.error(error);
+
+        showLoadError(
+            "✕ Error: " + error.message
+        );
+
+    }finally{
+
+        document.getElementById("btnContinuar").disabled = false;
+    }
+}
+
+
+function showLoadError(message){
+
+    document.getElementById("loadMessage").innerHTML =
+        '<div class="alert alert-error">' +
+        escapeHtml(message) +
+        '</div>';
+}
+
+
+// ============================================================
+// RESUMEN CA / UN
+// ============================================================
+
+function renderSummary(){
+
+    const prepare = document.getElementById("summaryPrepare");
+    const prepared = document.getElementById("summaryPrepared");
+
+
+    prepare.innerHTML = "";
+    prepared.innerHTML = "";
+
+
+    const units = Object.keys(totalByUM);
 
 
     /*
-      DETECTAR CABECERA
+       MUY IMPORTANTE:
+       solo mostramos las unidades que realmente
+       aparecen en "Cantidad por unidad de medida"
+       del Surtido.
+       
+       Si el Surtido dice:
+       
+       CA 1938
+       
+       se muestra solamente CA.
+       
+       NO se calcula UN a partir de CA.
     */
 
-    const tieneUbic =
-      texto.includes("UBICACIÓN") ||
-      texto.includes("UBICACION");
 
-    const tieneArticulo =
-      texto.includes("ARTÍCULO") ||
-      texto.includes("ARTICULO");
+    if(units.length === 0){
 
-    const tieneCantidad =
-      texto.includes("CANTIDAD");
+        prepare.innerHTML =
+            '<div class="summary-box">' +
+                '<div class="label">A PREPARAR</div>' +
+                '<div class="number">0</div>' +
+            '</div>';
 
-    if(
-      tieneUbic &&
-      tieneArticulo &&
-      tieneCantidad
-    ){
+        prepared.innerHTML =
+            '<div class="summary-box prepared">' +
+                '<div class="label">PREPARADO</div>' +
+                '<div class="number">0</div>' +
+            '</div>';
 
-      headerEncontrado = true;
-      dentroLineas = true;
-
-      continue;
-    }
-
-    if(!dentroLineas) continue;
-
-
-    /*
-      FIN DE LAS LÍNEAS
-    */
-
-    if(
-      texto.startsWith("CLIENTES:") ||
-      texto.includes("CANTIDAD POR UNIDAD DE MEDIDA")
-    ){
-      dentroLineas = false;
-      continue;
+        return;
     }
 
 
-    /*
-      EVITAR FILAS VACÍAS
-    */
+    units.forEach(um=>{
 
-    const ubic = String(r[0] ?? "")
-      .trim();
+        const total = totalByUM[um] || 0;
+        const prep = preparedByUM[um] || 0;
 
-    const skuRaw = String(r[1] ?? "")
-      .trim();
 
-    const lote = String(r[2] ?? "")
-      .trim();
+        prepare.innerHTML +=
+            '<div class="summary-box">' +
+                '<div class="label">A PREPARAR ' +
+                    escapeHtml(um) +
+                '</div>' +
+                '<div class="number">' +
+                    formatNumber(total) +
+                '</div>' +
+            '</div>';
 
-    const desc = String(r[4] ?? "")
-      .trim();
 
-    const um = normalizar(r[9]);
-
-    const qty = numero(r[8]);
-
-    if(!ubic || !skuRaw || qty <= 0){
-      continue;
-    }
-
-    /*
-      Solamente CA / UN
-    */
-
-    if(
-      um !== "CA" &&
-      um !== "UN"
-    ){
-      continue;
-    }
-
-    const sku = normalizarSKU(skuRaw);
-
-    const zona =
-      ubic.substring(0,4).toUpperCase();
-
-    lineas.push({
-
-      lineId:lineId++,
-
-      ubi:ubic.toUpperCase(),
-
-      zona:zona,
-
-      sku:sku,
-
-      desc:desc,
-
-      lote:lote.toUpperCase(),
-
-      qty:qty,
-
-      um:um,
-
-      orden:String(r[6] ?? "").trim(),
-
-      linea:String(r[7] ?? "").trim(),
-
-      preparado:0,
-
-      pms:[]
-
+        prepared.innerHTML +=
+            '<div class="summary-box prepared">' +
+                '<div class="label">PREPARADO ' +
+                    escapeHtml(um) +
+                '</div>' +
+                '<div class="number">' +
+                    formatNumber(prep) +
+                '</div>' +
+            '</div>';
     });
-  }
-
-
-  /*
-    Si por algún motivo no encontró el bloque de totales,
-    calcular solamente como respaldo las UM existentes
-    en las líneas.
-
-    Pero si el bloque final existe, tiene prioridad.
-  */
-
-  if(
-    Object.keys(totales).length === 0
-  ){
-
-    for(const l of lineas){
-
-      totales[l.um] =
-        (totales[l.um] || 0) + l.qty;
-    }
-  }
-
-
-  return {
-    lineas:lineas,
-    totales:totales
-  };
 }
 
 
-/* ============================================================
-   LOTE CAJA / JULIAN
-============================================================ */
-
-function loteCaja(lote){
-
-  const s = String(lote || "")
-    .trim()
-    .toUpperCase();
-
-  if(!s) return "-";
-
-  /*
-    Busca la última secuencia de 3 números.
-
-    Ejemplo:
-
-    B2632A_218C
-              ^^^
-              218
-  */
-
-  const matches =
-    s.match(/\d{3}/g);
-
-  if(matches && matches.length){
-    return matches[matches.length-1];
-  }
-
-  /*
-    Si no encuentra una secuencia de 3,
-    toma los últimos 3 números disponibles.
-  */
-
-  const nums = s.replace(/\D/g,"");
-
-  if(nums.length >= 3){
-    return nums.slice(-3);
-  }
-
-  return "-";
-}
-
-
-/* ============================================================
-   PENDIENTES
-============================================================ */
-
-function pendienteLinea(line){
-
-  return Math.max(
-    0,
-    Number(line.qty || 0) -
-    Number(line.preparado || 0)
-  );
-}
-
-
-function lineasPendientesSKU(sku){
-
-  return surtidoLines.filter(l =>
-    l.sku === normalizarSKU(sku) &&
-    pendienteLinea(l) > 0
-  );
-}
-
-
-function pendienteSKU(sku){
-
-  return lineasPendientesSKU(sku)
-    .reduce(
-      (a,l)=>a+pendienteLinea(l),
-      0
-    );
-}
-
-
-/* ============================================================
-   PREPARACIÓN PM
-============================================================ */
-
-function registrarPM(line,qty){
-
-  if(!line.pms){
-    line.pms = [];
-  }
-
-  const encontrado =
-    line.pms.find(x => x.pm === pmActual);
-
-  if(encontrado){
-    encontrado.qty += qty;
-  }else{
-    line.pms.push({
-      pm:pmActual,
-      qty:qty
-    });
-  }
-}
-
-
-/* ============================================================
-   RESUMEN DEL SURTIDO
-============================================================ */
-
-function resumenUM(){
-
-  const total = {};
-  const prep = {};
-
-  for(const um of Object.keys(surtidoUM)){
-
-    total[um] =
-      Number(surtidoUM[um] || 0);
-
-    prep[um] = 0;
-  }
-
-  /*
-    PREPARADO se obtiene de las líneas,
-    respetando la UM de cada línea.
-  */
-
-  for(const l of surtidoLines){
-
-    if(!(l.um in prep)){
-      prep[l.um] = 0;
-    }
-
-    prep[l.um] +=
-      Number(l.preparado || 0);
-  }
-
-  return {
-    total:total,
-    preparado:prep
-  };
-}
-
-
-/* ============================================================
-   HTML PARA MOSTRAR CA / UN
-============================================================ */
-
-function htmlUM(obj){
-
-  const partes = [];
-
-  /*
-    El orden siempre será CA y luego UN.
-  */
-
-  if(
-    obj.CA !== undefined &&
-    Number(obj.CA) > 0
-  ){
-    partes.push(
-      `<div class="ca">
-        ${formatoNumero(obj.CA)} CA
-      </div>`
-    );
-  }
-
-  if(
-    obj.UN !== undefined &&
-    Number(obj.UN) > 0
-  ){
-    partes.push(
-      `<div class="un">
-        ${formatoNumero(obj.UN)} UN
-      </div>`
-    );
-  }
-
-  return partes.length
-    ? partes.join("")
-    : "-";
-}
-
-
-/* ============================================================
-   RENDER RESUMEN
-============================================================ */
-
-function actualizarResumen(){
-
-  const r = resumenUM();
-
-  const pendiente = {};
-
-  const ums = new Set([
-    ...Object.keys(r.total),
-    ...Object.keys(r.preparado)
-  ]);
-
-  for(const um of ums){
-
-    pendiente[um] =
-      Math.max(
-        0,
-        Number(r.total[um] || 0) -
-        Number(r.preparado[um] || 0)
-      );
-  }
-
-  document.getElementById(
-    "summaryTotal"
-  ).innerHTML = htmlUM(r.total);
-
-  document.getElementById(
-    "summaryPrepared"
-  ).innerHTML = htmlUM(r.preparado);
-
-  document.getElementById(
-    "summaryPending"
-  ).innerHTML = htmlUM(pendiente);
-
-  document.getElementById(
-    "pmActualMain"
-  ).textContent =
-    `PM ${pmActual}`;
-}
-
-
-/* ============================================================
-   RENDER LINEAS PRINCIPALES
-============================================================ */
+// ============================================================
+// RENDER PRINCIPAL
+// ============================================================
 
 function renderMain(){
 
-  const cont =
-    document.getElementById("mainLines");
+    renderSummary();
 
-  cont.innerHTML = "";
 
-  actualizarResumen();
+    document.getElementById("mainPmNumber")
+        .textContent = "PM " + currentPM;
 
-  let lineas = [...surtidoLines];
+    document.getElementById("preparePmNumber")
+        .textContent = "PM " + currentPM;
 
-  if(!mostrarTodas){
 
-    /*
-      Agrupadas por zona.
-      Dentro de cada zona:
-      cantidad descendente.
-    */
+    document.getElementById("mainLineCount")
+        .textContent = surtidoLines.length;
 
-    const zonas = {};
 
-    lineas.forEach(l=>{
+    const list = document.getElementById("mainList");
 
-      if(!zonas[l.zona]){
-        zonas[l.zona] = [];
-      }
+    list.innerHTML = "";
 
-      zonas[l.zona].push(l);
+
+    let lines = [...surtidoLines];
+
+
+    if(showingAllLines){
+
+        document.getElementById("mainModeMessage").classList.remove("hidden");
+
+        document.getElementById("mainModeMessage").textContent =
+            "Mostrando todas las líneas pendientes.";
+
+        lines.sort((a,b)=>{
+
+            const loc = a.location.localeCompare(
+                b.location,
+                undefined,
+                {numeric:true,sensitivity:"base"}
+            );
+
+            if(loc !== 0) return loc;
+
+            return b.pendiente - a.pendiente;
+        });
+
+
+        renderLinesFlat(lines);
+
+    }else{
+
+        document.getElementById("mainModeMessage").classList.add("hidden");
+
+        const zones = {};
+
+        lines.forEach(line=>{
+
+            if(!zones[line.zone]){
+                zones[line.zone] = [];
+            }
+
+            zones[line.zone].push(line);
+        });
+
+
+        const sortedZones = Object.keys(zones).sort();
+
+
+        sortedZones.forEach(zone=>{
+
+            zones[zone].sort(
+                (a,b)=>b.pendiente - a.pendiente
+            );
+
+
+            const title = document.createElement("div");
+
+            title.className = "zone-title";
+
+            title.textContent =
+                "ZONA " + zone;
+
+            list.appendChild(title);
+
+
+            zones[zone].forEach(line=>{
+                list.appendChild(createLineCard(line));
+            });
+        });
+    }
+}
+
+
+function renderLinesFlat(lines){
+
+    const list = document.getElementById("mainList");
+
+    if(lines.length === 0){
+
+        list.innerHTML =
+            '<div class="card">' +
+            '<div class="alert alert-success">' +
+            'No quedan líneas pendientes.' +
+            '</div>' +
+            '</div>';
+
+        return;
+    }
+
+
+    lines.forEach(line=>{
+        list.appendChild(createLineCard(line));
     });
-
-    const zonasOrdenadas =
-      Object.keys(zonas).sort();
-
-    zonasOrdenadas.forEach(zona=>{
-
-      zonas[zona].sort((a,b)=>
-        Number(b.qty)-Number(a.qty) ||
-        a.ubi.localeCompare(b.ubi)
-      );
-
-      const titulo =
-        document.createElement("div");
-
-      titulo.className = "zone-title";
-
-      titulo.textContent =
-        `ZONA ${zona}`;
-
-      cont.appendChild(titulo);
-
-      zonas[zona].forEach(l=>{
-        cont.appendChild(crearCardLinea(l));
-      });
-
-    });
-
-  }else{
-
-    /*
-      Todas las líneas:
-      ubicación ascendente,
-      cantidad descendente.
-    */
-
-    lineas.sort((a,b)=>
-      a.ubi.localeCompare(b.ubi) ||
-      Number(b.qty)-Number(a.qty)
-    );
-
-    lineas.forEach(l=>{
-      cont.appendChild(crearCardLinea(l));
-    });
-  }
 }
 
 
-/* ============================================================
-   CARD DE LINEA
-============================================================ */
+function createLineCard(line){
 
-function crearCardLinea(line){
+    const div = document.createElement("div");
 
-  const card =
-    document.createElement("div");
+    const complete =
+        line.prepared >= line.pendiente;
 
-  const pendiente =
-    pendienteLinea(line);
-
-  const preparado =
-    Number(line.preparado || 0);
-
-  if(pendiente <= 0){
-    card.className =
-      "line-card prepared done";
-  }else if(preparado > 0){
-    card.className =
-      "line-card partial";
-  }else{
-    card.className =
-      "line-card";
-  }
+    const partially =
+        line.prepared > 0 && !complete;
 
 
-  const pms =
-    (line.pms || [])
-      .map(x =>
-        `<span class="pm-tag">
-          PM ${x.pm}
-        </span>`
-      )
-      .join("");
+    div.className =
+        "line-card " +
+        (line.prepared > 0 ? "prepared " : "") +
+        (complete ? "completed" : "");
 
 
-  card.innerHTML = `
+    let pmText = "";
 
-    <div class="line-main">
+    if(line.pmNumbers && line.pmNumbers.length){
 
-      <div>
+        pmText =
+            '<span class="pm-badge">' +
+            'PM ' +
+            line.pmNumbers.join(", PM ") +
+            '</span>';
+    }
 
-        <div class="line-title">
-          ${esc(line.sku)}
-        </div>
 
-        <div class="line-desc">
-          ${esc(line.desc)}
-        </div>
+    const pending = Math.max(
+        0,
+        line.pendiente - line.prepared
+    );
 
-        <div class="line-location">
-          📍 ${esc(line.ubi)}
-        </div>
 
-      </div>
+    let stateHtml = "";
 
-      <div class="line-qty">
+    if(complete){
 
-        <div class="ordered">
-          ${formatoNumero(line.qty)}
-          ${esc(line.um)}
-        </div>
+        stateHtml =
+            '<span class="done">✓ COMPLETO</span>';
 
-        <div class="prepared">
-          Preparado:
-          ${formatoNumero(preparado)}
-          ${esc(line.um)}
-        </div>
+    }else if(partially){
 
-      </div>
+        stateHtml =
+            '<span class="pending">' +
+            'FALTA ' +
+            formatNumber(pending) +
+            ' ' +
+            escapeHtml(line.um) +
+            '</span>';
 
-    </div>
+    }else{
 
-    <div class="progress">
-      <div
-        class="progress-bar"
-        style="
-          width:${line.qty > 0
-            ? Math.min(100,preparedoPorcentaje(line))
-            : 0
-          }%
-        "
-      ></div>
-    </div>
+        stateHtml =
+            '<span class="pending">' +
+            'PENDIENTE' +
+            '</span>';
+    }
 
-    <div class="line-footer">
 
-      <div>
-        Pendiente:
-        <strong>
-          ${formatoNumero(pendiente)}
-          ${esc(line.um)}
-        </strong>
-      </div>
+    div.innerHTML =
 
-      <div>
-        ${pms || ""}
-      </div>
+        '<div class="line-top">' +
 
-    </div>
-  `;
+            '<div class="location">' +
+                escapeHtml(line.location) +
+            '</div>' +
 
-  return card;
+            '<div class="qty">' +
+                formatNumber(line.pendiente) +
+                ' ' +
+                escapeHtml(line.um) +
+            '</div>' +
+
+        '</div>' +
+
+        '<div class="line-sku">' +
+            'SKU: ' +
+            escapeHtml(line.sku) +
+        '</div>' +
+
+        '<div class="line-desc">' +
+            escapeHtml(
+                line.desc ||
+                (mstData[line.sku]?.desc || "")
+            ) +
+        '</div>' +
+
+        '<div class="line-bottom">' +
+
+            '<div>' +
+                stateHtml +
+            '</div>' +
+
+            '<div>' +
+                pmText +
+            '</div>' +
+
+        '</div>';
+
+
+    return div;
+}
+// ============================================================
+// PREPARACIÓN
+// ============================================================
+
+function openPreparation(){
+
+    document.getElementById("screenMain")
+        .classList.add("hidden");
+
+    document.getElementById("screenPrepare")
+        .classList.remove("hidden");
+
+    document.getElementById("preparePmNumber")
+        .textContent = "PM " + currentPM;
+
+    clearCurrentProduct();
+
+    renderPreparedHistory();
 }
 
 
-function preparadoPorcentaje(line){
+function backToMain(){
 
-  return (
-    Number(line.preparado || 0) /
-    Number(line.qty || 1)
-  ) * 100;
+    stopScanner();
+
+    document.getElementById("screenPrepare")
+        .classList.add("hidden");
+
+    document.getElementById("screenMain")
+        .classList.remove("hidden");
+
+    renderMain();
 }
 
 
-/* ============================================================
-   PANTALLAS
-============================================================ */
+function clearCurrentProduct(){
 
-function mostrarPantalla(id){
+    currentProduct = null;
+    selectedStock = null;
 
-  [
-    "screenLoad",
-    "screenMain",
-    "screenPrep"
-  ].forEach(x=>{
-    document.getElementById(x)
-      .classList.add("hidden");
-  });
+    document.getElementById("productCard")
+        .classList.add("hidden");
 
-  document.getElementById(id)
-    .classList.remove("hidden");
+    document.getElementById("scanMessage").innerHTML = "";
+
+    document.getElementById("prepareMessage").innerHTML = "";
+
+    document.getElementById("stockList").innerHTML = "";
+
+    document.getElementById("quantitySection")
+        .classList.add("hidden");
 }
 
 
-/* ============================================================
-   MOSTRAR TODAS
-============================================================ */
+// ============================================================
+// BUSCAR PRODUCTO
+// ============================================================
 
-function mostrarLineasTodas(){
+function processScannedSku(rawValue){
 
-  mostrarTodas = true;
+    const sku = normalizeSku(rawValue);
 
-  renderMain();
+    if(!sku){
 
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-}
-
-
-/* ============================================================
-   VOLVER A AGRUPADAS
-============================================================ */
-
-function volverAgrupadas(){
-
-  mostrarTodas = false;
-
-  renderMain();
-}
- /* ============================================================
-   CARGA STOCK
-============================================================ */
-
-document.getElementById("fileStock")
-.addEventListener("change",async function(e){
-
-  const file = e.target.files[0];
-
-  if(!file) return;
-
-  estado(
-    "statusStock",
-    "Leyendo Stock JDE...",
-    ""
-  );
-
-  try{
-
-    const data =
-      await leerArchivoComoMatriz(file);
-
-    stockData =
-      procesarStock(data);
-
-    if(!stockData.length){
-
-      throw new Error(
-        "No se encontraron registros de stock."
-      );
-    }
-
-    estado(
-      "statusStock",
-      `✓ Stock cargado: ${stockData.length.toLocaleString("es-AR")} registros`,
-      "ok"
-    );
-
-    actualizarBotonContinuar();
-
-  }catch(err){
-
-    console.error(err);
-
-    stockData = [];
-
-    estado(
-      "statusStock",
-      "✕ Error: " + err.message,
-      "error"
-    );
-
-    actualizarBotonContinuar();
-  }
-});
-
-
-/* ============================================================
-   CARGA MST
-============================================================ */
-
-document.getElementById("fileMaestro")
-.addEventListener("change",async function(e){
-
-  const file = e.target.files[0];
-
-  if(!file) return;
-
-  estado(
-    "statusMaestro",
-    "Leyendo MST Producto...",
-    ""
-  );
-
-  try{
-
-    const wb =
-      await leerWorkbook(file);
-
-    /*
-      Primera hoja para capacidad / datos.
-    */
-
-    const firstSheet =
-      wb.Sheets[wb.SheetNames[0]];
-
-    const data =
-      XLSX.utils.sheet_to_json(
-        firstSheet,
-        {
-          header:1,
-          raw:true,
-          defval:""
-        }
-      );
-
-    maestroData =
-      procesarMaestro(data);
-
-
-    /*
-      Buscar hoja MST Producto
-      para EAN.
-    */
-
-    let hojaMST =
-      wb.SheetNames.find(n =>
-        normalizar(n).includes("MST") &&
-        normalizar(n).includes("PRODUCT")
-      );
-
-    if(!hojaMST){
-      hojaMST = wb.SheetNames[0];
-    }
-
-    const dataMST =
-      XLSX.utils.sheet_to_json(
-        wb.Sheets[hojaMST],
-        {
-          header:1,
-          raw:true,
-          defval:""
-        }
-      );
-
-    eanMap =
-      procesarEAN(dataMST);
-
-
-    estado(
-      "statusMaestro",
-      `✓ MST cargado: ${Object.keys(maestroData).length.toLocaleString("es-AR")} SKU`,
-      "ok"
-    );
-
-    actualizarBotonContinuar();
-
-  }catch(err){
-
-    console.error(err);
-
-    maestroData = {};
-    eanMap = {};
-
-    /*
-      El MST no impide continuar si el resto está bien.
-    */
-
-    estado(
-      "statusMaestro",
-      "⚠ MST leído parcialmente: " + err.message,
-      ""
-    );
-
-    actualizarBotonContinuar();
-  }
-});
-
-
-/* ============================================================
-   CARGA SURTIDO
-============================================================ */
-
-document.getElementById("fileSurtido")
-.addEventListener("change",async function(e){
-
-  const file = e.target.files[0];
-
-  if(!file) return;
-
-  estado(
-    "statusSurtido",
-    "Leyendo Surtido JDE...",
-    ""
-  );
-
-  try{
-
-    const data =
-      await leerArchivoComoMatriz(file);
-
-    const resultado =
-      procesarSurtido(data);
-
-    surtidoLines =
-      resultado.lineas;
-
-    surtidoUM =
-      resultado.totales;
-
-
-    if(!surtidoLines.length){
-
-      throw new Error(
-        "No se encontraron líneas de PALLET MIXTO."
-      );
-    }
-
-
-    if(
-      !Object.keys(surtidoUM).length
-    ){
-
-      throw new Error(
-        "No se encontró 'Cantidad por unidad de medida'."
-      );
-    }
-
-
-    /*
-      IMPORTANTE:
-
-      surtidoUM sale DIRECTAMENTE del bloque:
-
-      Cantidad por unidad de medida
-
-      CA | 1938
-
-      No se calcula CA x capacidad.
-    */
-
-    const resumen =
-      Object.keys(surtidoUM)
-        .map(um =>
-          `${formatoNumero(surtidoUM[um])} ${um}`
-        )
-        .join(" + ");
-
-
-    estado(
-      "statusSurtido",
-      `✓ Surtido cargado: ${surtidoLines.length.toLocaleString("es-AR")} líneas | ${resumen}`,
-      "ok"
-    );
-
-    actualizarBotonContinuar();
-
-  }catch(err){
-
-    console.error(err);
-
-    surtidoLines = [];
-    surtidoUM = {};
-
-    estado(
-      "statusSurtido",
-      "✕ Error: " + err.message,
-      "error"
-    );
-
-    actualizarBotonContinuar();
-  }
-});
-
-
-/* ============================================================
-   CONTINUAR
-============================================================ */
-
-document.getElementById("btnContinuar")
-.addEventListener("click",function(){
-
-  if(
-    !stockData.length ||
-    !surtidoLines.length
-  ){
-
-    alert(
-      "Falta cargar Stock JDE o Surtido JDE."
-    );
-
-    return;
-  }
-
-  mostrarPantalla("screenMain");
-
-  mostrarTodas = false;
-
-  renderMain();
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-});
-
-
-/* ============================================================
-   PREPARACION
-============================================================ */
-
-async function abrirPreparacion(){
-
-  mostrarPantalla("screenPrep");
-
-  currentSKU = "";
-  currentDescription = "";
-  selectedStock = null;
-
-  document.getElementById("prepSku")
-    .textContent = "Escanear SKU";
-
-  document.getElementById("prepDesc")
-    .textContent =
-      "Escaneá la caja para comenzar";
-
-  document.getElementById("targetBox")
-    .classList.add("hidden");
-
-  document.getElementById("stockSection")
-    .classList.add("hidden");
-
-  document.getElementById("skuLinesSection")
-    .classList.add("hidden");
-
-  document.getElementById("qtyPanel")
-    .classList.add("hidden");
-
-  iniciarScanner();
-
-}
-
-
-/* ============================================================
-   SCANNER
-============================================================ */
-
-async function iniciarScanner(){
-
-  if(scannerRunning) return;
-
-  const reader =
-    document.getElementById("reader");
-
-  reader.innerHTML = "";
-
-  try{
-
-    if(
-      typeof ZXing === "undefined" ||
-      !ZXing.BrowserMultiFormatReader
-    ){
-      reader.innerHTML =
-        `<div style="
-          color:white;
-          padding:25px;
-          text-align:center;
-          font-size:.8rem">
-          Scanner no disponible.<br>
-          Utilizá ingreso manual.
-        </div>`;
-
-      return;
-    }
-
-
-    scanner =
-      new ZXing.BrowserMultiFormatReader();
-
-    const devices =
-      await ZXing.BrowserCodeReader
-        .listVideoInputDevices();
-
-
-    if(!devices || !devices.length){
-
-      reader.innerHTML =
-        `<div style="
-          color:white;
-          padding:25px;
-          text-align:center;
-          font-size:.8rem">
-          No se encontró cámara.<br>
-          Utilizá ingreso manual.
-        </div>`;
-
-      return;
-    }
-
-
-    /*
-      Preferir cámara trasera.
-    */
-
-    let device =
-      devices.find(d =>
-        /back|rear|environment|trasera/i
-          .test(d.label)
-      );
-
-    if(!device){
-      device = devices[0];
-    }
-
-
-    await scanner.decodeFromVideoDevice(
-      device.deviceId,
-      "reader",
-      (result,error)=>{
-
-        if(result){
-
-          const texto =
-            result.getText();
-
-          procesarCodigo(texto);
-        }
-
-      }
-    );
-
-    scannerRunning = true;
-
-  }catch(err){
-
-    console.error(err);
-
-    reader.innerHTML =
-      `<div style="
-        color:white;
-        padding:25px;
-        text-align:center;
-        font-size:.8rem">
-        No se pudo activar la cámara.<br>
-        Utilizá ingreso manual.
-      </div>`;
-  }
-}
-
-
-function detenerScanner(){
-
-  try{
-
-    if(scanner){
-
-      scanner.reset();
-
-    }
-
-  }catch(e){}
-
-  scanner = null;
-  scannerRunning = false;
-}
-
-
-/* ============================================================
-   PROCESAR CODIGO
-============================================================ */
-
-function procesarCodigo(codigo){
-
-  const valor =
-    String(codigo || "").trim();
-
-  if(!valor) return;
-
-  /*
-    Primero intentar EAN.
-  */
-
-  let sku = eanMap[
-    normalizarSKU(valor)
-  ];
-
-
-  /*
-    Si no es EAN, probar directamente como SKU.
-  */
-
-  if(!sku){
-
-    const posible =
-      normalizarSKU(valor);
-
-    if(
-      surtidoLines.some(
-        l => l.sku === posible
-      )
-    ){
-      sku = posible;
-    }
-  }
-
-
-  /*
-    Algunos lectores agregan caracteres.
-    Buscar también coincidencia exacta
-    dentro del texto.
-  */
-
-  if(!sku){
-
-    const encontrado =
-      Object.keys(eanMap)
-        .find(ean =>
-          valor.includes(ean)
+        showScanMessage(
+            "No se pudo identificar el SKU.",
+            "error"
         );
 
-    if(encontrado){
-      sku = eanMap[encontrado];
+        return;
     }
-  }
 
 
-  if(!sku){
+    stopScanner();
 
-    mostrarToast(
-      "No se encontró el SKU del código escaneado."
-    );
-
-    return;
-  }
-
-
-  seleccionarSKU(sku);
+    loadProduct(sku);
 }
 
 
-/* ============================================================
-   BUSQUEDA MANUAL
-============================================================ */
+function loadProduct(sku){
 
-function buscarSKUManual(){
-
-  const valor =
-    document.getElementById("manualSku")
-      .value.trim();
-
-  if(!valor){
-
-    mostrarToast(
-      "Ingresá un SKU o EAN."
-    );
-
-    return;
-  }
-
-  procesarCodigo(valor);
-}
+    sku = normalizeSku(sku);
 
 
-/* ============================================================
-   SELECCIONAR SKU
-============================================================ */
+    // Buscar descripción
+    let desc = "";
 
-function seleccionarSKU(sku){
-
-  sku = normalizarSKU(sku);
-
-  const lineas =
-    surtidoLines.filter(
-      l => l.sku === sku
-    );
-
-  if(!lineas.length){
-
-    mostrarToast(
-      "Este SKU no está en el Surtido."
-    );
-
-    return;
-  }
-
-
-  const pendiente =
-    pendienteSKU(sku);
-
-  /*
-    Evitar duplicación:
-    si ya está completo, advertir.
-  */
-
-  if(pendiente <= 0){
-
-    alert(
-      `Ya preparaste la cantidad ordenada del SKU ${sku}.`
-    );
-
-    return;
-  }
-
-
-  currentSKU = sku;
-
-  currentDescription =
-    lineas.find(l => l.desc)?.desc ||
-    maestroData[sku]?.descripcion ||
-    "";
-
-
-  document.getElementById("prepSku")
-    .textContent = sku;
-
-  document.getElementById("prepDesc")
-    .textContent =
-      currentDescription;
-
-
-  document.getElementById("targetBox")
-    .classList.remove("hidden");
-
-
-  /*
-    Mostrar pendiente por UM.
-  */
-
-  const pendientesUM = {};
-
-  lineas.forEach(l=>{
-
-    const p =
-      pendienteLinea(l);
-
-    if(p > 0){
-
-      pendientesUM[l.um] =
-        (pendientesUM[l.um] || 0) + p;
+    if(mstData[sku]){
+        desc = mstData[sku].desc || "";
     }
-  });
 
 
-  document.getElementById("targetQty")
-    .innerHTML =
-      htmlUM(pendientesUM);
+    // Si no está en MST, buscar en Stock
+    if(!desc){
 
+        const stockItem = stockData.find(
+            x => normalizeSku(x.sku) === sku
+        );
 
-  document.getElementById("targetDetail")
-    .textContent =
-      "Seleccioná un lote de stock y luego la cantidad.";
-
-
-  mostrarLineasSKU();
-
-  mostrarStockSKU();
-
-}
-
-
-/* ============================================================
-   LINEAS DEL SKU
-============================================================ */
-
-function mostrarLineasSKU(){
-
-  const sec =
-    document.getElementById("skuLinesSection");
-
-  const cont =
-    document.getElementById("skuLines");
-
-  sec.classList.remove("hidden");
-
-  cont.innerHTML = "";
-
-  const lineas =
-    surtidoLines
-      .filter(l =>
-        l.sku === currentSKU &&
-        pendienteLinea(l) > 0
-      )
-      .sort((a,b)=>
-        Number(b.qty)-Number(a.qty)
-      );
-
-
-  lineas.forEach(l=>{
-
-    const div =
-      document.createElement("div");
-
-    div.style.cssText = `
-      border-bottom:1px solid #e1e6eb;
-      padding:8px 0;
-      font-size:.75rem;
-    `;
-
-    div.innerHTML = `
-      <strong>${esc(l.ubi)}</strong>
-      · ${formatoNumero(l.qty)} ${esc(l.um)}
-      · Pendiente:
-      <strong>
-        ${formatoNumero(pendienteLinea(l))}
-      </strong>
-      ${esc(l.um)}
-      <br>
-      Lote sugerido:
-      <strong>${esc(l.lote || "-")}</strong>
-    `;
-
-    cont.appendChild(div);
-  });
-}
-
-
-/* ============================================================
-   MOSTRAR STOCK
-============================================================ */
-
-function mostrarStockSKU(){
-
-  const sec =
-    document.getElementById("stockSection");
-
-  const body =
-    document.getElementById("stockBody");
-
-  const info =
-    document.getElementById("stockInfo");
-
-  sec.classList.remove("hidden");
-
-  body.innerHTML = "";
-
-  selectedStock = null;
-
-  document.getElementById("qtyPanel")
-    .classList.add("hidden");
-
-
-  /*
-    Solo stock del SKU.
-  */
-
-  let stock =
-    stockData.filter(
-      s => s.sku === currentSKU &&
-           Number(s.qty) > 0
-    );
-
-
-  /*
-    La zona de picking se determina por
-    las ubicaciones del Surtido de ese SKU.
-  */
-
-  const zonas =
-    new Set(
-      surtidoLines
-        .filter(l => l.sku === currentSKU)
-        .map(l => l.zona)
-    );
-
-
-  /*
-    Priorizar zonas de picking.
-    No eliminar stock fuera de zona:
-    si no hay dentro de zona, mostrar todo
-    para que el operador pueda detectar stock.
-  */
-
-  const stockPicking =
-    stock.filter(s =>
-      [...zonas].some(z =>
-        s.ubi.startsWith(z)
-      )
-    );
-
-
-  if(stockPicking.length){
-    stock = stockPicking;
-  }
-
-
-  /*
-    Obtener lotes sugeridos del Surtido.
-  */
-
-  const lotesSugeridos =
-    new Set(
-      surtidoLines
-        .filter(l =>
-          l.sku === currentSKU &&
-          pendienteLinea(l) > 0
-        )
-        .map(l => normalizar(l.lote))
-        .filter(Boolean)
-    );
-
-
-  /*
-    Ordenar:
-    1. lote sugerido
-    2. ubicación
-  */
-
-  stock.sort((a,b)=>{
-
-    const as =
-      lotesSugeridos.has(
-        normalizar(a.lote)
-      ) ? 0 : 1;
-
-    const bs =
-      lotesSugeridos.has(
-        normalizar(b.lote)
-      ) ? 0 : 1;
-
-    return as-bs ||
-      a.ubi.localeCompare(b.ubi);
-  });
-
-
-  const totalStock =
-    stock.reduce(
-      (a,s)=>a+Number(s.qty || 0),
-      0
-    );
-
-
-  info.innerHTML =
-    `SKU <strong>${esc(currentSKU)}</strong> · ` +
-    `Stock disponible: <strong>${formatoNumero(totalStock)}</strong>`;
-
-
-  if(!stock.length){
-
-    body.innerHTML = `
-      <tr>
-        <td colspan="4">
-          <div class="stock-empty">
-            No se encontró stock disponible para este SKU
-            en las ubicaciones de picking.
-          </div>
-        </td>
-      </tr>
-    `;
-
-    return;
-  }
-
-
-  stock.forEach((s,index)=>{
-
-    const tr =
-      document.createElement("tr");
-
-    const sugerido =
-      lotesSugeridos.has(
-        normalizar(s.lote)
-      );
-
-    tr.className =
-      "stock-row" +
-      (sugerido ? " suggested" : "");
-
-    tr.innerHTML = `
-      <td>${esc(s.ubi)}</td>
-      <td>${esc(s.lote)}</td>
-      <td>${esc(loteCaja(s.lote))}</td>
-      <td>
-        <strong>
-          ${formatoNumero(s.qty)}
-        </strong>
-      </td>
-    `;
-
-    tr.addEventListener(
-      "click",
-      ()=>seleccionarStock(s)
-    );
-
-    body.appendChild(tr);
-  });
-}
-
-
-/* ============================================================
-   SELECCIONAR STOCK
-============================================================ */
-
-function seleccionarStock(stock){
-
-  selectedStock = stock;
-
-  document
-    .querySelectorAll(".stock-row")
-    .forEach(row =>
-      row.classList.remove("selected")
-    );
-
-
-  /*
-    Encontrar visualmente la fila.
-  */
-
-  const filas =
-    document.querySelectorAll(".stock-row");
-
-  filas.forEach(row=>{
-
-    const lote =
-      row.children[1]?.textContent;
-
-    const ubi =
-      row.children[0]?.textContent;
-
-    if(
-      lote === stock.lote &&
-      ubi === stock.ubi
-    ){
-      row.classList.add("selected");
+        if(stockItem){
+            desc = stockItem.desc || "";
+        }
     }
-  });
 
 
-  const panel =
-    document.getElementById("qtyPanel");
-
-  panel.classList.remove("hidden");
-
-
-  /*
-    Cantidad máxima:
-
-    mínimo entre:
-    - stock disponible
-    - pendiente del SKU
-
-    Si el stock es menor,
-    el operador puede elegir hasta
-    esa cantidad y luego usar otro lote.
-  */
-
-  const pendiente =
-    pendienteSKU(currentSKU);
-
-  const max =
-    Math.min(
-      Number(stock.qty || 0),
-      Number(pendiente || 0)
+    // Buscar líneas pendientes de ese SKU
+    const productLines = surtidoLines.filter(
+        line =>
+            normalizeSku(line.sku) === sku &&
+            (line.pendiente - line.prepared) > 0
     );
 
 
-  const input =
-    document.getElementById("qtyPrepare");
+    if(productLines.length === 0){
 
-  input.max = max;
+        showScanMessage(
+            "El SKU " + sku +
+            " no tiene cantidad pendiente para preparar.",
+            "warning"
+        );
 
-  input.value = max > 0 ? max : 0;
+        return;
+    }
 
 
-  const info =
-    document.getElementById("qtyInfo");
+    currentProduct = {
+        sku:sku,
+        desc:desc,
+        lines:productLines
+    };
 
-  info.innerHTML =
-    `Stock disponible en este lote:
-     <strong>${formatoNumero(stock.qty)}</strong>.
-     ` +
-    `Pendiente del SKU:
-     <strong>${formatoNumero(pendiente)}</strong>.
-     ` +
-    `Podés preparar hasta
-     <strong>${formatoNumero(max)}</strong>.`;
 
+    document.getElementById("productSku")
+        .textContent = "SKU " + sku;
+
+    document.getElementById("productDesc")
+        .textContent =
+            desc || "Descripción no disponible";
+
+
+    document.getElementById("productCard")
+        .classList.remove("hidden");
+
+
+    renderPendingProduct();
+
+    renderStockForProduct();
+
+    renderPreparedHistory();
+
+    document.getElementById("quantitySection")
+        .classList.add("hidden");
+
+    document.getElementById("prepareMessage")
+        .innerHTML = "";
 }
 
 
-/* ============================================================
-   CANCELAR LOTE
-============================================================ */
+function renderPendingProduct(){
 
-function cancelarSeleccionLote(){
-
-  selectedStock = null;
-
-  document.getElementById("qtyPanel")
-    .classList.add("hidden");
-
-  document
-    .querySelectorAll(".stock-row")
-    .forEach(row =>
-      row.classList.remove("selected")
-    );
-}
+    if(!currentProduct) return;
 
 
-/* ============================================================
-   CONFIRMAR PREPARACION
-============================================================ */
-
-function confirmarPreparacion(){
-
-  if(!selectedStock){
-
-    mostrarToast(
-      "Primero seleccioná un lote."
-    );
-
-    return;
-  }
+    let html =
+        '<div class="alert alert-info">' +
+        '<strong>Pendiente para este SKU:</strong><br>';
 
 
-  const input =
-    document.getElementById("qtyPrepare");
+    currentProduct.lines.forEach(line=>{
 
-  const qty =
-    numero(input.value);
-
-
-  if(qty <= 0){
-
-    mostrarToast(
-      "Ingresá una cantidad mayor a cero."
-    );
-
-    return;
-  }
+        const remaining =
+            Math.max(
+                0,
+                line.pendiente - line.prepared
+            );
 
 
-  const disponible =
-    Number(selectedStock.qty || 0);
-
-  const pendiente =
-    pendienteSKU(currentSKU);
+        if(remaining <= 0) return;
 
 
-  if(qty > disponible){
-
-    alert(
-      `El lote seleccionado tiene solamente ` +
-      `${formatoNumero(disponible)} disponibles.`
-    );
-
-    input.value =
-      Math.min(disponible,pendiente);
-
-    return;
-  }
-
-
-  if(qty > pendiente){
-
-    alert(
-      `La cantidad pendiente del SKU es ` +
-      `${formatoNumero(pendiente)}.`
-    );
-
-    input.value = pendiente;
-
-    return;
-  }
-
-
-  /*
-    Repartir la preparación entre las líneas
-    pendientes del SKU.
-
-    Primero:
-    - lote sugerido
-    Luego:
-    - cantidad restante.
-  */
-
-  let restante = qty;
-
-  const lineas =
-    surtidoLines
-      .filter(l =>
-        l.sku === currentSKU &&
-        pendienteLinea(l) > 0
-      )
-      .sort((a,b)=>{
-
-        const aMatch =
-          normalizar(a.lote) ===
-          normalizar(selectedStock.lote)
-            ? 0 : 1;
-
-        const bMatch =
-          normalizar(b.lote) ===
-          normalizar(selectedStock.lote)
-            ? 0 : 1;
-
-        return aMatch-bMatch ||
-          Number(b.qty)-Number(a.qty);
-      });
-
-
-  for(const line of lineas){
-
-    if(restante <= 0) break;
-
-    const pend =
-      pendienteLinea(line);
-
-    const tomar =
-      Math.min(
-        pend,
-        restante
-      );
-
-    line.preparado += tomar;
-
-    registrarPM(
-      line,
-      tomar
-    );
-
-    restante -= tomar;
-  }
-
-
-  /*
-    Descontar stock real de memoria.
-  */
-
-  selectedStock.qty =
-    Math.max(
-      0,
-      Number(selectedStock.qty) - qty
-    );
-
-
-  mostrarToast(
-    `Preparado ${formatoNumero(qty)} ${selectedStock.um || ""}`
-  );
-
-
-  /*
-    Si ya se completó el SKU:
-    avisar y dejar posibilidad de cerrar.
-  */
-
-  const pendienteDespues =
-    pendienteSKU(currentSKU);
-
-
-  if(pendienteDespues <= 0){
-
-    alert(
-      `SKU ${currentSKU} completo.\n\n` +
-      `Ya preparaste la cantidad ordenada.`
-    );
-
-    document.getElementById("targetQty")
-      .innerHTML =
-        `<div class="un" style="color:#198754">
-          COMPLETO ✓
-        </div>`;
-  }else{
-
-    const lineasPend =
-      lineasPendientesSKU(currentSKU);
-
-    const pUM = {};
-
-    lineasPend.forEach(l=>{
-      pUM[l.um] =
-        (pUM[l.um] || 0) +
-        pendienteLinea(l);
+        html +=
+            '<div style="margin-top:5px;">' +
+                escapeHtml(line.location) +
+                ' → ' +
+                formatNumber(remaining) +
+                ' ' +
+                escapeHtml(line.um) +
+            '</div>';
     });
 
-    document.getElementById("targetQty")
-      .innerHTML =
-        htmlUM(pUM);
-  }
+
+    html += '</div>';
 
 
-  /*
-    Refrescar.
-  */
-
-  mostrarStockSKU();
-
-  mostrarLineasSKU();
-
-  actualizarResumen();
-
-  /*
-    Mantener PM actual visible.
-  */
-
-  document.getElementById("pmActualMain")
-    .textContent =
-      `PM ${pmActual}`;
+    document.getElementById("pendingProductInfo")
+        .innerHTML = html;
 }
 
 
-/* ============================================================
-   CERRAR PREPARACION ACTUAL
-============================================================ */
+// ============================================================
+// STOCK DEL SKU
+// ============================================================
 
-function cerrarPreparacionActual(){
+function renderStockForProduct(){
 
-  selectedStock = null;
+    const container =
+        document.getElementById("stockList");
 
-  document.getElementById("qtyPanel")
-    .classList.add("hidden");
-
-  /*
-    No cerrar el PM.
-    Solo terminar la preparación del SKU actual.
-  */
-
-  mostrarToast(
-    "Preparación cerrada."
-  );
-}
+    container.innerHTML = "";
 
 
-/* ============================================================
-   VOLVER PRINCIPAL
-============================================================ */
-
-function volverPrincipal(){
-
-  detenerScanner();
-
-  mostrarPantalla("screenMain");
-
-  renderMain();
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-}
-
-
-/* ============================================================
-   CERRAR PM
-============================================================ */
-
-function cerrarPM(){
-
-  const pendientes =
-    resumenUM().total;
-
-  const prep =
-    resumenUM().preparado;
-
-  let hayPendiente = false;
-
-  for(const um of Object.keys(pendientes)){
-
-    if(
-      Number(prep[um] || 0) <
-      Number(pendientes[um] || 0)
-    ){
-      hayPendiente = true;
+    if(!currentProduct){
+        return;
     }
-  }
 
 
-  if(hayPendiente){
-
-    const continuar =
-      confirm(
-        "Todavía hay cantidades pendientes.\n\n" +
-        "¿Querés cerrar igualmente este PM?"
-      );
-
-    if(!continuar) return;
-  }
+    const sku = currentProduct.sku;
 
 
-  pmActual++;
-
-  mostrarToast(
-    `PM cerrado. Ahora estás preparando PM ${pmActual}.`,
-    3500
-  );
+    let rows = stockData.filter(
+        x => normalizeSku(x.sku) === sku &&
+             x.qty > 0
+    );
 
 
-  document.getElementById("pmActualMain")
-    .textContent =
-      `PM ${pmActual}`;
+    if(rows.length === 0){
 
-  renderMain();
+        container.innerHTML =
+            '<div class="alert alert-warning">' +
+            'No se encontró stock en el archivo JDE para este SKU.' +
+            '</div>';
+
+        return;
+    }
+
+
+    // Ordenar primero ubicaciones de picking
+    // y después cantidad descendente.
+    rows.sort((a,b)=>{
+
+        const aPick = isPickingLocation(a.location);
+        const bPick = isPickingLocation(b.location);
+
+        if(aPick !== bPick){
+            return aPick ? -1 : 1;
+        }
+
+        return b.qty - a.qty;
+    });
+
+
+    rows.forEach(stock=>{
+
+        const row = document.createElement("div");
+
+        row.className = "stock-row";
+
+
+        // Determinar si es lote sugerido
+        const suggested =
+            currentProduct.lines.some(
+                line =>
+                    normalizeSku(line.sku) === sku &&
+                    normalizeLot(line.lot) ===
+                    normalizeLot(stock.lot) &&
+                    (line.pendiente - line.prepared) > 0
+            );
+
+
+        if(suggested){
+            row.classList.add("suggested");
+        }
+
+
+        const pickingText =
+            isPickingLocation(stock.location)
+                ? " · PICKING"
+                : "";
+
+
+        row.innerHTML =
+
+            '<div class="stock-main">' +
+
+                '<div class="stock-location">' +
+                    escapeHtml(stock.location) +
+                    escapeHtml(pickingText) +
+                '</div>' +
+
+                '<div class="stock-qty">' +
+                    formatNumber(stock.qty) +
+                    ' ' +
+                    escapeHtml(stock.um) +
+                '</div>' +
+
+            '</div>' +
+
+            '<div class="stock-detail">' +
+                '<strong>Lote:</strong> ' +
+                escapeHtml(stock.lot || "-") +
+            '</div>' +
+
+            '<div class="stock-detail">' +
+                '<strong>Lote caja:</strong> ' +
+                escapeHtml(
+                    getBoxLotDisplay(stock.lot)
+                ) +
+            '</div>' +
+
+            (
+                suggested
+                ?
+                '<div class="stock-suggested">' +
+                '★ LOTE SUGERIDO POR SURTIDO' +
+                '</div>'
+                :
+                ''
+            );
+
+
+        row.addEventListener("click",()=>{
+
+            selectStock(stock,row);
+        });
+
+
+        container.appendChild(row);
+    });
 }
 
 
-/* ============================================================
-   RECLASIFICACION
-============================================================ */
+function normalizeLot(value){
 
-function abrirReclasificacion(){
-
-  if(!currentSKU){
-
-    mostrarToast(
-      "Primero seleccioná un SKU."
-    );
-
-    return;
-  }
-
-
-  const pendiente =
-    pendienteSKU(currentSKU);
-
-
-  if(pendiente <= 0){
-
-    mostrarToast(
-      "Este SKU ya está completo."
-    );
-
-    return;
-  }
-
-
-  document.getElementById("reclasInfo")
-    .innerHTML = `
-      <strong>SKU:</strong> ${esc(currentSKU)}
-      <br>
-      <strong>Descripción:</strong>
-      ${esc(currentDescription)}
-      <br>
-      <strong>PM:</strong> ${pmActual}
-      <br>
-      <strong>Pendiente:</strong>
-      ${formatoNumero(pendiente)}
-    `;
-
-
-  document.getElementById("reclasCantidad")
-    .value = pendiente;
-
-
-  document.getElementById("reclasLote")
-    .value = "";
-
-
-  document.getElementById("modalReclas")
-    .classList.remove("hidden");
+    return cleanText(value)
+        .toUpperCase()
+        .replace(/\s/g,"");
 }
 
 
-function cerrarModalReclas(){
+function getBoxLotDisplay(systemLot){
 
-  document.getElementById("modalReclas")
-    .classList.add("hidden");
+    /*
+       No inventamos un lote físico.
+       Mostramos el lote del sistema como referencia.
+    */
+
+    if(!systemLot){
+        return "-";
+    }
+
+    return systemLot;
 }
 
 
-/* ============================================================
-   GENERAR PDF RECLASIFICACION
-============================================================ */
+// ============================================================
+// UBICACIONES DE PICKING
+// ============================================================
 
-function generarReclasificacion(){
+function isPickingLocation(location){
 
-  const lote =
-    document.getElementById("reclasLote")
-      .value.trim();
+    const loc = cleanText(location).toUpperCase();
 
-  const cantidad =
-    numero(
-      document.getElementById("reclasCantidad")
-        .value
+
+    /*
+       La aplicación prioriza las ubicaciones cuyo
+       código comienza con los mismos 4 caracteres
+       que una ubicación del Surtido.
+    */
+
+    if(!currentProduct || !currentProduct.lines){
+        return false;
+    }
+
+
+    return currentProduct.lines.some(line=>{
+
+        const zone = cleanText(line.location)
+            .substring(0,4)
+            .toUpperCase();
+
+        return zone &&
+               loc.substring(0,4).toUpperCase() === zone;
+    });
+}
+
+
+// ============================================================
+// SELECCIONAR STOCK
+// ============================================================
+
+function selectStock(stock,rowElement){
+
+    selectedStock = stock;
+
+
+    document.querySelectorAll(".stock-row")
+        .forEach(el=>{
+            el.classList.remove("selected");
+        });
+
+
+    if(rowElement){
+        rowElement.classList.add("selected");
+    }
+
+
+    const pending = getPendingForProduct();
+
+
+    let maxQty = Math.min(
+        Number(stock.qty || 0),
+        pending.total
     );
 
 
-  if(!lote){
+    if(maxQty <= 0){
 
-    alert(
-      "Ingresá el lote físico / Julian."
+        showPrepareMessage(
+            "Este SKU ya tiene toda la cantidad preparada.",
+            "success"
+        );
+
+        return;
+    }
+
+
+    const input =
+        document.getElementById("quantityInput");
+
+
+    input.max = maxQty;
+    input.value = maxQty;
+
+
+    document.getElementById("quantityLabel")
+        .textContent =
+        "Cantidad a preparar (" +
+        stock.um +
+        ") — máximo " +
+        formatNumber(maxQty);
+
+
+    document.getElementById("quantitySection")
+        .classList.remove("hidden");
+
+
+    showPrepareMessage(
+        "Seleccionaste " +
+        stock.location +
+        " / lote " +
+        (stock.lot || "-") +
+        ". Podés preparar hasta " +
+        formatNumber(maxQty) +
+        " " +
+        stock.um +
+        ".",
+        "info"
+    );
+}
+
+
+function getPendingForProduct(){
+
+    if(!currentProduct){
+
+        return {
+            total:0,
+            lines:[]
+        };
+    }
+
+
+    const lines = currentProduct.lines
+        .map(line=>{
+
+            const remaining =
+                Math.max(
+                    0,
+                    line.pendiente - line.prepared
+                );
+
+            return {
+                line:line,
+                remaining:remaining
+            };
+        })
+        .filter(x=>x.remaining > 0);
+
+
+    const total = lines.reduce(
+        (sum,x)=>sum + x.remaining,
+        0
     );
 
-    return;
-  }
+
+    return {
+        total:total,
+        lines:lines
+    };
+}
 
 
-  if(cantidad <= 0){
+// ============================================================
+// CONFIRMAR CANTIDAD
+// ============================================================
 
-    alert(
-      "Ingresá una cantidad válida."
+function confirmPreparation(){
+
+    if(!currentProduct){
+        return;
+    }
+
+
+    if(!selectedStock){
+
+        showPrepareMessage(
+            "Primero seleccioná un lote de stock.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    const input =
+        document.getElementById("quantityInput");
+
+
+    const qty = parseNumber(input.value);
+
+
+    if(qty <= 0){
+
+        showPrepareMessage(
+            "Ingresá una cantidad válida.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    const pending = getPendingForProduct();
+
+
+    if(pending.total <= 0){
+
+        showPrepareMessage(
+            "Ya preparaste la cantidad ordenada para este SKU.",
+            "success"
+        );
+
+        return;
+    }
+
+
+    if(qty > selectedStock.qty){
+
+        showPrepareMessage(
+            "El lote seleccionado tiene solamente " +
+            formatNumber(selectedStock.qty) +
+            " " +
+            selectedStock.um +
+            " disponibles.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    if(qty > pending.total){
+
+        showPrepareMessage(
+            "Ya preparaste la cantidad ordenada. " +
+            "No podés agregar más de " +
+            formatNumber(pending.total) +
+            " " +
+            selectedStock.um +
+            ".",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // DESCONTAR STOCK
+    // --------------------------------------------------------
+
+    selectedStock.qty -= qty;
+
+
+    // --------------------------------------------------------
+    // ASIGNAR LA CANTIDAD A LAS LÍNEAS
+    // --------------------------------------------------------
+
+    let remainingToAssign = qty;
+
+
+    /*
+       Primero intenta asignar al lote sugerido
+       y luego al resto de las líneas.
+    */
+
+    const sortedLines = [...pending.lines].sort(
+        (a,b)=>{
+
+            const aSuggested =
+                normalizeLot(a.line.lot) ===
+                normalizeLot(selectedStock.lot);
+
+            const bSuggested =
+                normalizeLot(b.line.lot) ===
+                normalizeLot(selectedStock.lot);
+
+            if(aSuggested !== bSuggested){
+                return aSuggested ? -1 : 1;
+            }
+
+            return b.remaining - a.remaining;
+        }
     );
 
-    return;
-  }
+
+    for(const item of sortedLines){
+
+        if(remainingToAssign <= 0){
+            break;
+        }
 
 
-  /*
-    Determinar ubicación solicitada.
+        const line = item.line;
 
-    Se toma la primera ubicación de picking
-    pendiente del SKU.
-  */
 
-  const line =
-    surtidoLines.find(l =>
-      l.sku === currentSKU &&
-      pendienteLinea(l) > 0
+        // Si las UM no coinciden, no mezclamos.
+        if(
+            line.um &&
+            selectedStock.um &&
+            line.um.toUpperCase() !==
+            selectedStock.um.toUpperCase()
+        ){
+            continue;
+        }
+
+
+        const amount = Math.min(
+            remainingToAssign,
+            item.remaining
+        );
+
+
+        if(amount <= 0){
+            continue;
+        }
+
+
+        line.prepared += amount;
+
+
+        if(!line.pmNumbers.includes(currentPM)){
+            line.pmNumbers.push(currentPM);
+        }
+
+
+        if(!preparedByUM[line.um]){
+            preparedByUM[line.um] = 0;
+        }
+
+
+        preparedByUM[line.um] += amount;
+
+
+        remainingToAssign -= amount;
+    }
+
+
+    /*
+       Si por alguna diferencia de UM quedó cantidad
+       sin asignar, la devolvemos al stock.
+    */
+
+    if(remainingToAssign > 0){
+
+        selectedStock.qty += remainingToAssign;
+
+        preparedByUM[selectedStock.um] =
+            Math.max(
+                0,
+                (preparedByUM[selectedStock.um] || 0)
+                - (qty - remainingToAssign)
+            );
+
+
+        showPrepareMessage(
+            "La cantidad no pudo asignarse completamente " +
+            "porque la unidad de medida del stock no coincide " +
+            "con la línea pendiente.",
+            "warning"
+        );
+
+        renderStockForProduct();
+        renderPendingProduct();
+        renderMain();
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // RESULTADO
+    // --------------------------------------------------------
+
+    const newPending = getPendingForProduct();
+
+
+    if(newPending.total <= 0){
+
+        showPrepareMessage(
+            "✓ Ya preparaste la cantidad ordenada para este SKU.",
+            "success"
+        );
+
+    }else{
+
+        showPrepareMessage(
+            "✓ Preparaste " +
+            formatNumber(qty) +
+            " " +
+            selectedStock.um +
+            ". Todavía faltan " +
+            formatNumber(newPending.total) +
+            " " +
+            selectedStock.um +
+            ". Podés utilizar otro lote.",
+            "info"
+        );
+    }
+
+
+    selectedStock = null;
+
+
+    document.getElementById("quantitySection")
+        .classList.add("hidden");
+
+
+    renderPendingProduct();
+
+    renderStockForProduct();
+
+    renderPreparedHistory();
+
+    renderMain();
+}
+
+
+// ============================================================
+// HISTORIAL DEL PM
+// ============================================================
+
+function renderPreparedHistory(){
+
+    const container =
+        document.getElementById("preparedHistoryList");
+
+    const card =
+        document.getElementById("preparedHistory");
+
+
+    container.innerHTML = "";
+
+
+    const prepared = surtidoLines.filter(
+        line =>
+            line.prepared > 0 &&
+            line.pmNumbers.includes(currentPM)
     );
 
 
-  const ubicacion =
-    line?.ubi || "NO DETERMINADA";
+    if(prepared.length === 0){
+
+        card.classList.add("hidden");
+        return;
+    }
 
 
-  try{
-
-    const { jsPDF } =
-      window.jspdf;
-
-    const pdf =
-      new jsPDF();
+    card.classList.remove("hidden");
 
 
-    const fecha =
-      new Date()
-        .toLocaleString("es-AR");
+    prepared.forEach(line=>{
+
+        const remaining =
+            Math.max(
+                0,
+                line.pendiente - line.prepared
+            );
 
 
-    pdf.setFontSize(18);
+        const div =
+            document.createElement("div");
 
-    pdf.text(
-      "SOLICITUD DE RECLASIFICACIÓN",
-      15,
-      20
+        div.className = "line-card";
+
+
+        div.innerHTML =
+            '<div class="line-top">' +
+
+                '<div class="location">' +
+                    escapeHtml(line.location) +
+                '</div>' +
+
+                '<div class="qty">' +
+                    formatNumber(line.prepared) +
+                    ' ' +
+                    escapeHtml(line.um) +
+                '</div>' +
+
+            '</div>' +
+
+            '<div class="line-sku">' +
+                'SKU: ' +
+                escapeHtml(line.sku) +
+            '</div>' +
+
+            '<div class="line-desc">' +
+                escapeHtml(line.desc) +
+            '</div>' +
+
+            '<div class="line-bottom">' +
+                '<span class="done">PREPARADO</span>' +
+
+                (
+                    remaining > 0
+                    ?
+                    '<span class="pending">' +
+                    'Falta ' +
+                    formatNumber(remaining) +
+                    ' ' +
+                    escapeHtml(line.um) +
+                    '</span>'
+                    :
+                    '<span class="done">COMPLETO</span>'
+                ) +
+
+            '</div>';
+
+
+        container.appendChild(div);
+    });
+}
+
+
+// ============================================================
+// CERRAR PM
+// ============================================================
+
+function closeCurrentPm(){
+
+    const preparedThisPm =
+        surtidoLines.some(
+            line =>
+                line.prepared > 0 &&
+                line.pmNumbers.includes(currentPM)
+        );
+
+
+    if(!preparedThisPm){
+
+        showPrepareMessage(
+            "Todavía no preparaste ninguna línea en este PM.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    stopScanner();
+
+
+    currentPM++;
+
+
+    document.getElementById("preparePmNumber")
+        .textContent = "PM " + currentPM;
+
+
+    document.getElementById("mainPmNumber")
+        .textContent = "PM " + currentPM;
+
+
+    clearCurrentProduct();
+
+    renderMain();
+
+
+    showPrepareMessage(
+        "✓ PM cerrado. Ahora estás trabajando en PM " +
+        currentPM +
+        ".",
+        "success"
+    );
+}
+
+
+// ============================================================
+// RECLASIFICACIÓN
+// ============================================================
+
+function openReclassification(){
+
+    if(!currentProduct){
+
+        showPrepareMessage(
+            "Primero tenés que seleccionar un SKU.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    const pending = getPendingForProduct();
+
+
+    if(pending.total <= 0){
+
+        showPrepareMessage(
+            "Este SKU ya está completo. No necesita reclasificación.",
+            "success"
+        );
+
+        return;
+    }
+
+
+    const physicalLot =
+        prompt(
+            "Ingresá el lote físico de la caja.\n\n" +
+            "Ingresá solamente los últimos 3 dígitos del lote Julian."
+        );
+
+
+    if(physicalLot === null){
+        return;
+    }
+
+
+    const lot = physicalLot.trim();
+
+
+    if(!lot){
+
+        showPrepareMessage(
+            "Tenés que ingresar el lote físico.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    const qtyText =
+        prompt(
+            "Ingresá la cantidad a reclasificar.\n\n" +
+            "Pendiente: " +
+            formatNumber(pending.total) +
+            " " +
+            (pending.lines[0]?.line.um || "CA")
+        );
+
+
+    if(qtyText === null){
+        return;
+    }
+
+
+    const qty = parseNumber(qtyText);
+
+
+    if(qty <= 0){
+
+        showPrepareMessage(
+            "La cantidad debe ser mayor a 0.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    if(qty > pending.total){
+
+        showPrepareMessage(
+            "La cantidad no puede superar el pendiente: " +
+            formatNumber(pending.total),
+            "warning"
+        );
+
+        return;
+    }
+
+
+    generateReclassificationPDF(
+        currentProduct,
+        lot,
+        qty
+    );
+}
+
+
+// ============================================================
+// PDF RECLASIFICACIÓN
+// ============================================================
+
+function generateReclassificationPDF(
+    product,
+    physicalLot,
+    qty
+){
+
+    if(!window.jspdf){
+
+        showPrepareMessage(
+            "No se pudo cargar el generador PDF.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    const {jsPDF} = window.jspdf;
+
+    const doc = new jsPDF();
+
+
+    const firstLine =
+        product.lines[0];
+
+
+    doc.setFontSize(18);
+
+    doc.text(
+        "SOLICITUD DE RECLASIFICACIÓN",
+        15,
+        20
     );
 
 
-    pdf.setFontSize(11);
+    doc.setFontSize(11);
 
-    let y = 35;
+    doc.text(
+        "Picking PM",
+        15,
+        30
+    );
 
 
-    const datos = [
-      ["Fecha",fecha],
-      ["PM",String(pmActual)],
-      ["SKU",currentSKU],
-      ["Descripción",currentDescription],
-      ["Ubicación",ubicacion],
-      ["Lote físico / Julian",lote],
-      ["Cantidad",String(cantidad)],
-      ["Motivo","No se encontró el lote indicado en stock"]
+    doc.line(
+        15,
+        34,
+        195,
+        34
+    );
+
+
+    let y = 48;
+
+
+    const data = [
+
+        ["PM",String(currentPM)],
+
+        ["SKU",product.sku],
+
+        [
+            "Descripción",
+            product.desc || "-"
+        ],
+
+        [
+            "Ubicación",
+            firstLine ? firstLine.location : "-"
+        ],
+
+        [
+            "Lote físico",
+            physicalLot
+        ],
+
+        [
+            "Cantidad",
+            formatNumber(qty) +
+            " " +
+            (firstLine?.um || "CA")
+        ]
+
     ];
 
 
-    for(const [label,value] of datos){
+    data.forEach(row=>{
 
-      pdf.setFont("helvetica","bold");
+        doc.setFont("helvetica","bold");
 
-      pdf.text(
-        `${label}:`,
-        15,
-        y
-      );
+        doc.text(
+            row[0] + ":",
+            15,
+            y
+        );
 
-      pdf.setFont("helvetica","normal");
+        doc.setFont("helvetica","normal");
 
-      pdf.text(
-        String(value || ""),
-        60,
-        y
-      );
+        doc.text(
+            String(row[1]),
+            60,
+            y
+        );
 
-      y += 9;
-    }
+        y += 10;
+    });
 
 
     y += 10;
 
-    pdf.setFont("helvetica","bold");
 
-    pdf.text(
-      "Detalle:",
-      15,
-      y
+    doc.setFont("helvetica","bold");
+
+    doc.text(
+        "Solicitud:",
+        15,
+        y
     );
 
-    pdf.setFont("helvetica","normal");
 
     y += 8;
 
-    const detalle =
-      `Solicitar reclasificación de ` +
-      `${cantidad} unidades del SKU ` +
-      `${currentSKU} en la ubicación ` +
-      `${ubicacion}, lote físico ${lote}.`;
 
-    const partes =
-      pdf.splitTextToSize(
-        detalle,
-        175
-      );
+    doc.setFont("helvetica","normal");
 
-    pdf.text(
-      partes,
-      15,
-      y
+    const text =
+        "Reclasificar " +
+        formatNumber(qty) +
+        " " +
+        (firstLine?.um || "CA") +
+        " del lote físico " +
+        physicalLot +
+        " en la ubicación " +
+        (firstLine?.location || "-") +
+        ".";
+
+
+    const wrapped =
+        doc.splitTextToSize(
+            text,
+            175
+        );
+
+
+    doc.text(
+        wrapped,
+        15,
+        y
     );
 
 
-    const nombre =
-      `Reclasificacion_${currentSKU}_PM${pmActual}.pdf`;
+    y += wrapped.length * 7 + 15;
 
 
-    pdf.save(nombre);
+    doc.setFontSize(9);
 
-
-    cerrarModalReclas();
-
-    mostrarToast(
-      "PDF de reclasificación generado."
+    doc.text(
+        "Generado por Picking PM - M2 Consultoría Digital",
+        15,
+        y
     );
 
-  }catch(err){
 
-    console.error(err);
+    const fileName =
+        "Reclasificacion_PM" +
+        currentPM +
+        "_" +
+        product.sku +
+        ".pdf";
 
-    alert(
-      "No se pudo generar el PDF."
+
+    doc.save(fileName);
+
+
+    showPrepareMessage(
+        "✓ PDF de reclasificación generado.",
+        "success"
     );
-  }
 }
 
 
-/* ============================================================
-   INICIO
-============================================================ */
+// ============================================================
+// SCANNER
+// ============================================================
 
-document.addEventListener(
-  "DOMContentLoaded",
-  ()=>{
+async function startScanner(){
 
-    /*
-      Permitir ENTER en el campo manual.
-    */
+    if(scannerRunning){
+        return;
+    }
 
-    const input =
-      document.getElementById("manualSku");
 
-    input.addEventListener(
-      "keydown",
-      e=>{
-        if(e.key === "Enter"){
-          buscarSKUManual();
+    try{
+
+        scanner =
+            new Html5Qrcode("reader");
+
+
+        await scanner.start(
+
+            {
+                facingMode:"environment"
+            },
+
+            {
+                fps:10,
+
+                qrbox:{
+                    width:250,
+                    height:150
+                }
+            },
+
+            decodedText =>{
+
+                processScannedSku(decodedText);
+
+            },
+
+            errorMessage => {
+                // Errores normales de lectura:
+                // no mostramos nada para no molestar.
+            }
+
+        );
+
+
+        scannerRunning = true;
+
+
+        document.getElementById("btnStartScanner")
+            .classList.add("hidden");
+
+        document.getElementById("btnStopScanner")
+            .classList.remove("hidden");
+
+
+        showScanMessage(
+            "Cámara activa. Apuntá al código de la caja.",
+            "info"
+        );
+
+
+    }catch(error){
+
+        console.error(error);
+
+        showScanMessage(
+            "No se pudo iniciar la cámara. " +
+            "Podés ingresar el SKU manualmente.",
+            "error"
+        );
+    }
+}
+
+
+async function stopScanner(){
+
+    if(!scanner || !scannerRunning){
+        return;
+    }
+
+
+    try{
+        await scanner.stop();
+    }catch(e){}
+
+
+    try{
+        await scanner.clear();
+    }catch(e){}
+
+
+    scannerRunning = false;
+
+
+    document.getElementById("btnStartScanner")
+        .classList.remove("hidden");
+
+    document.getElementById("btnStopScanner")
+        .classList.add("hidden");
+}
+
+
+// ============================================================
+// MENSAJES
+// ============================================================
+
+function showScanMessage(text,type="info"){
+
+    const cls =
+        type === "error"
+            ? "alert-error"
+            : type === "warning"
+                ? "alert-warning"
+                : type === "success"
+                    ? "alert-success"
+                    : "alert-info";
+
+
+    document.getElementById("scanMessage")
+        .innerHTML =
+        '<div class="alert ' +
+        cls +
+        '">' +
+        escapeHtml(text) +
+        '</div>';
+}
+
+
+function showPrepareMessage(text,type="info"){
+
+    const cls =
+        type === "error"
+            ? "alert-error"
+            : type === "warning"
+                ? "alert-warning"
+                : type === "success"
+                    ? "alert-success"
+                    : "alert-info";
+
+
+    document.getElementById("prepareMessage")
+        .innerHTML =
+        '<div class="alert ' +
+        cls +
+        '">' +
+        escapeHtml(text) +
+        '</div>';
+}
+
+
+// ============================================================
+// EVENTOS ARCHIVOS
+// ============================================================
+
+function updateContinueButton(){
+
+    const stock =
+        document.getElementById("fileStock").files.length > 0;
+
+    const mst =
+        document.getElementById("fileMst").files.length > 0;
+
+    const surtido =
+        document.getElementById("fileSurtido").files.length > 0;
+
+
+    document.getElementById("btnContinuar").disabled =
+        !(stock && mst && surtido);
+}
+
+
+document.getElementById("fileStock")
+    .addEventListener("change",function(){
+
+        if(this.files.length){
+
+            setStatus(
+                "statusStock",
+                "Archivo seleccionado: " +
+                this.files[0].name,
+                ""
+            );
+        }else{
+
+            setStatus(
+                "statusStock",
+                "Pendiente",
+                ""
+            );
         }
-      }
-    );
+
+        updateContinueButton();
+    });
 
 
-    /*
-      Permitir ENTER en cantidad.
-    */
+document.getElementById("fileMst")
+    .addEventListener("change",function(){
 
-    const qty =
-      document.getElementById("qtyPrepare");
+        if(this.files.length){
 
-    qty.addEventListener(
-      "keydown",
-      e=>{
-        if(e.key === "Enter"){
-          confirmarPreparacion();
+            setStatus(
+                "statusMst",
+                "Archivo seleccionado: " +
+                this.files[0].name,
+                ""
+            );
+        }else{
+
+            setStatus(
+                "statusMst",
+                "Pendiente",
+                ""
+            );
         }
-      }
+
+        updateContinueButton();
+    });
+
+
+document.getElementById("fileSurtido")
+    .addEventListener("change",function(){
+
+        if(this.files.length){
+
+            setStatus(
+                "statusSurtido",
+                "Archivo seleccionado: " +
+                this.files[0].name,
+                ""
+            );
+        }else{
+
+            setStatus(
+                "statusSurtido",
+                "Pendiente",
+                ""
+            );
+        }
+
+        updateContinueButton();
+    });
+
+
+// ============================================================
+// BOTONES
+// ============================================================
+
+document.getElementById("btnContinuar")
+    .addEventListener("click",loadAllFiles);
+
+
+document.getElementById("btnPrepare")
+    .addEventListener("click",openPreparation);
+
+
+document.getElementById("btnBackMain")
+    .addEventListener("click",backToMain);
+
+
+document.getElementById("btnAllLines")
+    .addEventListener("click",function(){
+
+        showingAllLines = !showingAllLines;
+
+        this.textContent =
+            showingAllLines
+                ? "VER POR ZONA"
+                : "VER TODAS LAS LÍNEAS";
+
+        renderMain();
+    });
+
+
+document.getElementById("btnStartScanner")
+    .addEventListener("click",startScanner);
+
+
+document.getElementById("btnStopScanner")
+    .addEventListener("click",stopScanner);
+
+
+document.getElementById("btnManualSku")
+    .addEventListener("click",function(){
+
+        document.getElementById("manualSkuInput").value = "";
+
+        document.getElementById("skuModal")
+            .classList.remove("hidden");
+
+        setTimeout(()=>{
+            document.getElementById("manualSkuInput").focus();
+        },100);
+    });
+
+
+document.getElementById("btnCancelSku")
+    .addEventListener("click",function(){
+
+        document.getElementById("skuModal")
+            .classList.add("hidden");
+    });
+
+
+document.getElementById("btnAcceptSku")
+    .addEventListener("click",function(){
+
+        const sku =
+            document.getElementById("manualSkuInput").value;
+
+        document.getElementById("skuModal")
+            .classList.add("hidden");
+
+        processScannedSku(sku);
+    });
+
+
+document.getElementById("manualSkuInput")
+    .addEventListener("keydown",function(e){
+
+        if(e.key === "Enter"){
+
+            document.getElementById("btnAcceptSku")
+                .click();
+        }
+    });
+
+
+document.getElementById("btnConfirmQuantity")
+    .addEventListener(
+        "click",
+        confirmPreparation
     );
 
-  }
-);
 
-
-/* ============================================================
-   CONTROL DE ERROR GENERAL
-============================================================ */
-
-window.addEventListener(
-  "error",
-  function(e){
-
-    console.error(
-      "Error JavaScript:",
-      e.error || e.message
+document.getElementById("btnReclassify")
+    .addEventListener(
+        "click",
+        openReclassification
     );
 
-    /*
-      No mostramos errores técnicos al operador
-      para no complicar el uso de la app.
-    */
-  }
-);
 
+document.getElementById("btnClosePm")
+    .addEventListener(
+        "click",
+        closeCurrentPm
+    );
+
+
+// ============================================================
+// INICIO
+// ============================================================
+
+document.addEventListener("DOMContentLoaded",function(){
+
+    updateContinueButton();
+
+});
 </script>
 
 </body>
